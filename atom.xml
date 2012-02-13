@@ -4,7 +4,7 @@
   <title><![CDATA[Jiang Bo]]></title>
   <link href="http://jiang-bo.github.com/atom.xml" rel="self"/>
   <link href="http://jiang-bo.github.com/"/>
-  <updated>2012-02-13T17:04:20+08:00</updated>
+  <updated>2012-02-13T17:05:39+08:00</updated>
   <id>http://jiang-bo.github.com/</id>
   <author>
     <name><![CDATA[jiangbo]]></name>
@@ -48,7 +48,7 @@ Zip::ZipInputStream::open(zipFile){
 }
 </code></pre>
 
-<p>主要以来rubyzip和iconv两个包：</p>
+<p>主要依赖rubyzip和iconv两个包：</p>
 
 <pre><code>gem install rubyzip
 gem install iconv
