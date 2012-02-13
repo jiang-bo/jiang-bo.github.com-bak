@@ -5,11 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Category: JVM - Jiang Bo</title>
+  <title>解决Mac上解压Windows压缩包乱码问题 - Jiang Bo</title>
   <meta name="author" content="jiangbo">
 
   
-  <meta name="description" content="Category: JVM">
+  <meta name="description" content="Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
+下面是用ruby写的一个解决方法： source@github require 'zip/zip'
+require 'iconv' # To unzip &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -18,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://jiang-bo.github.comblog/categories/jvm">
+  <link rel="canonical" href="http://jiang-bo.github.com/blog/2012/02/13/unzip-file-from-win-to-mac">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -61,35 +63,121 @@
   <div id="main">
     <div id="content">
       <div>
-<article role="article">
+<article class="hentry" role="article">
   
   <header>
-    <h1 class="entry-title">Category: JVM</h1>
+    
+      <h1 class="entry-title">解决Mac上解压Windows压缩包乱码问题</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-13T16:53:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
+        
+      </p>
     
   </header>
-  
-  <div id="blog-archives" class="category">
 
 
+<div class="entry-content"><p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
+下面是用ruby写的一个解决方法：</p>
 
-  
-  <h2>2012</h2>
+<p><a href="https://github.com/jiang-bo/codingforfun/blob/master/ruby/utils/unzipFromWinToMac.rb">source@github</a></p>
 
-<article>
-  
-<h1><a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a></h1>
-<time datetime="2012-02-10T14:39:00+08:00" pubdate><span class='month'>Feb</span> <span class='day'>10</span> <span class='year'>2012</span></time>
+<pre><code>require 'zip/zip'
+require 'iconv'
 
-<footer>
-  <span class="categories">posted in <a class='category' href='/blog/categories/jvm/'>JVM</a></span>
-</footer>
+# To unzip zipfile which zip in GBK to UTF-8.
+#
+# When you zip a file on Windows, it will encode in GBK default.
+# Then you unzip it on Mac OSX which use unicode default, it will be wrong.
+# This code is used to fix this problem:)
+#
+# @Author: jiang-bo
+Zip::ZipInputStream::open(zipFile){
+  |io|
+  while(entry = io.get_next_entry)
+    name=Iconv.iconv("UTF-8","GBK", entry.name)[0]
 
+    puts "Extracting #{name}"
+    if name.end_with?('/')
+      Dir.mkdir(name.to_s)
+    else
+      entry.extract(name.to_s)
+    end
+  end
+}
+</code></pre>
 
-</article>
+<p>主要以来rubyzip和iconv两个包：</p>
 
+<pre><code>gem install rubyzip
+gem install iconv
+</code></pre>
+
+<p>使用ruby zip中ZipInputStream打开压缩包，然后使用Iconv.iconv将其中的文件名由&#8217;GBK&#8217;转码为&#8217;UTF-8&#8217;。
+然后解压压缩包。</p>
 </div>
 
+
+  <footer>
+    <p class="meta">
+      
   
+
+<span class="byline author vcard">Posted by <span class="fn">jiangbo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-13T16:53:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ruby/'>Ruby</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://jiang-bo.github.com/blog/2012/02/13/unzip-file-from-win-to-mac/" data-via="" data-counturl="http://jiang-bo.github.com/blog/2012/02/13/unzip-file-from-win-to-mac/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/02/10/jvm-luncher-lifecycle/" title="Previous Post: JVM Luncher Lifecycle">&laquo; JVM Luncher Lifecycle</a>
+      
+      
+    </p>
+  </footer>
 </article>
 
 </div>

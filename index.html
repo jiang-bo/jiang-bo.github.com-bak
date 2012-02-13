@@ -9,7 +9,9 @@
   <meta name="author" content="jiangbo">
 
   
-  <meta name="description" content="一.环境准备 1.jdk 在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:) 2.alsa包 linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装， &hellip;">
+  <meta name="description" content="Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
+下面是用ruby写的一个解决方法： source@github require 'zip/zip'
+require 'iconv' # To unzip &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -62,6 +64,115 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-13T16:53:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
+下面是用ruby写的一个解决方法：</p>
+
+<p><a href="https://github.com/jiang-bo/codingforfun/blob/master/ruby/utils/unzipFromWinToMac.rb">source@github</a></p>
+
+<pre><code>require 'zip/zip'
+require 'iconv'
+
+# To unzip zipfile which zip in GBK to UTF-8.
+#
+# When you zip a file on Windows, it will encode in GBK default.
+# Then you unzip it on Mac OSX which use unicode default, it will be wrong.
+# This code is used to fix this problem:)
+#
+# @Author: jiang-bo
+Zip::ZipInputStream::open(zipFile){
+  |io|
+  while(entry = io.get_next_entry)
+    name=Iconv.iconv("UTF-8","GBK", entry.name)[0]
+
+    puts "Extracting #{name}"
+    if name.end_with?('/')
+      Dir.mkdir(name.to_s)
+    else
+      entry.extract(name.to_s)
+    end
+  end
+}
+</code></pre>
+
+<p>主要以来rubyzip和iconv两个包：</p>
+
+<pre><code>gem install rubyzip
+gem install iconv
+</code></pre>
+
+<p>使用ruby zip中ZipInputStream打开压缩包，然后使用Iconv.iconv将其中的文件名由&#8217;GBK&#8217;转码为&#8217;UTF-8&#8217;。
+然后解压压缩包。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-10T23:51:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content">
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -272,6 +383,14 @@ Hello
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
