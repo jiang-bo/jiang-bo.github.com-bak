@@ -9,7 +9,7 @@
   <meta name="author" content="jiangbo">
 
   
-  <meta name="description" content="什么是类加载器？ 类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。 类加载器分类 类加载器主要分为： 启动类加载器( &hellip;">
+  <meta name="description" content="问题现象 现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例： public class VasViewVO { private &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -62,6 +62,162 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-04-08T11:23:00+08:00" pubdate data-updated="true">Apr 8<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h3>问题现象</h3>
+
+<p>现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例：</p>
+
+<pre><code>public class VasViewVO {
+
+    private String description;
+
+    private Date gmtOpen;
+
+    private Date gmtClose;
+
+    private CreditVasType serviceType;
+
+    private CreditVasMemberStatus creditVasMemberStatus;
+    ...//此处省略getter和setter方法
+}
+</code></pre>
+
+<p>通常按照如下方式构造一个VasViewVO实例：</p>
+
+<pre><code>    VasViewVO vasViewVO = new VasViewVO();
+    vasViewVO.setCreditVasMemberStatus(CreditVasMemberStatus.OPEN);
+    vasViewVO.setGmtOpen(new Date());
+    vasViewVO.setServiceType(CreditVasType.fastpay);
+    vasViewVO.setDescription("open fastpay");
+    //do something with vasViewVO
+</code></pre>
+
+<p>如此构造VasViewVO的实例并非有严重的逻辑错误或者其他的问题，只是不够简洁易懂（贴近自然语言）。
+最近学习过jQuery的都知道，jQuery中可以按如下方式连续调用api</p>
+
+<pre><code>    $("p").hide().fadeIn("slow").slideUp("slow").slideDown("slow");
+</code></pre>
+
+<p>如果Java程序中也可以使用类似的方式将会简洁许多。</p>
+
+<h3>解决方法</h3>
+
+<h4>使用方法链</h4>
+
+<p>jQuery中之所以能够连续调用api，主要是因为每个方法返回的都是一个jQuery对象。Java本身也可这样做，即返回一个this(自身引用)，也就是常说的<a href="http://en.wikipedia.org/wiki/Method_chaining">方法链</a>。
+方法链的实现非常简单，通常的setter方法返回void，方法链返回的是this引用，如下：</p>
+
+<pre><code>    public VasViewVO description(String description) {
+        this.description = description;
+        return this;
+    }
+
+    public VasViewVO gmtOpen(Date gmtOpen) {
+        this.gmtOpen = gmtOpen;
+        return this;
+    }
+
+    public VasViewVO gmtClose(Date gmtClose) {
+        this.gmtClose = gmtClose;
+        return this;
+    }
+
+    public VasViewVO serviceType(CreditVasType serviceType) {
+        this.serviceType = serviceType;
+        return this;
+    }
+</code></pre>
+
+<p>如此一来在调用时只需要新建一个对象，连续调用赋值方法即可：</p>
+
+<pre><code>    VasViewVO vasView = new VasViewVO();
+    vasView.creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
+            .description("Commoent cxxx").gmtClose(new Date())
+            .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
+</code></pre>
+
+<p>如此相比连续调用5次setter方法简洁的多。</p>
+
+<h4>使用静态工厂和static import优化</h4>
+
+<p>使用方法链之后简化了setter调用，但是每次还必须要先new一个实例，略显繁琐。这个问题可以通过Effectvie Java的第一条静态工厂来解决，即在VasViewVO内部实现一个静态工厂方法。</p>
+
+<pre><code>    public static VasViewVO with() {
+        return new VasViewVO();
+    }
+</code></pre>
+
+<p>这个with的方法名与一般的静态工厂所用的getInstance，newInstance不同，主要时为了更加贴近自然语言。
+如此，构造一个VasViewVO实例就可简化为</p>
+
+<pre><code>    VasViewVO vasViewVO = VasViewVO.with()
+                .creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
+                .description("Commoent cxxx").gmtClose(new Date())
+                .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
+</code></pre>
+
+<p>代码已经很简洁，不过每次都是用枚举类长长的类名，感觉很是不雅，可以通过static import解决，最终的到的简化后构造一个VasViewVO实例的代码如下：</p>
+
+<pre><code>import static  com.alibaba.china.credit.common.constants.CreditVasType.*;
+import static com.alibaba.china.credit.vas.dal.constant.CreditVasMemberStatus.*;
+public class Test{
+    public static void main(String[] args) {
+        . . .
+
+        VasViewVO vasViewVO = VasViewVO.with()
+            .creditVasMemberStatus(CLOSE)
+            .description("Commoent cxxx").gmtClose(new Date())
+            .gmtOpen(new Date()).serviceType(fastpay);
+        . . .
+    }
+}
+</code></pre>
+
+<h3>进阶总结</h3>
+
+<p>程序设计要解决的是讲现实世界中的问题描述转化为计算机可识别的计算机语言（二进制码），因此编程语言必须为这一转化过程提供有效的抽像机制。现有编程语言提供的抽象机制侧重各有不同，在C，C++，JAVA等通用语言中更关注语言的基本语义，离实际的问题域描述较远；SQL，CSS等特定领域语言更关注特定问题域问题的抽象，更贴近实际的问题描述。</p>
+
+<p>站在人的角度，语言越是贴近实际问题的描述越是容易理解，对问题的描述也更加准确。但现有的特定领域语言又不具备通用变成语言解决问题的的通用性，因此我们更希望能够在通用语言上进行更高层次的抽象，使其更加贴近具体的问题域。某种程度上讲语言提供的API或者方法库就是对基本问题的更高层次抽象，但离具体的问题域还是太远，有时我们更渴望更加贴近具体问题的语言来解决问题并兼具通用语言的通用性，因此诞生了通用语言的内部DSL。
+<a href="http://www.martinfowler.com/bliki/FluentInterface.html">流畅接口（Fluent Interface）</a>是实现内部DSL的重要手段，<a href="http://en.wikipedia.org/wiki/Fluent_interface">wikipedia上如此描述</a>Fluent Interface：</p>
+
+<pre><code>A fluent interface (as first coined by Eric Evans and Martin Fowler) is an implementation of an object oriented API that aims to provide for more readable code. A fluent interface is normally implemented by using method chaining to relay the instruction context of a subsequent call (but a fluent interface entails more than just method chaining)。
+</code></pre>
+
+<p>方法链（method chain）是实现Fluent Interface的重要手段（注意，method chain!= Fluent Interface!=DSL）。但仅仅有方法链是不足够构建有效的DSL的，除此之外还需要一些且他编程技巧，比如static factory和static import等，具体请参见<a href="http://www.infoq.com/articles/internal-dsls-java">《An Approach to Internal Domain－Specific Languages in Java》</a></p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -397,7 +553,7 @@ gem install iconv
   </header>
 
 
-  <div class="entry-content">
+  <div class="entry-content"><h1>JVM运行时环境</h1>
 </div>
   
   
@@ -614,6 +770,10 @@ Hello
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>

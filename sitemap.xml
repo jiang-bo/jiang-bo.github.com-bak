@@ -6,7 +6,7 @@
     </url>
     <url>
         <loc>http://jiang-bo.github.com/blog/2012/02/10/jvm-luncher-lifecycle/</loc>
-        <lastmod>2012-02-10T23:52:37+08:00</lastmod>
+        <lastmod>2012-02-16T17:12:15+08:00</lastmod>
     </url>
     <url>
         <loc>http://jiang-bo.github.com/blog/2012/02/13/unzip-file-from-win-to-mac/</loc>
@@ -17,11 +17,17 @@
         <lastmod>2012-02-16T11:18:37+08:00</lastmod>
     </url>
     <url>
+        <loc>
+            http://jiang-bo.github.com/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/
+        </loc>
+        <lastmod>2012-04-08T11:28:34+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://jiang-bo.github.com/blog/archives/</loc>
-        <lastmod>2012-02-16T11:18:37+08:00</lastmod>
+        <lastmod>2012-04-08T11:28:34+08:00</lastmod>
     </url>
     <url>
         <loc>http://jiang-bo.github.com/</loc>
-        <lastmod>2012-02-16T11:18:37+08:00</lastmod>
+        <lastmod>2012-04-08T11:28:34+08:00</lastmod>
     </url>
 </urlset>
