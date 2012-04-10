@@ -1,0 +1,310 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>如何用ruby获取本机IP&发送給Gtalk - Jiang Bo</title>
+  <meta name="author" content="jiangbo">
+
+  
+  <meta name="description" content="问题 有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。 解决 如何获取本机IP 用ruby获取本机的动态ip，网上很多教程都用 require 'socket' IPSocket.getaddress( &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/04/10/how-to-get-ip-and-send-to-gtalk-by-ruby">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Jiang Bo" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Jiang Bo</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">如何用ruby获取本机IP&发送給Gtalk</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-04-10T17:35:00+08:00" pubdate data-updated="true">Apr 10<span>th</span>, 2012</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>问题</h3>
+
+<p>有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。</p>
+
+<h3>解决</h3>
+
+<h4>如何获取本机IP</h4>
+
+<p>用ruby获取本机的动态ip，网上很多教程都用</p>
+
+<pre><code>require 'socket'
+
+IPSocket.getaddress(Socket.gethostname)
+puts TCPSocket.gethostbyname(Socket.gethostname)
+</code></pre>
+
+<p>这个在mac下是正常的，但是在linux下就只能拿到127.0.0.1
+在StackOverflow上有另一种解决方案</p>
+
+<pre><code>require 'socket'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = rig
+end
+</code></pre>
+
+<p>这段主要是通过开启一个UDP链接来获取本地对外ip，因为UDP是无状态，所以不会实际建立网络链接，但是会获取本机对外ip。</p>
+
+<h4>如何发送消息</h4>
+
+<p>获取ip后需要通过gtalk发送，gtalk使用的是xmpp协议，ruby中协议有多种开源实现，比较简单通用的是xmpp4r，详细教程请看这里
+首先需要安装xmpp4r-simple</p>
+
+<pre><code>gem install xmpp4r-simple
+</code></pre>
+
+<p>注意，貌似这个gem不支持1.9.*，所以使用之前先将ruby切换到1.8.7版本
+然后编写代码，主要两步：</p>
+
+<ul>
+<li>建立链接</li>
+<li>发送消息</li>
+</ul>
+
+
+<p>代码如下：</p>
+
+<pre><code> require 'rubygems'
+ require 'xmpp4r-simple'  
+
+ username = gmailusername
+ password = gmailpassword
+ to_username = destination_gmailusername  
+
+ puts "Connecting to jabber server.."
+ jabber = Jabber::Simple.new(username+'@gmail.com',password)
+ puts "Connected."
+ jabber.deliver(to_username+"@gmail.com", "Hello..!")
+ sleep(1)
+</code></pre>
+
+<p>注意，最后那个sleep不能少，尽管我还不知道为啥:(</p>
+
+<p>如此以来整个的获取ip，发送給gtalk的脚本为：</p>
+
+<pre><code>require 'rubygems'
+require 'socket'
+require 'xmpp4r-simple'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = orig
+end
+
+jabber = Jabber::Simple.new('gmailuseanme@gmail.com','password')
+jabber.deliver('destusenam@gmail.com', local_ip)
+sleep 1
+</code></pre>
+
+<h4>设置自动运行</h4>
+
+<p>linux设置自动运行是老生常谈了，在/etc/rc.local加上一句运行脚本的命令即可：</p>
+
+<pre><code>ruby /home/jiangbo/ruby/getIP.rb
+</code></pre>
+
+<h3>结尾</h3>
+
+<p>这样每次机器重启时，就能够通过gtalk获取到ip了，不过还遗留一个问题，就是在机器重启时，必须保证接收消息的gtalk在线，因为这种方式的消息gtalk不会自动重法，目前不知怎么解决。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiangbo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-04-10T17:35:00+08:00" pubdate data-updated="true">Apr 10<span>th</span>, 2012</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="http://twitter.com/share" class="twitter-share-button" data-url="http://jiangbo.me/blog/2012/04/10/how-to-get-ip-and-send-to-gtalk-by-ruby/" data-via="" data-counturl="http://jiangbo.me/blog/2012/04/10/how-to-get-ip-and-send-to-gtalk-by-ruby/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/" title="Previous Post: 使用方法链和静态工厂构造流畅接口">&laquo; 使用方法链和静态工厂构造流畅接口</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/04/10/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiangbo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = 'http://platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>

@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Ruby | Jiang Bo]]></title>
-  <link href="http://jiang-bo.github.com/blog/categories/ruby/atom.xml" rel="self"/>
-  <link href="http://jiang-bo.github.com/"/>
-  <updated>2012-04-08T11:28:52+08:00</updated>
-  <id>http://jiang-bo.github.com/</id>
+  <link href="http://jiangbo.me/blog/categories/ruby/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-04-10T17:39:38+08:00</updated>
+  <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiangbo]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[解决Mac上解压Windows压缩包乱码问题]]></title>
-    <link href="http://jiang-bo.github.com/blog/2012/02/13/unzip-file-from-win-to-mac/"/>
+    <link href="http://jiangbo.me/blog/2012/02/13/unzip-file-from-win-to-mac/"/>
     <updated>2012-02-13T16:53:00+08:00</updated>
-    <id>http://jiang-bo.github.com/blog/2012/02/13/unzip-file-from-win-to-mac</id>
+    <id>http://jiangbo.me/blog/2012/02/13/unzip-file-from-win-to-mac</id>
     <content type="html"><![CDATA[<p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
 下面是用ruby写的一个解决方法：</p>
 

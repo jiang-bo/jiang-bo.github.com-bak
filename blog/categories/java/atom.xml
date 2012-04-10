@@ -2,10 +2,10 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Java | Jiang Bo]]></title>
-  <link href="http://jiang-bo.github.com/blog/categories/java/atom.xml" rel="self"/>
-  <link href="http://jiang-bo.github.com/"/>
-  <updated>2012-04-08T11:28:52+08:00</updated>
-  <id>http://jiang-bo.github.com/</id>
+  <link href="http://jiangbo.me/blog/categories/java/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-04-10T17:39:38+08:00</updated>
+  <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiangbo]]></name>
     
@@ -15,9 +15,9 @@
   
   <entry>
     <title type="html"><![CDATA[使用方法链和静态工厂构造流畅接口]]></title>
-    <link href="http://jiang-bo.github.com/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/"/>
+    <link href="http://jiangbo.me/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/"/>
     <updated>2012-04-08T11:23:00+08:00</updated>
-    <id>http://jiang-bo.github.com/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory</id>
+    <id>http://jiangbo.me/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory</id>
     <content type="html"><![CDATA[<h3>问题现象</h3>
 
 <p>现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例：</p>
