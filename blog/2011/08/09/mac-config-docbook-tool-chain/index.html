@@ -1,0 +1,356 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Mac配置docbook工具链 - Jiang Bo</title>
+  <meta name="author" content="jiangbo">
+
+  
+  <meta name="description" content="docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+一、安装工具链
+docbook工具链包含三部分
+1.xsltproc（mac自带）
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2011/08/09/mac-config-docbook-tool-chain">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Jiang Bo" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Jiang Bo</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">Abount Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Mac配置docbook工具链</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-09T00:00:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+<strong>一、安装工具链</strong>
+docbook工具链包含三部分<br />
+1.xsltproc（mac自带）<br />
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
+3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
+下载解压后得到：<br />
+docbook-xsl-1.76.1<br />
+fop-1.0<br />
+两个目录。<br />
+此时可以已经可以进行docbook撰写了，不过只限英文:)
+<strong>二、撰写docbook，并生成pdf</strong>
+使用文本编辑器编写如下xml，保存为webx.xml
+<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
+
+<p>&lt;!DOCTYPE book PUBLIC &#8220;-//OASIS//DTD DocBook XML V4.0//EN&#8221;  &#8220;http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd&#8221;&gt;</p>
+
+<p>&lt;book&gt;<br />
+&lt;bookinfo&gt;<br />
+&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
+&lt;author&gt;<br />
+&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
+&lt;surname&gt;Jiang&lt;/surname&gt;<br />
+&lt;affiliation&gt;<br />
+&lt;address&gt;<br />
+&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
+&lt;/address&gt;<br />
+&lt;/affiliation&gt;<br />
+&lt;/author&gt;<br />
+&lt;copyright&gt;<br />
+&lt;year&gt;2011&lt;/year&gt;<br />
+&lt;/copyright&gt;<br />
+&lt;abstract&gt;<br />
+&lt;para&gt;Webx&lt;/para&gt;<br />
+&lt;/abstract&gt;<br />
+&lt;/bookinfo&gt;<br />
+&lt;part&gt;<br />
+&lt;title&gt;Part1&lt;/title&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;/part&gt;<br />
+&lt;/book&gt;
+使用xsltproc转换为中间文件<br />
+$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
+此时会生成中间文件inter.fo<br />
+使用fop生成pdf<br />
+$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
+最终生成了名为webx.pdf的pdf文件</p>
+
+<p><strong>三、设置FOP支持中文</strong>
+但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
+找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
+<strong>1.生成字体矩阵</strong></p>
+
+<p>进入到fop安装目录，执行</p>
+
+<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr &#8217; &#8217; &#8216;:&#8217;` org.apache.fop.fonts.apps.TTFReader -ttcanme &#8220;SimHei&#8221; /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
+
+<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
+
+<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
+<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
+
+<p>&lt;filterList&gt;</p>
+
+<p>……</p>
+
+<p>&lt;/filterList&gt;</p>
+
+<p>&lt;fonts&gt;</p>
+
+<p>&lt;font metrics-url=&#8221;file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml&#8221; kerning=&#8221;yes&#8221; embed-url=&#8221;file:///Library/Fonts/Microsoft/SimHei.ttf&#8221;&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;/font&gt;</p>
+
+<p>&lt;!&#8211;&lt;directory recursive=&#8221;true&#8221;&gt;/Library/Fonts/&lt;/directory&gt;&#8211;&gt;</p>
+
+<p>&lt;!&#8211;    &lt;auto-detect/&gt;&#8211;&gt;</p>
+
+<p>&lt;/fonts&gt;</p>
+
+<p>……
+<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
+
+<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
+<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
+&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:exsl="http://exslt.org/common"
+                xmlns:fo="http://www.w3.org/1999/XSL/Format"
+                xmlns:ng="http://docbook.org/docbook-ng"
+                xmlns:db="http://docbook.org/ns/docbook"
+                exclude-result-prefixes="db ng exsl"
+                version='1.0'&gt;</pre></p>
+
+<p>&lt;xsl:import href=&#8221;/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl&#8221;/&gt;<br />
+&lt;xsl:param name=&#8221;body.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;monospace.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;title.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;/xsl:stylesheet&gt;
+<strong>4.使用新样式表进行转换</strong></p>
+
+<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
+
+<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiangbo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-09T00:00:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2011</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/mac/'>Mac</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2011/08/03/mac-osx-install-memcached/" title="Previous Post: Mac OSX 安装memcached">&laquo; Mac OSX 安装memcached</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2011/08/10/eclipse-debug-maven-jetty/" title="next Post: Eclipse中debug maven jetty应用">Eclipse中debug maven jetty应用 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/jetty_classloader/">Java ClassLoader笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiangbo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

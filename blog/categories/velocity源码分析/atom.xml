@@ -1,0 +1,618 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Velocity源码分析 | Jiang Bo]]></title>
+  <link href="http://jiangbo.me/blog/categories/velocity源码分析/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-26T15:27:33+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiangbo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Velocity源码分析（二）——渲染执行之Introspection]]></title>
+    <link href="http://jiangbo.me/blog/2011/08/26/velocity_introspection/"/>
+    <updated>2011-08-26T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/08/26/velocity_introspection</id>
+    <content type="html"><![CDATA[<p><div><span style="font-size: large;"><strong>一、何为Introspection</strong></span></div>
+<div><span style="font-size: large;"><strong>
+</strong></span></div>
+<div>Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。</div>
+<div><em>Introspection is the self-observation and reporting of conscious inner thoughts, desires and sensations. It is a conscious and purposive process relying on thinking, reasoning, and examining one's own thoughts, feelings, and, in more spiritual cases, one's soul. </em></div>
+<div style="text-align: right;">——Wikipedia</div>
+<div>在计算机科学中，借用了哲学中的Introspeciton术语，表示一种能够识别一个事物它是什么，知道什么，能做什么的能力。典型的应用场景是面向对象语言中的类型自省（type introspeciton）。</div>
+<div><em>In computing, type introspection is a capability of some object-oriented programming languages to determine the type of an object at runtime.</em></div>
+<div style="text-align: right;">——Wikipedia</div>
+<div>以Java为例，Java提供了可以在运行时获取和检查JavaBean的接口API，实例如下：</div>
+<pre class="brush:java">import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.IntrospectionException;
+import java.beans.PropertyDescriptor;
+public class SimpleBean{
+    private final String name = "SimpleBean";
+    private int size;
+    public String getName(){
+        return this.name;
+    }
+    public int getSize(){
+            return this.size;
+    }
+    public void setSize( int size ) {
+        this.size = size;
+    }
+    public static void main( String[] args )            throws IntrospectionException   {
+        BeanInfo info = Introspector.getBeanInfo( SimpleBean.class );
+for ( PropertyDescriptor pd : info.getPropertyDescriptors() )             System.out.println( pd.getName() );
+}
+}</pre>
+<div>Introspector.getBeanInfo(SimpleBean.class)是Java提供的一个自省工具类，可以在运行时获取SimpleBean类的类型信息BeanInfo，包括属性名、方法名、Bean描述等等信息。</div>
+<div>查阅资料过程中发现有些人认为自省即反射（Reflection），反射即自省，因为Java中自省是通过反射实现的。我认为这两个概念还是有区别的，自省是一个目的或者说机制，是一个上层的接口封装，而反射是达到这个目的或者实现这个机制的方法，是底层的具体实现。</div>
+<div><span style="font-size: large;"><strong>二、Velocity中的渲染执行</strong></span></div>
+<div><span style="font-size: large;"><strong>
+</strong></span></div>
+<div><span style="font-size: medium;"><strong>2.1 velocity中Introspection概述</strong></span></div>
+<div><span style="font-size: medium;"><strong>
+</strong></span></div>
+<div>Velocity作为一种模板语言允许我们向Context中放置一些JavaBean实例，并在模板中通过变量方式引用。如下所示：</div>
+<div>Welcome! ${person.name} !</div>
+<div>该模板中有一个引用变量${person.name}，在执行渲染时必须要知道person是个什么东东，person.name又是个什么东东，这里就需要自省机制发挥作用。</div>
+<div>Veloctiy的的自省机制实现位于源码包org.apache.velocity.util.introspection中，其主要类图结构如下：</div>
+<div><a href="http://jiangbo.me/images/uploads/2011/08/类图结构.png"><img class="aligncenter size-full wp-image-63" title="类图结构.png" src="http://jiangbo.me/images/uploads/2011/08/类图结构.png" alt="" width="863" height="351" /></a></div>
+<div>Uberspect中定义了渲染执行时所需的主要接口。该接口主要提供四个方法：</div>
+<div>
+<ol>
+    <li>getIterator()：支持迭代#foreache</li>
+    <li>getMethod()：支持方法调用</li>
+    <li>getPropertyGet()：支持获取属性值</li>
+    <li>getPropertySet()：支持设置属性值</li>
+</ol>
+Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspector完成基本的自省功能。Introspector扩展自基类IntrospectorBase，增添异常日志功能。</div></p>
+
+
+
+
+<p>
+<div>IntrospectorBase内部维护了一个introspectCache，用于缓存已经完成自省的类和方法信息。</div>
+<div>IntrospectorCacheImpl内通过一个HashMap维护一个class与其对应的类型信息，类型信息用一个ClassMap表示。</div>
+<div>一个ClassMap内部维护了一个MethodCache，用于缓存该类已经解析出得方法信息。</div>
+<div>MethodMap表示一个方法信息。</div>
+<div><span style="font-size: medium;"><strong>2.2 渲染执行详细流程</strong></span></div>
+<div><span style="font-size: medium;"><strong>
+</strong></span></div>
+<div>下面一如下模板为例，解释velocity中introspection的实际执行：</div>
+<div>template.vm</div>
+<div>${person.sayHi()}! I'm ${person.name}</div>
+<div>该模板的作用表示分别调用context中名为person的对象的sayHi()方法和name属性。该模板经过语法解析生成的AST如下（关于AST解析请参考上一篇velocity源码分析）：</div>
+<div><a href="http://jiangbo.me/images/uploads/2011/08/语法树.png"><img class="aligncenter size-full wp-image-64" title="语法树.png" src="http://jiangbo.me/images/uploads/2011/08/语法树.png" alt="" width="483" height="185" /></a></div>
+<div>图1.语法解析后的AST</div>
+<div>${person.say()}被解析为一个拥有AST子节点的ASTReference节点，”! I’m”为一个ASTText节点，$person.name被解析为一个拥有ASTIdentifier子节点的ASTReference节点，”。”被解析为一个ASTText节点。</div>
+<div>引擎从根节点开始执行渲染ASTprocess的render方法主要是遍历子节点，依次执行子节点的渲染方法。</div>
+<div>ASTReference.render()方法主要调用其内部的execute（）方法获取实际的引用值，execute代码如下：</div>
+<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
+        throws MethodInvocationException
+    {</pre></p>
+
+
+
+
+<p>        if (referenceType == RUNT)<br />
+            return null;<br />
+        Object result = getVariableValue(context, rootString);</p>
+
+
+
+
+<p>        if (result == null &amp;&amp; !strictRef)<br />
+        {<br />
+            return EventHandlerUtil.invalidGetMethod(rsvc, context,<br />
+                    "$" + rootString, null, null, uberInfo);<br />
+        }</p>
+
+
+
+
+<p>        try<br />
+        {<br />
+            Object previousResult = result;<br />
+            int failedChild = -1;<br />
+            for (int i = 0; i &lt; numChildren; i++)<br />
+            {<br />
+                if (strictRef &amp;&amp; result == null)<br />
+                {<br />
+                    String name = jjtGetChild(i).getFirstToken().image;<br />
+                    throw new VelocityException("Attempted to access '"<br />
+                        + name + "' on a null value at "<br />
+                        + Log.formatFileString(uberInfo.getTemplateName(),<br />
+                        + jjtGetChild(i).getLine(), jjtGetChild(i).getColumn()));<br />
+                }<br />
+                previousResult = result;<br />
+                //遍历执行子节点的execute方法<br />
+                result = jjtGetChild(i).execute(result,context);<br />
+                if (result == null &amp;&amp; !strictRef)  // If strict and null then well catch this<br />
+                                                   // next time through the loop<br />
+                {<br />
+                    failedChild = i;<br />
+                    break;<br />
+                }<br />
+            }</p>
+
+
+
+
+<p>            /**<br />
+            ......<br />
+            */<br />
+    }
+<div>1.execute方法先根据对象的名字从context中获取对象实例。</div>
+<div>2.遍历所有子节点，执行子节点的execute方法。</div>
+<div><strong><span style="font-size: small;">2.2.1 ASTMethod节点渲染</span></strong></div>
+<div>ASTMethod的execute方法中关键代码如下：</div>
+<div>
+<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
+        throws MethodInvocationException
+    {
+        if (o instanceof NullInstance &amp;&amp; ((NullInstance) o).isNotNull()) {
+            return o;
+        }</pre></div></p>
+
+
+
+
+<p>        /*<br />
+         *  获取方法信息<br />
+         */</p>
+
+
+
+
+<p>        VelMethod method = null;</p>
+
+
+
+
+<p>        Object [] params = new Object[paramCount];</p>
+
+
+
+
+<p>        try<br />
+        {<br />
+            // 计算参数类型<br />
+            final Class[] paramClasses = paramCount &gt; 0 ? new Class[paramCount] : ArrayUtils.EMPTY_CLASS_ARRAY;</p>
+
+
+
+
+<p>            for (int j = 0; j &lt; paramCount; j++)<br />
+            {<br />
+                params[j] = jjtGetChild(j + 1).value(context);</p>
+
+
+
+
+<p>                if (params[j] != null)<br />
+                {<br />
+                    paramClasses[j] = params[j].getClass();<br />
+                }<br />
+            }</p>
+
+
+
+
+<p>             //从cache中获取Method信息<br />
+            MethodCacheKey mck = new MethodCacheKey(methodName, paramClasses);<br />
+            IntrospectionCacheData icd =  context.icacheGet( mck );</p>
+
+
+
+
+<p>            if ( icd != null &amp;&amp; (o != null &amp;&amp; icd.contextData == o.getClass()) )<br />
+            {<br />
+                method = (VelMethod) icd.thingy;<br />
+            }<br />
+            else<br />
+            {<br />
+                //缓存未命中，调用UberIntrospectImpl.getMethod()执行自省<br />
+                method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</p>
+
+
+
+
+<p>                if ((method != null) &amp;&amp; (o != null))<br />
+                {<br />
+                    icd = new IntrospectionCacheData();<br />
+                    icd.contextData = o.getClass();<br />
+                    icd.thingy = method;<br />
+                    //更新缓存<br />
+                    context.icachePut( mck, icd );<br />
+                }<br />
+            }</p>
+
+
+
+
+<p>            if (typeOptimum &amp;&amp; method instanceof VelMethodImpl) {<br />
+                this.recordedData = icd;<br />
+            }</p>
+
+
+
+
+<p>            /*<br />
+             *  ....<br />
+             */<br />
+    }
+
+<div>1.首先从IntrospectionCache中查找已经缓存的自省结果信息</div>
+<div>2.如果未找到，则使用uberspector进行自省，获取方法信息，并缓存自省结果。</div>
+<div>3.调用自省返回的VelMethod的invoke方法，获取执行结果。</div>
+<div>其中，获取方法信息的过程</div>
+<div>method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</div>
+<div>实际调用就是UberspectImpl.getMethod()方法，该方法执行流程如下：</div>
+<div>
+<pre class="brush:java">    public VelMethod getMethod(Object obj, String methodName, Object[] args, Info i)
+            throws Exception
+    {
+        if (obj == null)
+        {
+            return null;
+        }
+        //调用Inspector.getMethod()
+        Method m = introspector.getMethod(obj.getClass(), methodName, args);
+        if (m != null)
+        {</pre>
+<pre class="brush:java">            //封装VelMethodImpl
+            return new VelMethodImpl(m);
+        }</pre></div></p>
+
+
+
+
+<p>        Class cls = obj.getClass();<br />
+        // if it's an array<br />
+        if (cls.isArray())<br />
+        {<br />
+            // check for support via our array-&gt;list wrapper<br />
+            m = introspector.getMethod(ArrayListWrapper.class, methodName, args);<br />
+            if (m != null)<br />
+            {<br />
+                // and create a method that knows to wrap the value<br />
+                // before invoking the method<br />
+                return new VelMethodImpl(m, true);<br />
+            }<br />
+        }<br />
+        // watch for classes, to allow calling their static methods (VELOCITY-102)<br />
+        else if (cls == Class.class)<br />
+        {<br />
+            m = introspector.getMethod((Class)obj, methodName, args);<br />
+            if (m != null)<br />
+            {<br />
+                return new VelMethodImpl(m);<br />
+            }<br />
+        }<br />
+        return null;<br />
+    }
+
+<div>该方式实际调用Introspector.getMethod()方法。</div>
+<div>
+<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
+        throws IllegalArgumentException
+    {
+        try
+        {
+            //调用父类IntrospectorBase.getMethod()方法
+            return super.getMethod(c, name, params);
+        }
+        catch(MethodMap.AmbiguousException ae)
+        {
+           /*异常处理*/
+        }</pre></div></p>
+
+
+
+
+<p>        return null;<br />
+    }
+
+<div>Introspector.getMethod()实际只是扩展了其父类的getMethod方法，增加了异常日志功能。</div>
+<div>IntrospectorBase.getMethod()代码如下：</div>
+<div>
+<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
+            throws IllegalArgumentException,MethodMap.AmbiguousException
+    {
+        if (c == null)
+        {
+            throw new IllegalArgumentException ("class object is null!");
+        }
+        
+        if (params == null)
+        {
+            throw new IllegalArgumentException("params object is null!");
+        }</pre></div></p>
+
+
+
+
+<p>        IntrospectorCache ic = getIntrospectorCache();</p>
+
+
+
+
+<p>        ClassMap classMap = ic.get(c);<br />
+        if (classMap == null)<br />
+        {<br />
+            classMap = ic.put(c);<br />
+        }</p>
+
+
+
+
+<p>        return classMap.findMethod(name, params);<br />
+    }
+
+<div>该方法首先获取从IntrospectorCache中获取表示类信息的classMap，如果没找到则在cache中put该类型信息。有意思的是这里没有常见的缓存未命中直接查询的过程，而是直接更新缓存，也就意味着put方法里有构造类型信息的过程。</div>
+<div>IntrospectorCache.put()代码如下</div>
+<div>
+<pre class="brush:java">    public ClassMap put(final Class c)
+    {
+        //构造ClassMap
+        final ClassMap classMap = new ClassMap(c, log);
+        synchronized (classMapCache)
+        {
+            classMapCache.put(c, classMap);
+            classNameCache.add(c.getName());
+        }
+        return classMap;
+    }</pre>
+</div>
+<div>put方法首先构造一个ClassMap，然后更新classMapCache。</div>
+<div>构造ClassMap的过程如下：</div>
+<div>
+<pre class="brush:java">    public ClassMap(final Class clazz, final Log log)
+    {
+        this.clazz = clazz;
+        this.log = log;</pre></div></p>
+
+
+
+
+<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
+        {<br />
+            log.debug("=================================================================");<br />
+            log.debug("== Class: " + clazz);<br />
+        }</p>
+
+
+
+
+<p>        methodCache = createMethodCache();</p>
+
+
+
+
+<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
+        {<br />
+            log.debug("=================================================================");<br />
+        }<br />
+    }
+
+<div>关键是构造一个MethodCache，createMethodCache过程如下：</div>
+<div>
+<pre class="brush:java">    private MethodCache createMethodCache()
+    {
+        MethodCache methodCache = new MethodCache(log);
+        for (Class classToReflect = getCachedClass(); classToReflect != null ; classToReflect = classToReflect.getSuperclass())
+        {
+            if (Modifier.isPublic(classToReflect.getModifiers()))
+            {
+                populateMethodCacheWith(methodCache, classToReflect);
+            }
+            Class [] interfaces = classToReflect.getInterfaces();
+            for (int i = 0; i &lt; interfaces.length; i++)
+            {
+                populateMethodCacheWithInterface(methodCache, interfaces[i]);
+            }
+        }
+        // return the already initialized cache
+        return methodCache;
+    }</pre>
+</div>
+<div>createMethodCache()首先构造一个MethodCache实例，然后通过反射获得类型的public方法信息，并递归的获取其实现的接口方法信息。</div>
+<div>IntrospectorBase.getMethod()方法获取到该ClassMap后，通过classMap.getMethod()返回一个需要的method，由于多态的存在，一个类会有多个同名方法，所以getMethod()过程中有一个根据参数类型寻找最佳匹配的方法getBestMatch（）这里有个循环遍历所有方法，并且比较所有参数类型的过程，而且这个过程在每次模板渲染执行时都会进行，代价很高，因此尽量少在放入模板的类中写多态方法有助提高渲染执行性能。</div>
+<div>至此一个ClassMap构造完毕，即一个类的自省过程完成。UberinspectorImpl成功的拿到了需要的方法信息，然后将Method封装VelMethodImpl返回。</div>
+<div>ASTMethod节点执行渲染时调用invoke方法实际调用的就是Method.invoke()，获得方法执行结果写入输出流中，完成渲染。</div>
+<div><strong><span style="font-size: small;">2.2.2 ASTIdentifier节点渲染</span></strong></div>
+<div>ASTIdentifier的execute方法中关键代码如下</div>
+<div>（TODO：ASTIndentifier.execute()代码）</div>
+<div>1.从IntrospectionCache中查找已经缓存的信息。</div>
+<div>2.如果缓存未命中，使用uberspector进行自省，并缓存自省结果</div>
+<div>3.调用自省的返回的VelPropertyGet的invoke方法，反射执行起get方法。</div>
+<div>
+<div>UberspectImpl.getPropertyGet()方法关键代码如下：</div>
+<div>
+<pre class="brush:java">    public VelPropertyGet getPropertyGet(Object obj, String identifier, Info i)
+            throws Exception
+    {
+        if (obj == null)
+        {
+            return null;
+        }</pre></div></div></p>
+
+
+
+
+<p>        Class claz = obj.getClass();</p>
+
+
+
+
+<p>         // 构造get"属性名"()形式的Executor<br />
+        AbstractExecutor executor = new PropertyExecutor(log, introspector, claz, identifier);</p>
+
+
+
+
+<p>        //构造一个Map形式的Executor<br />
+        if (!executor.isAlive())<br />
+        {<br />
+            executor = new MapGetExecutor(log, claz, identifier);<br />
+        }</p>
+
+
+
+
+<p>        // 构造get("属性名")形式的Executor</p>
+
+
+
+
+<p>        if (!executor.isAlive())<br />
+        {<br />
+            executor = new GetExecutor(log, introspector, claz, identifier);<br />
+        }<br />
+        //构建is"属性名"形式的executor<br />
+        if (!executor.isAlive())<br />
+        {<br />
+            executor = new BooleanPropertyExecutor(log, introspector, claz,<br />
+                                                   identifier);<br />
+        }</p>
+
+
+
+
+<p>        return (executor.isAlive()) ? new VelGetterImpl(executor) : null;<br />
+    }
+
+<div>1.首先根据对象的class类型和属性名构造一个get”属性名”的方法的PropertyExecutor。</div>
+<div>2.如果未找到get”属性名”的方法，则尝试构造一个Map.key形式的MapGetExecutor。</div>
+<div>3.如果也不是Map.key形式，尝试构造一个get(“属性名”)的GetExecutor。</div>
+<div>4.如果还没找到，则尝试构造一is”属性名”形式的BooleanPropertyExecutor。</div>
+<div>5.最终返回一个封装了Executor的VelGetImpl，如果未找到则返回null。</div>
+<div>所有的Executor均扩展自AbstractExecutor，VelGetImpl通过内置一个executor执行方法调用。Executor类图关系如下</div>
+<div><a href="http://jiangbo.me/images/uploads/2011/08/Executor类图结构.png"><img class="aligncenter size-full wp-image-76" title="Executor类图结构" src="http://jiangbo.me/images/uploads/2011/08/Executor类图结构.png" alt="" width="682" height="380" /></a></div>
+<div>Executor实现中除MapGetExecutor外，其余的Executor均通过内置一个introspector实现方法的构建，过程与上述ASTMethod节点渲染过程中introspector.getMethod()一致，只是方法名做了封装，如GetExecutor的方法名为get， PropertyExecutor的方法名为get”属性名”， BooleanPropertyExecutor方法名为is”属性名”，具体构建流程不再赘述。</div>
+<div>最终，ASTIndentifier.execute()方法通过UberInspectImpl.getPropertyGet()获得VelGetImpl，并调用VelGetImpl.invoke()获取方法执行的结果，写入输出流，完成渲染。</div>
+<div>UberInspectImpl.getPropertySet()的执行过程于getPropertyGet()大体一致，区别在于获取的是VelSetImpl，内置了SetExecutor，SetExecutor有三个扩展对应为MapSetExecutor（Map.key=value形式），PutExecutor（put(key, value)形式），SetPropertyExecutor（set”属性名”(value)形式）。其内部同样使用introspector.getMethod()方法构建Method，通过反射执行设置属性值。</div>
+<div><strong><span style="font-size: large;">三、总结</span></strong></div>
+<div>总的来说，作为模板语言velocity提供了可用的自省机制完成模板中对象引用及方法执行的的渲染。并在自省过程中提供了有效的缓存机制用以提升自省效率。但每次依旧需要解析AST，反射执行引用节点的方法，效率方面似乎还有优化的余地。</div>
+<div><strong><span style="font-size: large;">参考文档</span></strong></div>
+<div>《Java Introspeciton》 http://download.oracle.com/javase/tutorial/javabeans/introspection/index.html</div>
+<div>《Type Introspection》 http://en.wikipedia.org/wiki/Type_introspection</div>
+<div>《Introspection》http://en.wikipedia.org/wiki/Introspection</div>
+</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Velocity源码分析（一）——概述]]></title>
+    <link href="http://jiangbo.me/blog/2011/08/19/velocity_overview/"/>
+    <updated>2011-08-19T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/08/19/velocity_overview</id>
+    <content type="html"><![CDATA[<p><h2>一、概述</h2>
+Velocity模板引擎处理机制分为五个基本步骤：
+<ol>
+    <li>引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。</li>
+    <li>获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream），然后通过AST（Abstract Syntax Tree）解析器将InputStream解析为一个AST。</li>
+    <li>创建一个Context</li>
+    <li>将模板渲染所需的参数放入context</li>
+    <li>执行模板渲染，产生输出流。渲染过程中通过遍历该模板对应的AST，调用相应节点的处理器执行渲染。</li>
+</ol>
+整个处理流程如下图所示：</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/Velocity%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B.png"><img class="aligncenter size-full wp-image-59" title="Velocity处理流程" src="http://jiangbo.me/images/uploads/2011/08/Velocity%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B.png" alt="" width="619" height="407" /></a>
+<h2>二、详细渲染流程</h2>
+下面以一个简单的模板template.vm为例，详细解释渲染过程。<br />
+VelocityMergeTest.java
+<pre class="brush:java">public class VelocityMergeTest {</pre></p>
+
+
+
+
+<p>public static void main(String[] args) {<br />
+VelocityEngine ve = new VelocityEngine();<br />
+ve.setProperty(Velocity.RESOURCE_LOADER, "class");<br />
+ve.setProperty("class.resource.loader.class",<br />
+"org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");<br />
+try {<br />
+//引擎初始化<br />
+ve.init();<br />
+//加载解析模板<br />
+Template tp = ve.getTemplate("template.vm");<br />
+//创建context<br />
+Context context = new VelocityContext();<br />
+//设置Context中参数值<br />
+context.put("foo", "VV");<br />
+StringWriter writer = new StringWriter();<br />
+//执行渲染<br />
+tp.merge(context, writer);<br />
+System.out.println(writer.toString());<br />
+} catch (Exception e) {<br />
+}
+}<br />
+}
+template.vm
+<pre class="brush:xml">&lt;html&gt;
+&lt;body&gt;
+Hello $foo world!
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+<h3>1.引擎初始化</h3>
+ve.setProperty("class.resource.loader.class",<br />
+"org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");<br />
+设置引擎的资源加载使用ClasspathResourceLoader。<br />
+ve.init()执行引擎的初始化。
+<h3>2.加载解析模板</h3>
+当执行ve.getTemplate("template.vm")时，首先通过ResourceLoader将tempalte加载为InputStream，然后通过Parser生成如下Token集合：<br />
+{[&lt;html&gt; &lt;body&gt; Hello], [$foo], [world! &lt;/body&gt; &lt;/html&gt; ]}，<br />
+可以发现velocity根本不关系模板最终要渲染出来的是html还是什么的其他的东西，也就以为这所有的html标签对velocity来讲都是纯文本。<br />
+最终构建的AST如下</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/AST.png"><img class="aligncenter size-full wp-image-60" title="AST" src="http://jiangbo.me/images/uploads/2011/08/AST.png" alt="" width="367" height="169" /></a></p>
+
+
+
+
+<p>根节点下有三个子节点：
+<ol>
+    <li>[&lt;html&gt; &lt;body&gt; Hello]对应的ASTText节点；</li>
+    <li>[$foo]对应的ASTReference节点；</li>
+    <li>[world! &lt;/body&gt; &lt;/html&gt; ]对应的ASTText节点</li>
+</ol>
+Velocity引擎在这里有个优化策略，可以针对生成的语法树进行cache。
+<h3>3.创建context并设置参数</h3>
+Context context = new VelocityContext();<br />
+context.put("foo", "VV");<br />
+创建一个context，并在其中放入一个foo=VV的参数。
+<h3>4.执行渲染</h3>
+当执行tp.merge(context, writer);时，模板遍历其对应的AST树，执行每个节点的渲染过程。如ASTText节点只是简单的将文本写入writer。ASTReference节点需要从context中获取引用的参数foo的值VV，将$foo替换，并写入到writer中。Velocity的AST中有多种节点，如ASTIdentitor等，有些需要反射机制处理。当整个AST遍历结束，也就意味着模板渲染结束，渲染的结果位于writer流中。
+<h2>三、关于AST解析</h2>
+Velocity作为模板语言，其核心在与模板文件的解析，构建AST。Velocity的解析器是通过JavaCC构建的，JavaCC（Java Complier Complier）是一个用于生成解析器的工具，可以根据语法定义（.jj文件）生成用于校验一份文本是否符合该语法定义的java代码。JJTree是JavaCC中提供的一种根据语法定义（.jjt文件）生成构建符合该语法定义的文本的语法树的java代码的工具。<br />
+Velocity源码包中提供了用于构建velocity语法解析的的jjt文件，位于src/parser/Parser.jjt。可以自己手动从源码构建Velocity的解析器。步骤如下：<br />
+1.下载安装JavaCC，到http://javacc.java.net/下载即可，velocity的解析器需要3.2版本以上。下载后解压即可。<br />
+2.使用JJTree生成节点定义：<br />
+$ javacc-5.0/bin/jjtree Parser.jjt<br />
+这一过程中会生成节点定义的Java文件和Parser.jj语法定义文件<br />
+3.使用JavaCC生成解析器<br />
+$ javacc-5.0/bin/javacc Parser.jj<br />
+最终会生成Parser.java解析器和个节点定义。
+<h2>参考资料</h2>
+《Velocity Developer Guide》<a href="http://velocity.apache.org/engine/devel/developer-guide.html">http://velocity.apache.org/engine/devel/developer-guide.html</a>
+《JavaCC》<a href="http://javacc.java.net/">http://javacc.java.net/</a>
+《Velocity源码分析》<a href="http://www.khotyn.com/2011/07/22/velocity_sourcecode/">http://www.khotyn.com/2011/07/22/velocity_sourcecode/</a>
+《Velocity的一些优化记录》<a href="http://agapple.iteye.com/blog/1051724">http://agapple.iteye.com/blog/1051724</a></p>
+
+]]></content>
+  </entry>
+  
+</feed>

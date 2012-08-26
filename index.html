@@ -55,6 +55,7 @@
 <ul class="main-navigation">
   <li><a href="/">Blog</a></li>
   <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">Abount Me</a></li>
 </ul>
 
 </nav>
@@ -864,7 +865,7 @@ gem install iconv
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/02/13/jetty_classloader/">Java ClassLoader笔记</a></h1>
     
     
       <p class="meta">
@@ -880,441 +881,211 @@ gem install iconv
   
 
 
-<time datetime="2012-02-10T23:51:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
+<time datetime="2012-02-13T00:00:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><h1>JVM运行时环境</h1>
-</div>
-  
-  
+  <div class="entry-content"><p><h2>什么是类加载器？</h2></p>
 
+<p><p>类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。</p></p>
 
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a></h1>
-    
-    
-      <p class="meta">
-        
+<p><h2>类加载器分类</h2></p>
 
+<p><p>类加载器主要分为：</p></p>
 
+<p><ul>
+<li>启动类加载器(Bootstrap ClassLoader)：主要负责加载<java_home>&#92;lib目录中或者-Xbootclasspath中指定的，并且被虚拟机识别的类库加载到VM中。这个加载器是JVM自身的一部分，用本地代码实现的(openjdk中源码位于hotspot/src/share/vm/classfile/classLoader.cpp中)，无法直接被java代码引用。</java_home></li>
+<li>扩展类加载器(Extension ClassLoader)：主要负责加载jdk扩展类库<java_home>&#92;lib&#92;ext或者java.ext.dirs系统属性指定的目录中jar文件，由sun.misc.Launcher$ExtClassLoader实现</java_home></li>
+<li>系统类加载器(System ClassLoader)：用于加载CLASSPATH中指定的类，由sun.misc.Launcher$AppClassLoader实现。该类即ClassLoader.getSystemLoader()的返回值，是应用程序默认的类加载器。</li>
+<li>自定义加载器(User ClassLoader)：用户可以自定义自己的类加载器</li>
+</ul></p>
 
+<p><h2>双亲委托模型</h2></p>
 
+<p><p>JDK中要求所有的自定义ClassLoader 必须扩展自抽象类java.lang.ClassLoader。该类的文档说名中有一个段关于delegate model的描述：</p></p>
 
+<p><blockquote>
+  <p>The ClassLoader class uses a <code>delegation model</code> to search for classes and resources. Each instance of ClassLoader has an associated parent class loader. When requested to find a class or resource, a ClassLoader instance will delegate the search for the class or resource to its parent class loader before attempting to find the class or resource itself. The virtual machine&#8217;s built-in class loader, called the &#8220;bootstrap class loader&#8221;, does not itself have a parent but may serve as the parent of a ClassLoader instance.</p>
+</blockquote></p>
 
+<p><p>简单来说这个delegate model要求除了Bootstrap ClassLoader之外，其余ClassLoader都需要关联一个parent ClassLoader（这种关联方式采用的时组合而非继承），在执行加载class时，首先委托给parent ClassLoader加载，只有当parent ClassLoader无法加载时，再由自身加载。各加载器的关联关系如下：</p></p>
 
+<p><pre><code>        Bootstrap ClassLoader
+                 |
+        Extension ClassLoader
+                 |
+        System ClassLoader
+            /           \
+    User1 ClassLoader   User2 ClassLoader
+</code></pre></p>
 
-  
+<p><p>Bootstrap ClassLoader是最根层的加载器，用户自定义加载器建议使用系统类加载器作为parent。<br />
+这种委托模型的好处显而易见，它维护了类加载器之间的层次优先级关系。使所有的类加载优先由parent加载，这保证了java基础类库中的加载只会有一份。以java.lang.Object为例，委托模式保证了这个类最终只会由BootstrapClassLoader来加载，以此来保证所有环境中只有同一个类。否则由各加载器自由发挥，当用户自己定义各同名的java.lang.Object类时，系统会出现多分Objec类，最根基的行为出现混乱。（当然，你还是可以自定义出一个同名的java.lang.Object，并且顺利通过编译，但是它正常情况下永远不会被加载）。</p></p>
 
+<p><p><strong><em>这个委托模型并非jvm的强制规范，只是jdk中建议的一种模式，有时会发现不遵守这种模式的行为却能产生奇妙的效果，如热部署，OSGI等。</em></strong></p></p>
 
-<time datetime="2012-02-10T14:39:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
+<p><h2>Jetty中的ClassLoader</h2></p>
 
+<p><p>jetty，tomcat等web容器通常都会对classloader做扩展，因为一个正常的容器至少要保证其内部运行的多个webapp之间：私有的类库不受影响，并且公有的类库可以共享。这正好发挥classloader的层级划分优势。<br />
+jetty中有一个org.mortbay.jetty.webapp.WebAppClassLoader，负责加载一个webapp context中的应用类，WebAppClassLoader以系统类加载器作为parent，用于加载系统类。不过servlet规范使得web容器的classloader比正常的classloader委托模型稍稍复杂，servlet规范要求：</p></p>
 
-  <div class="entry-content"><h2>一.环境准备</h2>
+<p><ol>
+<li>WEB-INF/lib 和 WEB-INF/classes优先于父容器中的类加载，比如WEB-INF/classes下有个XYZ类，CLASSPATH下也有个XYZ类，jetty中优先加载的是WEB-INF/classes下的，这与正常的父加载器优先相反。</li>
+<li>系统类比如java.lang.String不遵循第一条， WEB-INF/classes或WEB-INF/lib下的类不能替换系统类。不过规范中没有明确规定哪些是系统类，jetty中的实现是按照类的全路径名判断。</li>
+<li>Server的实现类不被应用中的类引用，即Server的实现类不能被人和应用类加载器加载。不过，同样的，规范里没有明确规定哪些是Server的实现类，jetty中同样是按照类的全路径名判断。</li>
+</ol></p>
 
-<h3>1.jdk</h3>
+<p><p>为了处理上述三个问题，jetty的应用类加载器(org.mortbay.jetty.webapp.WebAppClassLoader)做了些特殊处理。</p></p>
 
-<p>在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:)</p>
+<p><h3>WebAppClassLoader的实现</h3></p>
 
-<h3>2.alsa包</h3>
+<p><p>首先看WebAppClassLoader的实现，WebAppClassLoader的构造器中有如下代码：</p></p>
 
-<p>linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装，CentOS可以通过如下命令检查：</p>
+<p><pre><code>super(new URL[]{},parent!=null?parent
+            : (Thread.currentThread().getContextClassLoader()!=null?Thread.currentThread().getContextClassLoader()
+                    : (WebAppClassLoader.class.getClassLoader()!=null?WebAppClassLoader.class.getClassLoader()
+                            : ClassLoader.getSystemClassLoader())));
+</code></pre></p>
 
-<pre><code> rpm -qa |grep alsa
-</code></pre>
+<p><p>表明WebAppClassLoader还是按照正常的范式设置parent classloader<br />
+然后看重要的loadclass方法实现：</p></p>
 
-<p>alsa-lib和alsa-lib-devel均需要。CentOS缺少alsa-lib-devel，通过如下命令安装：</p>
+<p><pre><code>@Override
+protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException
+{
+    Class&lt;?&gt; c= findLoadedClass(name);
+    ClassNotFoundException ex= null;
+    boolean tried_parent= false;</code></pre></p>
 
-<pre><code> yum install alsa-lib-devel
-</code></pre>
+<p>    boolean system_class=_context.isSystemClass(name);<br />
+    boolean server_class=_context.isServerClass(name);</p>
 
-<h3>3.cups-devel</h3>
+<p>    if (system_class &amp;&amp; server_class)<br />
+    {<br />
+        return null;<br />
+    }</p>
 
-<pre><code>yum install cups-devel
-</code></pre>
+<p>    if (c == null &amp;&amp; _parent!=null &amp;&amp; (_context.isParentLoaderPriority() || system_class) &amp;&amp; !server_class)<br />
+    {<br />
+        tried_parent= true;<br />
+        try<br />
+        {<br />
+            c= _parent.loadClass(name);<br />
+            if (LOG.isDebugEnabled())<br />
+                LOG.debug(&#8220;loaded &#8221; + c);<br />
+        }<br />
+        catch (ClassNotFoundException e)<br />
+        {<br />
+            ex= e;<br />
+        }<br />
+    }</p>
 
-<h3>4.libXi-devel</h3>
+<p>    if (c == null)<br />
+    {<br />
+        try<br />
+        {<br />
+            c= this.findClass(name);<br />
+        }<br />
+        catch (ClassNotFoundException e)<br />
+        {<br />
+            ex= e;<br />
+        }<br />
+    }</p>
 
-<pre><code>yum install libXi-devel
-</code></pre>
+<p>    if (c == null &amp;&amp; _parent!=null &amp;&amp; !tried_parent &amp;&amp; !server_class )<br />
+        c= _parent.loadClass(name);</p>
 
-<h3>5.freetype2.3</h3>
+<p>    if (c == null)<br />
+        throw ex;</p>
 
-<pre><code>wget http://download.savannah.gnu.org/releases/freetype/freetype-2.3.12.tar.gz
-tar -xvf freetype-2.3.12.tar.gz
-cd freetype-2.3.12
-./configure &amp;&amp; make &amp;&amp; make install
-</code></pre>
+<p>    if (resolve)<br />
+        resolveClass(c);</p>
 
-<h3>6. ant</h3>
+<p>    if (LOG.isDebugEnabled())<br />
+        LOG.debug(&#8220;loaded &#8221; + c+ &#8221; from &#8220;+c.getClassLoader());</p>
 
-<pre><code>wget http://mirror.bit.edu.cn/apache//ant/binaries/apache-ant-1.8.2-bin.zip
-unzip apache-ant-1.8.2-bin.zip
-</code></pre>
-
-<h3>7.g++</h3>
-
-<pre><code>yum install gcc gcc-c++
-</code></pre>
-
-<h2>二、设置环境变量</h2>
-
-<p>jdk编译过程中有一些环境变量需要设置，详细的请参考README-builds.html，下面写的只是一些必须设置的环境变量：</p>
-
-<pre><code>export ALT_BOOTDIR=/usr/opt/jdk # 预装的jdk7目录
-export ANT_HOME=ant安装目录
-export ALT_FREETYPE_HEADERS_PATH=/usr/local/include/freetype2 #freetype2头文件安装目录
-export ALT_FREETYPE_LIB_PATH=/usr/local/lib #freetype2 lib目录
-</code></pre>
-
-<h2>三、编译</h2>
-
-<h3>1.健全检查</h3>
-
-<p>可以通过如下命令检查环境配置是否准备好：</p>
-
-<pre><code>make sanity ARCH_DATA_MODEL=64
-</code></pre>
-
-<p>如果最终输出：</p>
-
-<pre><code>Sanity check passed.
-</code></pre>
-
-<p>则表示环境检查通过，否则需要根据提示信息排查问题。</p>
-
-<h3>2.执行编译</h3>
-
-<p>通过如下命令开始编译：</p>
-
-<pre><code>make ARCH_DATA_MODEL=64
-</code></pre>
-
-<h3>3.问题排查：</h3>
-
-<p>编译过程中出现一些问题：</p>
-
-<h3>1)缺少jaxp和jaxws</h3>
-
-<p>错误信息</p>
-
-<pre><code>ERROR: Cannot find source for project jaxp
-</code></pre>
-
-<p>原因是现在jaxp源码分支和jdk源码分支分开了，但是jaxws是jdk中的一部分，所以完全编译需要jaxp源码，针对该问题的描述可以查看README-build.html中TroubleShooting部分。
-解决方式有两种：
-一种是先下载好源码包，以drops的方式安装，具体参考README-build.html
-另外一种是使用在线安装，在编译时加入允许下载源码的配置:</p>
-
-<pre><code>make ARCH_DATA_MODEL=64 ALLOW_DOWNLOADS=true
-</code></pre>
-
-<h3>2)缺少X＊库</h3>
-
-<p>编译过程中多次出现如下缺少X*, awt之类的错误，基本上都是因为缺乏图形相关的库</p>
-
-<pre><code>../../../src/solaris/native/sun/awt/img_util_md.h:32: ??:expected specifier-qualifier-list before 'XID'
-make[5]: *** [/home/jiangbo/Workspace/jdk/openjdk/build/linux-amd64/tmp/sun/sun.awt/awt/obj64/BufImgSurfaceData.o] Error 1
-make[5]: *** Waiting for unfinished jobs....
-make[5]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[4]: *** [library_parallel_compile] Error 2
-make[4]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[3]: *** [all] Error 1
-make[3]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun'
-make[2]: *** [all] Error 1
-make[2]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make'
-make[1]: *** [jdk-build] Error 2
-make[1]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk'
-make: *** [build_product_image] Error 2
-</code></pre>
-
-<p>解决方式时安装X相关的库</p>
-
-<pre><code>yum install libX*
-</code></pre>
-
-<p>这个有些暴力，不过比较有效:)</p>
-
-<h2>四、测试编译结果</h2>
-
-<p>漫长的编译之后直至出现如下类似内容时，表示编译完成了：</p>
-
-<pre><code>-- Build times ----------
-Target all_product_build
-Start 2012-02-09 10:38:39
-End   2012-02-09 11:14:37
-00:01:41 corba
-00:06:19 hotspot
-00:15:49 jaxp
-00:01:30 jaxws
-00:10:03 jdk
-00:00:36 langtools
-00:35:58 TOTAL
-</code></pre>
-
-<p>编译完成后，编译结果维语build/linux-amd64目录下，可以写个简单的Java程序测试编译结果</p>
-
-<p>Test.java</p>
-
-<pre><code>public class Test{
-        public static void main(String[] args){
-                System.out.println("Hello");
-        }
+<p>    return c;<br />
 }
-</code></pre>
-
-<p>编译</p>
-
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test.java
-</code></pre>
-
-<p>执行</p>
-
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test
-Hello
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-01-04T17:35:00+08:00" pubdate data-updated="true">Jan 4<span>th</span>, 2012</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h3>问题</h3>
-
-<p>有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。</p>
-
-<h3>解决</h3>
-
-<h4>如何获取本机IP</h4>
-
-<p>用ruby获取本机的动态ip，网上很多教程都用</p>
-
-<pre><code>require 'socket'
-
-IPSocket.getaddress(Socket.gethostname)
-puts TCPSocket.gethostbyname(Socket.gethostname)
-</code></pre>
-
-<p>这个在mac下是正常的，但是在linux下就只能拿到127.0.0.1
-在StackOverflow上有另一种解决方案</p>
-
-<pre><code>require 'socket'
-
-def local_ip
-  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
-
-  UDPSocket.open do |s|
-    s.connect '64.233.187.99', 1
-    s.addr.last
-  end
-ensure
-  Socket.do_not_reverse_lookup = rig
-end
-</code></pre>
-
-<p>这段主要是通过开启一个UDP链接来获取本地对外ip，因为UDP是无状态，所以不会实际建立网络链接，但是会获取本机对外ip。</p>
-
-<h4>如何发送消息</h4>
-
-<p>获取ip后需要通过gtalk发送，gtalk使用的是xmpp协议，ruby中协议有多种开源实现，比较简单通用的是xmpp4r，详细教程请看这里
-首先需要安装xmpp4r-simple</p>
-
-<pre><code>gem install xmpp4r-simple
-</code></pre>
-
-<p>注意，貌似这个gem不支持1.9.*，所以使用之前先将ruby切换到1.8.7版本
-然后编写代码，主要两步：</p>
-
-<ul>
-<li>建立链接</li>
-<li>发送消息</li>
-</ul>
-
-
-<p>代码如下：</p>
-
-<pre><code> require 'rubygems'
- require 'xmpp4r-simple'  
-
- username = gmailusername
- password = gmailpassword
- to_username = destination_gmailusername  
-
- puts "Connecting to jabber server.."
- jabber = Jabber::Simple.new(username+'@gmail.com',password)
- puts "Connected."
- jabber.deliver(to_username+"@gmail.com", "Hello..!")
- sleep(1)
-</code></pre>
-
-<p>注意，最后那个sleep不能少，尽管我还不知道为啥:(</p>
-
-<p>如此以来整个的获取ip，发送給gtalk的脚本为：</p>
-
-<pre><code>require 'rubygems'
-require 'socket'
-require 'xmpp4r-simple'
-
-def local_ip
-  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
-
-  UDPSocket.open do |s|
-    s.connect '64.233.187.99', 1
-    s.addr.last
-  end
-ensure
-  Socket.do_not_reverse_lookup = orig
-end
-
-jabber = Jabber::Simple.new('gmailuseanme@gmail.com','password')
-jabber.deliver('destusenam@gmail.com', local_ip)
-sleep 1
-</code></pre>
-
-<h4>设置自动运行</h4>
-
-<p>linux设置自动运行是老生常谈了，在/etc/rc.local加上一句运行脚本的命令即可：</p>
-
-<pre><code>ruby /home/jiangbo/ruby/getIP.rb
-</code></pre>
-
-<h3>结尾</h3>
-
-<p>这样每次机器重启时，就能够通过gtalk获取到ip了，不过还遗留一个问题，就是在机器重启时，必须保证接收消息的gtalk在线，因为这种方式的消息gtalk不会自动重法，目前不知怎么解决。</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/17/webx3-container-structure/">Webx3源码分析－容器结构</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-08-17T19:32:00+08:00" pubdate data-updated="true">Aug 17<span>th</span>, 2011</time>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h3>一、Webx 框架概述</h3>
-
-<p>Webx是一套基于Java Servlet API构建的通用Web框架。整个Webx框框架层次分为三层：</p>
-
-<p><img src="/images/webx/webx-framework-layer.png" alt="image" /></p>
-
-<ol>
-<li>SpringExt：提供了基于Spring的通用扩展机制</li>
-<li>WebxFramework：基于Servlet API，提供Web基础服务，如Spring初始化，日志初始化，接受请求，错误处理，开发模式等。Webx Framework只是对Servlet和spring的基础封装，并不关心Web框架中具体服务的处理，如Action处理，表单处理等。因此，可以在Webx Framework上扩展多种风格的Web框架。</li>
-<li>Webx Turbine：基于Webx Framework，提供具体的网页功能，如表单处理，Action相应处理等</li>
-</ol>
-
-
-<h3>二、Webx Framework容器结构</h3>
-
-<h4>1.1组件化应用结构</h4>
-
-<p>Webx Framework是基于组件化风格构建的，它将一个应用划分一个Webx应用包含至少一个组件组 (WebxComponents)，一个组件组由多个组件(WebxComponent)构成。</p>
-
-<p><img src="/images/webx/webx-component.png" alt="image" /></p>
-
-<p>Webx Framework中定义了WebxComponents接口和WebxComponent接口，分别表示一组组件的信息和一个组件的描述。
-组件化的应用结构反应在容器上即应用中级联的父子容器的结构关系，如下图所示：</p>
-
-<p><img src="/images/webx/webx-context-structure.png" alt="image" /></p>
-
-<p>Webx Framework将一个Web应用分解成多个小应用模块：app1, app2，等。每个应用模块独享一个子容器（Sub Context），共享根容器（Root Context）。子容器之间的beans无法相互注入，但是所有小应用都共享一个Root Context。根容器的bean可以被注入到子容器的bean中；反之不可以。</p>
-
-<h4>1.2 基于Spring的容器类扩展</h4>
-
-<p>为实现上述应用组件化结构，Webx Framework在在Spring容器基础上按照组件化风格进行扩展：</p>
-
-<p><img src="/images/webx/webx-container.png" alt="image" /></p>
-
-<p>com.alibaba.citrus.webx.context.XmlWebApplicationContext是Webx框架的从XML文件中装配的，用于Web应用环境的Application Context，扩展自Spring的org.springframework.web.context.support.XmlWebApplicationContext，主要扩展点如下：</p>
-
-<ol>
-<li>支持SpringExt的捐献(ConfigurationPoint)机制（SpringExt在后面文章中讲解）</li>
-<li>实现了ResourceLoadingExtendable接口，扩展的resource loading机制。假如ResourceLoadingExtender 被设置，则使用它来装载资源，否则使用默认的装载器。</li>
-<li>默认开启annotation config，相当于&lt;context:annotation-config/>。</li>
-<li>假如parentResolvableDependenciesAccessible==true，则支持从parent context中取得预先置入resolvableDependencies中的对象。默认为true。</li>
-</ol>
-
-
-<p>ResourceLoadingXmlWebApplicationContext继承自XmlWebApplicationContext，扩展了从resource loading service中装载的功能。WebxApplicationContext是用于Webx框架的application context。直接继承自ResourceLoadingXmlWebApplicationContext，扩展了取得默认Spring配置的实现，默认Root容器的配置文件位于WEB-INF/webx.xml，子容器的配置文件位于WEB-INF/webx-<em>.xml（</em>代表component名）。由于继承关系，WebxApplicationContext继承了负累所有的特性，在原来Spring容器XmlWebApplicationContext基础之上扩展如下功能：</p>
-
-<ol>
-<li>支持SpringExt，包括configuration point和resource loading支持</li>
-<li>定义默认容器配置文件位置</li>
-</ol>
-
-
-<p>WebxComponentsContext和WebxComponentContext直接扩展自WebxApplicationContext，分别对应为WebxComponents和WebxComponent的容器。</p>
-
-<p>WebxComponentsContext中内置了一个WebxComponentsLoader用于装载Webx components，并且覆写了postProcessBeanFactory()处理定制BeanFactory，以及finishRefresh()处理子容器的刷新。</p>
-
-<p>WebxComponentContext包含了对应的WebxComponent实例，并将其注入到容器中，即在一个WebxComponentContext中，引用的WebxComponent均是其对应的component实例。</p>
+</p>
+
+<p><p>loadclass按照：</p></p>
+
+<p><ol>
+<li>findLoadedClass(name)-检查类是否已经加载</li>
+<li>判断该类是否为系统类或server类</li>
+<li>如果该类未加载且父加载器不为空且设置了父加载器优先或类类为系统类，且该类不是server类，则尝试使用父加载器加载该类</li>
+<li>如果不是父加载器优先或者父加载器未加载到该类，使用WebAppClassLoader加载该类</li>
+<li>如果是不是父加载器优先，并且WebAppClassLoader未加载到该类，尝试使用父加载器加载该类</li>
+<li>找到则返回，否则抛出ClassNotFoundException</li>
+</ol></p>
+
+<p><h3>ClassLoader Priority</h3></p>
+
+<p><p>上述过程涉及一个加载器优先级的概念，这也是针对前述第一条规范中WEB-INF/lib和WEB-INF/classes类优先的处理。jetty中父加载器优先的配置项可以通过环境变量</p></p>
+
+<p><pre><code>org.eclipse.jetty.server.webapp.parentLoaderPriority=false(默认)/true来设置
+</code></pre></p>
+
+<p><p>也可以通过</p></p>
+
+<p><pre><code>org.eclipse.jetty.webapp.WebAppContext.setParentLoaderPriority(boolean)方法来设置
+</code></pre></p>
+
+<p><p>优于该配置默认是false，因此在load class过程中优先使用WebAppClassLoader加载WEB-INF/lib和WEB-INF/classes中的类。<br />
+当将该配置项设为true时需要确认类加载顺序没有问题。</p></p>
+
+<p><h3>设置系统类</h3></p>
+
+<p><p>规范2中约定系统类不能被应用类覆盖，但是没有明确规定哪些时系统类，jetty中以类的package路径名来区分，当类的package路径名位包含于</p></p>
+
+<p><pre><code>  public final static String[] __dftSystemClasses =
+    {
+        "java.",                            
+        "javax.",                           
+        "org.xml.",                         
+        "org.w3c.",                         
+        "org.apache.commons.logging.",      
+        "org.eclipse.jetty.continuation.",  
+        "org.eclipse.jetty.jndi.",          
+        "org.eclipse.jetty.plus.jaas.",     
+        "org.eclipse.jetty.websocket.WebSocket", 
+        "org.eclipse.jetty.websocket.WebSocketFactory", 
+        "org.eclipse.jetty.servlet.DefaultServlet" 
+    } ;
+</code></pre></p>
+
+<p><p>时，会被认为是系统类。（该定义位于<a href="https://github.com/eclipse/jetty.project/blob/master/jetty-webapp/src/main/java/org/eclipse/jetty/webapp/WebAppContext.java">WebAppContext@github</a>中）</p></p>
+
+<p><p>因此，我们可以通过 org.eclipse.jetty.webapp.WebAppContext.setSystemClasses(String Array)或者org.eclipse.jetty.webapp.WebAppContext.addSystemClass(String)来设置系统类。<br />
+再次提醒，系统类是对多有应用都可见。</p></p>
+
+<p><h3>设置Server类</h3></p>
+
+<p><p>规范3中约定Server类不对任何应用可见。jetty同样是用package路径名来区分哪些是Server类。Server类包括：</p></p>
+
+<p><pre><code>public final static String[] __dftServerClasses =
+{
+    "-org.eclipse.jetty.continuation.", 
+    "-org.eclipse.jetty.jndi.",         
+    "-org.eclipse.jetty.plus.jaas.",    
+    "-org.eclipse.jetty.websocket.WebSocket", 
+    "-org.eclipse.jetty.websocket.WebSocketFactory", 
+    "-org.eclipse.jetty.servlet.DefaultServlet", 
+    "-org.eclipse.jetty.servlet.listener.", 
+    "org.eclipse.jetty."                
+} ;
+</code></pre></p>
+
+<p><p>我们可以通过， org.eclipse.jetty.webapp.WebAppContext.setServerClasses(String Array) 或org.eclipse.jetty.webapp.WebAppContext.addServerClass(String)方法设置Server类。<br />
+注意，Server类是对所有应用都不可见的，但是WEB-INF/lib下的类可以替换Server类。</p></p>
+
+<p><h3>自定义WebApp ClassLoader</h3></p>
+
+<p><p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
+</p>
 </div>
   
   
@@ -1323,6 +1094,8 @@ sleep 1
     </article>
   
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/2/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -1351,7 +1124,27 @@ sleep 1
       </li>
     
       <li class="post">
+        <a href="/blog/2012/02/13/jetty_classloader/">Java ClassLoader笔记</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
       </li>
     
   </ul>

@@ -1,0 +1,277 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Mac上制作Ubuntu USB启动盘 - Jiang Bo</title>
+  <meta name="author" content="jiangbo">
+
+  
+  <meta name="description" content="Mac上制作Ubuntu USB启动盘 一、下载ubuntu iso镜像 二、将iso转换为img文件 $ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file 该命令会生成一个. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Jiang Bo" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Jiang Bo</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">Abount Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Mac上制作Ubuntu USB启动盘</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-11-09T00:00:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
+
+<p><strong>一、下载ubuntu iso镜像</strong></p>
+
+<p><strong>二、将iso转换为img文件</strong></p>
+
+<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
+
+<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
+
+<p><strong>三、查看USB的盘符</strong></p>
+
+<p>$ diskutil list</p>
+
+<p>/dev/disk0</p>
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
+
+<p>1:                        EFI                         209.7 MB   disk0s1</p>
+
+<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
+
+<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
+
+<p>/dev/disk1</p>
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
+
+<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
+
+<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
+
+<p><strong>四、卸载USB磁盘</strong></p>
+
+<p>$ diskutil unmountDisk /dev/disk1</p>
+
+<p>Unmount of all volumes on disk1 was successful</p>
+
+<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
+
+<p><strong>五、将镜像写入USB</strong></p>
+
+<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
+
+<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
+
+<p><strong>六、弹出USB</strong></p>
+
+<p>$ diskutil eject /dev/disk1</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiangbo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-11-09T00:00:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2011</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/技术生活/'>技术生活</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2011/09/08/vim_gbk/" title="Previous Post: vim支持GBK编码">&laquo; vim支持GBK编码</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2011/12/07/clean-dns-cache-on-chrome/" title="next Post: chrome中清除dns缓存">chrome中清除dns缓存 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/jetty_classloader/">Java ClassLoader笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiangbo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

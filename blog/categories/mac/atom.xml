@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Mac | Jiang Bo]]></title>
+  <link href="http://jiangbo.me/blog/categories/mac/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-26T15:27:33+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiangbo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Mac上制作Ubuntu USB启动盘]]></title>
+    <link href="http://jiangbo.me/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/"/>
+    <updated>2011-11-09T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac</id>
+    <content type="html"><![CDATA[<p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
+
+
+
+
+<p><strong>一、下载ubuntu iso镜像</strong></p>
+
+
+
+
+<p><strong>二、将iso转换为img文件</strong></p>
+
+
+
+
+<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
+
+
+
+
+<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
+
+
+
+
+<p><strong>三、查看USB的盘符</strong></p>
+
+
+
+
+<p>$ diskutil list</p>
+
+
+
+
+<p>/dev/disk0</p>
+
+
+
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+
+
+
+<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
+
+
+
+
+<p>1:                        EFI                         209.7 MB   disk0s1</p>
+
+
+
+
+<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
+
+
+
+
+<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
+
+
+
+
+<p>/dev/disk1</p>
+
+
+
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+
+
+
+<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
+
+
+
+
+<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
+
+
+
+
+<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
+
+
+
+
+<p><strong>四、卸载USB磁盘</strong></p>
+
+
+
+
+<p>$ diskutil unmountDisk /dev/disk1</p>
+
+
+
+
+<p>Unmount of all volumes on disk1 was successful</p>
+
+
+
+
+<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
+
+
+
+
+<p><strong>五、将镜像写入USB</strong></p>
+
+
+
+
+<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
+
+
+
+
+<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
+
+
+
+
+<p><strong>六、弹出USB</strong></p>
+
+
+
+
+<p>$ diskutil eject /dev/disk1</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Mac配置docbook工具链]]></title>
+    <link href="http://jiangbo.me/blog/2011/08/09/mac-config-docbook-tool-chain/"/>
+    <updated>2011-08-09T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/08/09/mac-config-docbook-tool-chain</id>
+    <content type="html"><![CDATA[<p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+<strong>一、安装工具链</strong>
+docbook工具链包含三部分<br />
+1.xsltproc（mac自带）<br />
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
+3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
+下载解压后得到：<br />
+docbook-xsl-1.76.1<br />
+fop-1.0<br />
+两个目录。<br />
+此时可以已经可以进行docbook撰写了，不过只限英文:)
+<strong>二、撰写docbook，并生成pdf</strong>
+使用文本编辑器编写如下xml，保存为webx.xml
+<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
+
+
+
+
+<p>&lt;!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.0//EN"  "http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd"&gt;</p>
+
+
+
+
+<p>&lt;book&gt;<br />
+&lt;bookinfo&gt;<br />
+&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
+&lt;author&gt;<br />
+&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
+&lt;surname&gt;Jiang&lt;/surname&gt;<br />
+&lt;affiliation&gt;<br />
+&lt;address&gt;<br />
+&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
+&lt;/address&gt;<br />
+&lt;/affiliation&gt;<br />
+&lt;/author&gt;<br />
+&lt;copyright&gt;<br />
+&lt;year&gt;2011&lt;/year&gt;<br />
+&lt;/copyright&gt;<br />
+&lt;abstract&gt;<br />
+&lt;para&gt;Webx&lt;/para&gt;<br />
+&lt;/abstract&gt;<br />
+&lt;/bookinfo&gt;<br />
+&lt;part&gt;<br />
+&lt;title&gt;Part1&lt;/title&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;/part&gt;<br />
+&lt;/book&gt;
+使用xsltproc转换为中间文件<br />
+$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
+此时会生成中间文件inter.fo<br />
+使用fop生成pdf<br />
+$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
+最终生成了名为webx.pdf的pdf文件</p>
+
+
+
+
+<p><strong>三、设置FOP支持中文</strong>
+但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
+找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
+<strong>1.生成字体矩阵</strong></p>
+
+
+
+
+<p>进入到fop安装目录，执行</p>
+
+
+
+
+<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr ' ' ':'` org.apache.fop.fonts.apps.TTFReader -ttcanme "SimHei" /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
+
+
+
+
+<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
+
+
+
+
+<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
+<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
+
+
+
+
+<p>&lt;filterList&gt;</p>
+
+
+
+
+<p>……</p>
+
+
+
+
+<p>&lt;/filterList&gt;</p>
+
+
+
+
+<p>&lt;fonts&gt;</p>
+
+
+
+
+<p>&lt;font metrics-url="file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml" kerning="yes" embed-url="file:///Library/Fonts/Microsoft/SimHei.ttf"&gt;</p>
+
+
+
+
+<p>&lt;font-triplet name="SimHei" style="normal" weight="bold"/&gt;</p>
+
+
+
+
+<p>&lt;font-triplet name="SimHei" style="normal" weight="bold"/&gt;</p>
+
+
+
+
+<p>&lt;/font&gt;</p>
+
+
+
+
+<p>&lt;!--&lt;directory recursive="true"&gt;/Library/Fonts/&lt;/directory&gt;--&gt;</p>
+
+
+
+
+<p>&lt;!--    &lt;auto-detect/&gt;--&gt;</p>
+
+
+
+
+<p>&lt;/fonts&gt;</p>
+
+
+
+
+<p>……
+<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
+
+
+
+
+<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
+<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
+&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:exsl="http://exslt.org/common"
+                xmlns:fo="http://www.w3.org/1999/XSL/Format"
+                xmlns:ng="http://docbook.org/docbook-ng"
+                xmlns:db="http://docbook.org/ns/docbook"
+                exclude-result-prefixes="db ng exsl"
+                version='1.0'&gt;</pre></p>
+
+
+
+
+<p>&lt;xsl:import href="http://jiangbo.me/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl"/&gt;<br />
+&lt;xsl:param name="body.font.family"&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name="monospace.font.family"&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name="title.font.family"&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;/xsl:stylesheet&gt;
+<strong>4.使用新样式表进行转换</strong></p>
+
+
+
+
+<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
+
+
+
+
+<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>&nbsp;</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Mac OSX 安装memcached]]></title>
+    <link href="http://jiangbo.me/blog/2011/08/03/mac-osx-install-memcached/"/>
+    <updated>2011-08-03T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/08/03/mac-osx-install-memcached</id>
+    <content type="html"><![CDATA[<p>1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包<br />
+3.执行下载的脚本，
+<pre class="brush:shell">$ chmod +x install-memcached.sh
+$ sudo ./install-memchaced.sh</pre>
+4.在环境变量里添加EVENT_NOKQUEUE=1<br />
+5.验证是否成功， $memcached -h，应该产生帮助提示
+<a href="http://jiangbo.me/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png"><img class="aligncenter size-full wp-image-35" title="Screen shot 2011-08-03 at 11.12.50 AM" src="http://jiangbo.me/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png" alt="" width="607" height="423" /></a>
+6.启动memcached,
+<pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
+参考文档<br />
+http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
+
+]]></content>
+  </entry>
+  
+</feed>

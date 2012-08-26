@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Linux | Jiang Bo]]></title>
+  <link href="http://jiangbo.me/blog/categories/linux/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-26T15:27:33+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiangbo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[vim支持GBK编码]]></title>
+    <link href="http://jiangbo.me/blog/2011/09/08/vim_gbk/"/>
+    <updated>2011-09-08T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/09/08/vim_gbk</id>
+    <content type="html"><![CDATA[<p><h2><strong>一、让ubuntu支持GBK编码</strong></h2>
+Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。</p>
+
+
+
+
+<p>首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件，在文件中添加如下内容：<br />
+zh_CN.UTF- 8 UTF- 8<br />
+en_US.UTF- 8 UTF- 8<br />
+zh_CN.GBK GBK<br />
+zh_CN.GB2312 GB2312<br />
+接着用sudo dpkg-reconfigure --force locales强制更新设置
+<h2><strong>二、设置Vimrc支持GBK</strong></h2>
+set fileencodings=utf-8,gbk,gb2312</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Zero-Copy&sendfile浅析]]></title>
+    <link href="http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile/"/>
+    <updated>2011-07-16T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile</id>
+    <content type="html"><![CDATA[<p><strong>一、典型IO调用的问题</strong>
+一个典型的web服务器传送静态文件（如CSS，JS，图片等）的过程如下：
+<em>
+read(file, tmp_buf, len);<br />
+write(socket, tmp_buf, len);</em></p>
+
+
+
+
+<p>首先调用read将文件从磁盘读取到tmp_buf，然后调用write将tmp_buf写入到socket，在这过程中会出现四次数据 copy，过程如图1所示</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_1.jpg"><img class="alignnone size-medium wp-image-6" title="图1" src="http://jiangbo.me/images/uploads/2011/07/pic_1-300x230.jpg" alt="" width="300" height="230" /></a></p>
+
+
+
+
+<p>图1</p>
+
+
+
+
+<p>1。当调用read系统调用时，通过DMA（Direct Memory Access）将数据copy到内核模式<br />
+2。然后由CPU控制将内核模式数据copy到用户模式下的 buffer中<br />
+3。read调用完成后，write调用首先将用户模式下 buffer中的数据copy到内核模式下的socket buffer中<br />
+4。最后通过DMA copy将内核模式下的socket buffer中的数据copy到网卡设备中传送。</p>
+
+
+
+
+<p>从上面的过程可以看出，数据白白从内核模式到用户模式走了一 圈，浪费了两次copy，而这两次copy都是CPU copy，即占用CPU资源。</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p><strong>二、Zero-Copy&amp;Sendfile()</strong>
+Linux 2.1版本内核引入了sendfile函数，用于将文件通过socket传送。
+<em>sendfile(socket, file, len);</em>
+该函数通过一次系统调用完成了文件的传送，减少了原来 read/write方式的模式切换。此外更是减少了数据的copy，sendfile的详细过程图2所示：</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_2.jpg"><img class="alignnone size-medium wp-image-7" title="图2" src="http://jiangbo.me/images/uploads/2011/07/pic_2-300x236.jpg" alt="" width="300" height="236" /></a></p>
+
+
+
+
+<p>图2</p>
+
+
+
+
+<p>通过sendfile传送文件只需要一次系统调用，当调用 sendfile时：<br />
+1。首先通过DMA copy将数据从磁盘读取到kernel buffer中<br />
+2。然后通过CPU copy将数据从kernel buffer copy到sokcet buffer中<br />
+3。最终通过DMA copy将socket buffer中数据copy到网卡buffer中发送<br />
+sendfile与read/write方式相比，少了 一次模式切换一次CPU copy。但是从上述过程中也可以发现从kernel buffer中将数据copy到socket buffer是没必要的。</p>
+
+
+
+
+<p>为此，Linux2.4内核对sendfile做了改进，如图3所示</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_3.jpg"><img class="alignnone size-medium wp-image-8" title="图3" src="http://jiangbo.me/images/uploads/2011/07/pic_3-300x222.jpg" alt="" width="300" height="222" /></a></p>
+
+
+
+
+<p>图3</p>
+
+
+
+
+<p>改进后的处理过程如下：<br />
+1。DMA copy将磁盘数据copy到kernel buffer中<br />
+2。向socket buffer中追加当前要发送的数据在kernel buffer中的位置和偏移量<br />
+3。DMA gather copy根据socket buffer中的位置和偏移量直接将kernel buffer中的数据copy到网卡上。<br />
+经过上述过程，数据只经过了2次copy就从磁盘传送出去了。<br />
+（可能有人要纠结“不是说Zero－Copy么？怎么还有两次copy啊”，事实上这个Zero copy是针对内核来讲的，数据在内核模式下是Zero－copy的。话说回来，文件本身在瓷盘上要真是完全Zero－copy就能传送，那才见鬼了 呢）。<br />
+当前许多高性能http server都引入了sendfile机制，如nginx，lighttpd等。</p>
+
+
+
+
+<p><strong>三、Java NIO</strong><strong>中的transferTo()</strong>
+Java NIO中
+<em>FileChannel.transferTo(long position, long count, WriteableByteChannel target)</em>
+方法将当前通道中的数据传送到目标通道target中，在支持Zero-Copy的linux系统中，transferTo()的实现依赖于 sendfile()调用。</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p><strong>四、参考文档<br />
+《Zero Copy I: User-Mode Perspective》<a href="http://www.linuxjournal.com/article/6345?page=0,0">http://www.linuxjournal.com/article/6345?page=0,0</a>
+《Efficient data transfer through zero copy》<a href="http://www.ibm.com/developerworks/linux/library/j-zerocopy">http://www.ibm.com/developerworks/linux/library/j-zerocopy</a>
+《The C10K problem》<a href="http://www.kegel.com/c10k.html">http://www.kegel.com/c10k.html</a></strong></p>
+
+]]></content>
+  </entry>
+  
+</feed>

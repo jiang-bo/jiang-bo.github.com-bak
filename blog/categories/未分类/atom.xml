@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 未分类 | Jiang Bo]]></title>
+  <link href="http://jiangbo.me/blog/categories/未分类/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-26T15:27:33+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiangbo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[chrome中清除dns缓存]]></title>
+    <link href="http://jiangbo.me/blog/2011/12/07/clean-dns-cache-on-chrome/"/>
+    <updated>2011-12-07T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/12/07/clean-dns-cache-on-chrome</id>
+    <content type="html"><![CDATA[<p>web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：<br />
+1、用chrome打开：chrome://net-internals/#dns<br />
+2、点击上面的“clean host cache”<br />
+为了方便使用，可以加个bookmark:)</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Mac OSX 安装memcached]]></title>
+    <link href="http://jiangbo.me/blog/2011/08/03/mac-osx-install-memcached/"/>
+    <updated>2011-08-03T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/08/03/mac-osx-install-memcached</id>
+    <content type="html"><![CDATA[<p>1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包<br />
+3.执行下载的脚本，
+<pre class="brush:shell">$ chmod +x install-memcached.sh
+$ sudo ./install-memchaced.sh</pre>
+4.在环境变量里添加EVENT_NOKQUEUE=1<br />
+5.验证是否成功， $memcached -h，应该产生帮助提示
+<a href="http://jiangbo.me/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png"><img class="aligncenter size-full wp-image-35" title="Screen shot 2011-08-03 at 11.12.50 AM" src="http://jiangbo.me/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png" alt="" width="607" height="423" /></a>
+6.启动memcached,
+<pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
+参考文档<br />
+http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[使用MAT进行dump文件分析]]></title>
+    <link href="http://jiangbo.me/blog/2011/08/02/use-mat-analysis-dump-file/"/>
+    <updated>2011-08-02T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/08/02/use-mat-analysis-dump-file</id>
+    <content type="html"><![CDATA[<p><strong>一、简介</strong></p>
+
+
+
+
+<p><strong> </strong>一个实际的应用系统难免会出现问题。JVM能够实时的记录系统发生问题时JVM内部的运行状态，并将起存储在堆转储（Heap dump）文件中，dump文件为系统分析提供了重要依据。但是原始dump文件纯文本方式，难于理解，为了降低dump文件分析的复杂度，MAT（Eclipse Memory Analyzer）应运而生。MAT时公认的、强大的、“傻瓜式”堆转储文件分析工具。详细介绍见<a href="http://www.eclipse.org/mat/">http://www.eclipse.org/mat/</a></p>
+
+
+
+
+<p><strong>二、获取MAT</strong></p>
+
+
+
+
+<p>MAT现在提供两种安装方式，Eclipse IDE插件（集成版）和Eclipse RCP（单机版）。</p>
+
+
+
+
+<p>本文采用的时Eclipse RCP版本，可到<a href="http://www.eclipse.org/mat/downloads.php">http://www.eclipse.org/mat/downloads.php</a>下载。解压运行后如图所示</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/界面.png"><img class="alignnone size-large wp-image-21" title="界面" src="http://jiangbo.me/images/uploads/2011/07/界面-1024x673.png" alt="" width="640" height="420" /></a></p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p><strong>三、获取dump文件</strong></p>
+
+
+
+
+<p>可用通过多种方式获得dump文件，主要分为交互式和基于事件的方式。</p>
+
+
+
+
+<p><strong> 1.交互式</strong></p>
+
+
+
+
+<p>1）、使用Ctrl+Break：如果在JVM运行时参数上加入
+<p style="text-align: center;">-Xrunhprof:format=b,file=heapdump.hprof</p>
+参数。当java进程收到SIGQUIT信号（kill -3）时会生成一个HPROF格式的dump文件。</p>
+
+
+
+
+<p>2）、使用jmap工具：jmap是jdk自带的实用工具，在java6可以通过如下命令获得一个运行中java进程的dump文件
+<p style="text-align: center;">jmap -dump:format=b,file=<em>filename pid</em></p>
+<strong> 2.基于事件的方法</strong></p>
+
+
+
+
+<p>通常在生产环境中当出现问题时再去用交互式的方式获取dump文件为时已晚。因此实际的生产环境多用基于事件的方法。JVM支持在发生OutOfMemoryError时进行自动的堆转储，生成dump文件。需要在应用JVM启动参数中加入如下参数：
+<p style="text-align: center;">-XX:+HeapDumpOnOutOfMemoryError</p>
+<strong>四、文件分析</strong></p>
+
+
+
+
+<p>在MAT钟打开获取的转储文件，文件夹在完成后自动生成分析报告，如图所示</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.47-PM.png"><img class="alignnone size-large wp-image-29" title="文件分析" src="http://jiangbo.me/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.47-PM-1024x640.png" alt="" width="640" height="400" /></a></p>
+
+
+
+
+<p>主工作区展示文件分析的概况，可以看到主要的类占用（Biggest Objects）和可选的一些操作，Action，Reports等。</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.56-PM.png"><img class="alignnone size-full wp-image-30" title="action" src="http://jiangbo.me/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.56-PM.png" alt="" width="917" height="193" /></a></p>
+
+
+
+
+<p>左侧的Inspector区可以查看各个类的域信息，如图显示的是一个com.ibatis.sqlmap.engine.impl.SqlMapExecutorDelegate类实例的信息，包括其各个域的值。</p>
+
+
+
+
+<p><strong>五、一个OutOfMemoryError小例子</strong></p>
+
+
+
+
+<p><strong> 1.写一个明显会OutOfMemoryError小程序</strong></p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>import java.util.Date;</p>
+
+
+
+
+<p>import java.util.List;</p>
+
+
+
+
+<p>import java.util.ArrayList;</p>
+
+
+
+
+<p>public class Test{</p>
+
+
+
+
+<p>public static void main(String[] args){</p>
+
+
+
+
+<p>List&lt;Date&gt; list = new ArrayList&lt;Date&gt;();</p>
+
+
+
+
+<p>while(true){</p>
+
+
+
+
+<p>Date date = new Date();</p>
+
+
+
+
+<p>list.add(date);</p>
+
+
+
+
+<p>date=null;</p>
+
+
+
+
+<p>}</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>}</p>
+
+
+
+
+<p>}</p>
+
+
+
+
+<p><strong> 2.设置启动参数</strong>
+<p style="text-align: center;">$ java -XX:+HeapDumpOnOutOfMemoryError Test</p>
+<strong> 3.如其获得异常</strong></p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.29.07-PM.png"><img class="alignnone size-full wp-image-31" title="Screen shot 2011-07-29 at 3.29.07 PM" src="http://jiangbo.me/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.29.07-PM.png" alt="" width="534" height="130" /></a></p>
+
+
+
+
+<p>生成的dump文件为java_pid4931.hprof</p>
+
+
+
+
+<p><strong> 4.使用MAT导入dump文件</strong></p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/dump文件.png"><img class="aligncenter size-full wp-image-32" title="dump文件" src="http://jiangbo.me/images/uploads/2011/08/dump文件.png" alt="" width="1356" height="858" /></a></p>
+
+
+
+
+<p>从分析报告中可以明显看出有一个类Thread占用了99%的内存，该类由java.lang.ClassLoader加载。</p>
+
+
+
+
+<p>通过查看Leak Suspects报告可以看到更清晰的内存泄漏情况</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/Leak-Suspects.png"><img class="aligncenter size-large wp-image-24" title="Leak Suspects" src="http://jiangbo.me/images/uploads/2011/07/Leak-Suspects-1024x647.png" alt="" width="640" height="404" /></a></p>
+
+
+
+
+<p>点击detail，可以查看详细信息</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/详细信息.png"><img class="aligncenter size-large wp-image-23" title="详细信息" src="http://jiangbo.me/images/uploads/2011/07/详细信息-1024x636.png" alt="" width="640" height="397" /></a> 跟集合到内存消耗点的最短路径</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/最短路径.png"><img class="aligncenter size-full wp-image-22" title="最短路径" src="http://jiangbo.me/images/uploads/2011/07/最短路径.png" alt="" width="593" height="195" /></a></p>
+
+
+
+
+<p>内存消耗的对象</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/内存消耗对象.png"><img class="aligncenter size-full wp-image-26" title="内存消耗对象" src="http://jiangbo.me/images/uploads/2011/07/内存消耗对象.png" alt="" width="553" height="373" /></a></p>
+
+
+
+
+<p>此时应该就可以分析出大概情况了，内存溢出主要是因为还有大量的Date对象。进而查看下线程栈</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/Thread.png"><img class="aligncenter size-full wp-image-25" title="Thread" src="http://jiangbo.me/images/uploads/2011/07/Thread.png" alt="" width="852" height="171" /></a></p>
+
+
+
+
+<p>也就基本能定位问题的所在了。问题代码就是：</p>
+
+
+
+
+<p>while(true){</p>
+
+
+
+
+<p>Date date = new Date();</p>
+
+
+
+
+<p>list.add(date);</p>
+
+
+
+
+<p>date=null;</p>
+
+
+
+
+<p>}</p>
+
+
+
+
+<p><strong>六、总结</strong></p>
+
+
+
+
+<p>MAT是一个功能强大的内存分析工具，目前介绍的只是很基本的一些功能，更多信息请参考</p>
+
+
+
+
+<p><a href="http://memoryanalyzer.blogspot.com">http://memoryanalyzer.blogspot.com</a>/</p>
+
+
+
+
+<p><a href="http://www.ibm.com/developerworks/cn/java/j-memoryanalyzer/index.html?ca=drs-">http://www.ibm.com/developerworks/cn/java/j-memoryanalyzer/index.html?ca=drs-</a></p>
+
+
+
+
+<p><a href="http://www.vogella.de/articles/EclipseMemoryAnalyser/article.html">http://www.vogella.de/articles/EclipseMemoryAnalyser/article.html</a></p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>&nbsp;</p>
+
+]]></content>
+  </entry>
+  
+</feed>

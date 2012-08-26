@@ -1,0 +1,311 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Velocity源码分析（一）——概述 - Jiang Bo</title>
+  <meta name="author" content="jiangbo">
+
+  
+  <meta name="description" content="一、概述
+Velocity模板引擎处理机制分为五个基本步骤： 引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。 获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream）， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2011/08/19/velocity_overview">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Jiang Bo" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Jiang Bo</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">Abount Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Velocity源码分析（一）——概述</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><h2>一、概述</h2>
+Velocity模板引擎处理机制分为五个基本步骤：
+<ol>
+	<li>引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。</li>
+	<li>获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream），然后通过AST（Abstract Syntax Tree）解析器将InputStream解析为一个AST。</li>
+	<li>创建一个Context</li>
+	<li>将模板渲染所需的参数放入context</li>
+	<li>执行模板渲染，产生输出流。渲染过程中通过遍历该模板对应的AST，调用相应节点的处理器执行渲染。</li>
+</ol>
+整个处理流程如下图所示：</p>
+
+<p><a href="/images/uploads/2011/08/Velocity%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B.png"><img class="aligncenter size-full wp-image-59" title="Velocity处理流程" src="/images/uploads/2011/08/Velocity%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B.png" alt="" width="619" height="407" /></a>
+<h2>二、详细渲染流程</h2>
+下面以一个简单的模板template.vm为例，详细解释渲染过程。<br />
+VelocityMergeTest.java
+<pre class="brush:java">public class VelocityMergeTest {</pre></p>
+
+<p>public static void main(String[] args) {<br />
+VelocityEngine ve = new VelocityEngine();<br />
+ve.setProperty(Velocity.RESOURCE_LOADER, &#8220;class&#8221;);<br />
+ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
+&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
+try {<br />
+//引擎初始化<br />
+ve.init();<br />
+//加载解析模板<br />
+Template tp = ve.getTemplate(&#8220;template.vm&#8221;);<br />
+//创建context<br />
+Context context = new VelocityContext();<br />
+//设置Context中参数值<br />
+context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
+StringWriter writer = new StringWriter();<br />
+//执行渲染<br />
+tp.merge(context, writer);<br />
+System.out.println(writer.toString());<br />
+} catch (Exception e) {<br />
+}
+}<br />
+}
+template.vm
+<pre class="brush:xml">&lt;html&gt;
+&lt;body&gt;
+Hello $foo world!
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+<h3>1.引擎初始化</h3>
+ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
+&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
+设置引擎的资源加载使用ClasspathResourceLoader。<br />
+ve.init()执行引擎的初始化。
+<h3>2.加载解析模板</h3>
+当执行ve.getTemplate(&#8220;template.vm&#8221;)时，首先通过ResourceLoader将tempalte加载为InputStream，然后通过Parser生成如下Token集合：<br />
+{[&lt;html&gt; &lt;body&gt; Hello], [$foo], [world! &lt;/body&gt; &lt;/html&gt; ]}，<br />
+可以发现velocity根本不关系模板最终要渲染出来的是html还是什么的其他的东西，也就以为这所有的html标签对velocity来讲都是纯文本。<br />
+最终构建的AST如下</p>
+
+<p><a href="/images/uploads/2011/08/AST.png"><img class="aligncenter size-full wp-image-60" title="AST" src="/images/uploads/2011/08/AST.png" alt="" width="367" height="169" /></a></p>
+
+<p>根节点下有三个子节点：
+<ol>
+	<li>[&lt;html&gt; &lt;body&gt; Hello]对应的ASTText节点；</li>
+	<li>[$foo]对应的ASTReference节点；</li>
+	<li>[world! &lt;/body&gt; &lt;/html&gt; ]对应的ASTText节点</li>
+</ol>
+Velocity引擎在这里有个优化策略，可以针对生成的语法树进行cache。
+<h3>3.创建context并设置参数</h3>
+Context context = new VelocityContext();<br />
+context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
+创建一个context，并在其中放入一个foo=VV的参数。
+<h3>4.执行渲染</h3>
+当执行tp.merge(context, writer);时，模板遍历其对应的AST树，执行每个节点的渲染过程。如ASTText节点只是简单的将文本写入writer。ASTReference节点需要从context中获取引用的参数foo的值VV，将$foo替换，并写入到writer中。Velocity的AST中有多种节点，如ASTIdentitor等，有些需要反射机制处理。当整个AST遍历结束，也就意味着模板渲染结束，渲染的结果位于writer流中。
+<h2>三、关于AST解析</h2>
+Velocity作为模板语言，其核心在与模板文件的解析，构建AST。Velocity的解析器是通过JavaCC构建的，JavaCC（Java Complier Complier）是一个用于生成解析器的工具，可以根据语法定义（.jj文件）生成用于校验一份文本是否符合该语法定义的java代码。JJTree是JavaCC中提供的一种根据语法定义（.jjt文件）生成构建符合该语法定义的文本的语法树的java代码的工具。<br />
+Velocity源码包中提供了用于构建velocity语法解析的的jjt文件，位于src/parser/Parser.jjt。可以自己手动从源码构建Velocity的解析器。步骤如下：<br />
+1.下载安装JavaCC，到http://javacc.java.net/下载即可，velocity的解析器需要3.2版本以上。下载后解压即可。<br />
+2.使用JJTree生成节点定义：<br />
+$ javacc-5.0/bin/jjtree Parser.jjt<br />
+这一过程中会生成节点定义的Java文件和Parser.jj语法定义文件<br />
+3.使用JavaCC生成解析器<br />
+$ javacc-5.0/bin/javacc Parser.jj<br />
+最终会生成Parser.java解析器和个节点定义。
+<h2>参考资料</h2>
+《Velocity Developer Guide》<a href="http://velocity.apache.org/engine/devel/developer-guide.html">http://velocity.apache.org/engine/devel/developer-guide.html</a>
+《JavaCC》<a href="http://javacc.java.net/">http://javacc.java.net/</a>
+《Velocity源码分析》<a href="http://www.khotyn.com/2011/07/22/velocity_sourcecode/">http://www.khotyn.com/2011/07/22/velocity_sourcecode/</a>
+《Velocity的一些优化记录》<a href="http://agapple.iteye.com/blog/1051724">http://agapple.iteye.com/blog/1051724</a></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiangbo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2011</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/velocity源码分析/'>Velocity源码分析</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2011/08/17/webx3-container-structure/" title="Previous Post: Webx3源码分析－容器结构">&laquo; Webx3源码分析－容器结构</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2011/08/26/velocity_introspection/" title="next Post: Velocity源码分析（二）——渲染执行之Introspection">Velocity源码分析（二）——渲染执行之Introspection &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/jetty_classloader/">Java ClassLoader笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiangbo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

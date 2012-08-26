@@ -1,0 +1,649 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Jiang Bo</title>
+  <meta name="author" content="jiangbo">
+
+  
+  <meta name="description" content="一、概述
+Velocity模板引擎处理机制分为五个基本步骤： 引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。 获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream）， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/4">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="Jiang Bo" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Jiang Bo</a></h1>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">Abount Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/19/velocity_overview/">Velocity源码分析（一）——概述</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><h2>一、概述</h2>
+Velocity模板引擎处理机制分为五个基本步骤：
+<ol>
+	<li>引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。</li>
+	<li>获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream），然后通过AST（Abstract Syntax Tree）解析器将InputStream解析为一个AST。</li>
+	<li>创建一个Context</li>
+	<li>将模板渲染所需的参数放入context</li>
+	<li>执行模板渲染，产生输出流。渲染过程中通过遍历该模板对应的AST，调用相应节点的处理器执行渲染。</li>
+</ol>
+整个处理流程如下图所示：</p>
+
+<p><a href="/images/uploads/2011/08/Velocity%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B.png"><img class="aligncenter size-full wp-image-59" title="Velocity处理流程" src="/images/uploads/2011/08/Velocity%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B.png" alt="" width="619" height="407" /></a>
+<h2>二、详细渲染流程</h2>
+下面以一个简单的模板template.vm为例，详细解释渲染过程。<br />
+VelocityMergeTest.java
+<pre class="brush:java">public class VelocityMergeTest {</pre></p>
+
+<p>public static void main(String[] args) {<br />
+VelocityEngine ve = new VelocityEngine();<br />
+ve.setProperty(Velocity.RESOURCE_LOADER, &#8220;class&#8221;);<br />
+ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
+&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
+try {<br />
+//引擎初始化<br />
+ve.init();<br />
+//加载解析模板<br />
+Template tp = ve.getTemplate(&#8220;template.vm&#8221;);<br />
+//创建context<br />
+Context context = new VelocityContext();<br />
+//设置Context中参数值<br />
+context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
+StringWriter writer = new StringWriter();<br />
+//执行渲染<br />
+tp.merge(context, writer);<br />
+System.out.println(writer.toString());<br />
+} catch (Exception e) {<br />
+}
+}<br />
+}
+template.vm
+<pre class="brush:xml">&lt;html&gt;
+&lt;body&gt;
+Hello $foo world!
+&lt;/body&gt;
+&lt;/html&gt;</pre>
+<h3>1.引擎初始化</h3>
+ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
+&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
+设置引擎的资源加载使用ClasspathResourceLoader。<br />
+ve.init()执行引擎的初始化。
+<h3>2.加载解析模板</h3>
+当执行ve.getTemplate(&#8220;template.vm&#8221;)时，首先通过ResourceLoader将tempalte加载为InputStream，然后通过Parser生成如下Token集合：<br />
+{[&lt;html&gt; &lt;body&gt; Hello], [$foo], [world! &lt;/body&gt; &lt;/html&gt; ]}，<br />
+可以发现velocity根本不关系模板最终要渲染出来的是html还是什么的其他的东西，也就以为这所有的html标签对velocity来讲都是纯文本。<br />
+最终构建的AST如下</p>
+
+<p><a href="/images/uploads/2011/08/AST.png"><img class="aligncenter size-full wp-image-60" title="AST" src="/images/uploads/2011/08/AST.png" alt="" width="367" height="169" /></a></p>
+
+<p>根节点下有三个子节点：
+<ol>
+	<li>[&lt;html&gt; &lt;body&gt; Hello]对应的ASTText节点；</li>
+	<li>[$foo]对应的ASTReference节点；</li>
+	<li>[world! &lt;/body&gt; &lt;/html&gt; ]对应的ASTText节点</li>
+</ol>
+Velocity引擎在这里有个优化策略，可以针对生成的语法树进行cache。
+<h3>3.创建context并设置参数</h3>
+Context context = new VelocityContext();<br />
+context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
+创建一个context，并在其中放入一个foo=VV的参数。
+<h3>4.执行渲染</h3>
+当执行tp.merge(context, writer);时，模板遍历其对应的AST树，执行每个节点的渲染过程。如ASTText节点只是简单的将文本写入writer。ASTReference节点需要从context中获取引用的参数foo的值VV，将$foo替换，并写入到writer中。Velocity的AST中有多种节点，如ASTIdentitor等，有些需要反射机制处理。当整个AST遍历结束，也就意味着模板渲染结束，渲染的结果位于writer流中。
+<h2>三、关于AST解析</h2>
+Velocity作为模板语言，其核心在与模板文件的解析，构建AST。Velocity的解析器是通过JavaCC构建的，JavaCC（Java Complier Complier）是一个用于生成解析器的工具，可以根据语法定义（.jj文件）生成用于校验一份文本是否符合该语法定义的java代码。JJTree是JavaCC中提供的一种根据语法定义（.jjt文件）生成构建符合该语法定义的文本的语法树的java代码的工具。<br />
+Velocity源码包中提供了用于构建velocity语法解析的的jjt文件，位于src/parser/Parser.jjt。可以自己手动从源码构建Velocity的解析器。步骤如下：<br />
+1.下载安装JavaCC，到http://javacc.java.net/下载即可，velocity的解析器需要3.2版本以上。下载后解压即可。<br />
+2.使用JJTree生成节点定义：<br />
+$ javacc-5.0/bin/jjtree Parser.jjt<br />
+这一过程中会生成节点定义的Java文件和Parser.jj语法定义文件<br />
+3.使用JavaCC生成解析器<br />
+$ javacc-5.0/bin/javacc Parser.jj<br />
+最终会生成Parser.java解析器和个节点定义。
+<h2>参考资料</h2>
+《Velocity Developer Guide》<a href="http://velocity.apache.org/engine/devel/developer-guide.html">http://velocity.apache.org/engine/devel/developer-guide.html</a>
+《JavaCC》<a href="http://javacc.java.net/">http://javacc.java.net/</a>
+《Velocity源码分析》<a href="http://www.khotyn.com/2011/07/22/velocity_sourcecode/">http://www.khotyn.com/2011/07/22/velocity_sourcecode/</a>
+《Velocity的一些优化记录》<a href="http://agapple.iteye.com/blog/1051724">http://agapple.iteye.com/blog/1051724</a></p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/17/webx3-container-structure/">Webx3源码分析－容器结构</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-17T19:32:00+08:00" pubdate data-updated="true">Aug 17<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h3>一、Webx 框架概述</h3>
+
+<p>Webx是一套基于Java Servlet API构建的通用Web框架。整个Webx框框架层次分为三层：</p>
+
+<p><img src="/images/webx/webx-framework-layer.png" alt="image" /></p>
+
+<ol>
+<li>SpringExt：提供了基于Spring的通用扩展机制</li>
+<li>WebxFramework：基于Servlet API，提供Web基础服务，如Spring初始化，日志初始化，接受请求，错误处理，开发模式等。Webx Framework只是对Servlet和spring的基础封装，并不关心Web框架中具体服务的处理，如Action处理，表单处理等。因此，可以在Webx Framework上扩展多种风格的Web框架。</li>
+<li>Webx Turbine：基于Webx Framework，提供具体的网页功能，如表单处理，Action相应处理等</li>
+</ol>
+
+
+<h3>二、Webx Framework容器结构</h3>
+
+<h4>1.1组件化应用结构</h4>
+
+<p>Webx Framework是基于组件化风格构建的，它将一个应用划分一个Webx应用包含至少一个组件组 (WebxComponents)，一个组件组由多个组件(WebxComponent)构成。</p>
+
+<p><img src="/images/webx/webx-component.png" alt="image" /></p>
+
+<p>Webx Framework中定义了WebxComponents接口和WebxComponent接口，分别表示一组组件的信息和一个组件的描述。
+组件化的应用结构反应在容器上即应用中级联的父子容器的结构关系，如下图所示：</p>
+
+<p><img src="/images/webx/webx-context-structure.png" alt="image" /></p>
+
+<p>Webx Framework将一个Web应用分解成多个小应用模块：app1, app2，等。每个应用模块独享一个子容器（Sub Context），共享根容器（Root Context）。子容器之间的beans无法相互注入，但是所有小应用都共享一个Root Context。根容器的bean可以被注入到子容器的bean中；反之不可以。</p>
+
+<h4>1.2 基于Spring的容器类扩展</h4>
+
+<p>为实现上述应用组件化结构，Webx Framework在在Spring容器基础上按照组件化风格进行扩展：</p>
+
+<p><img src="/images/webx/webx-container.png" alt="image" /></p>
+
+<p>com.alibaba.citrus.webx.context.XmlWebApplicationContext是Webx框架的从XML文件中装配的，用于Web应用环境的Application Context，扩展自Spring的org.springframework.web.context.support.XmlWebApplicationContext，主要扩展点如下：</p>
+
+<ol>
+<li>支持SpringExt的捐献(ConfigurationPoint)机制（SpringExt在后面文章中讲解）</li>
+<li>实现了ResourceLoadingExtendable接口，扩展的resource loading机制。假如ResourceLoadingExtender 被设置，则使用它来装载资源，否则使用默认的装载器。</li>
+<li>默认开启annotation config，相当于&lt;context:annotation-config/>。</li>
+<li>假如parentResolvableDependenciesAccessible==true，则支持从parent context中取得预先置入resolvableDependencies中的对象。默认为true。</li>
+</ol>
+
+
+<p>ResourceLoadingXmlWebApplicationContext继承自XmlWebApplicationContext，扩展了从resource loading service中装载的功能。WebxApplicationContext是用于Webx框架的application context。直接继承自ResourceLoadingXmlWebApplicationContext，扩展了取得默认Spring配置的实现，默认Root容器的配置文件位于WEB-INF/webx.xml，子容器的配置文件位于WEB-INF/webx-<em>.xml（</em>代表component名）。由于继承关系，WebxApplicationContext继承了负累所有的特性，在原来Spring容器XmlWebApplicationContext基础之上扩展如下功能：</p>
+
+<ol>
+<li>支持SpringExt，包括configuration point和resource loading支持</li>
+<li>定义默认容器配置文件位置</li>
+</ol>
+
+
+<p>WebxComponentsContext和WebxComponentContext直接扩展自WebxApplicationContext，分别对应为WebxComponents和WebxComponent的容器。</p>
+
+<p>WebxComponentsContext中内置了一个WebxComponentsLoader用于装载Webx components，并且覆写了postProcessBeanFactory()处理定制BeanFactory，以及finishRefresh()处理子容器的刷新。</p>
+
+<p>WebxComponentContext包含了对应的WebxComponent实例，并将其注入到容器中，即在一个WebxComponentContext中，引用的WebxComponent均是其对应的component实例。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/10/eclipse-debug-maven-jetty/">Eclipse中debug Maven Jetty应用</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-10T00:00:00+08:00" pubdate data-updated="true">Aug 10<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Maven和Jetty有很好的集成，可以方便的使用mvn jetty:run 启动一个web应用，但是默认的maven-jetty插件并没有开启debug模式，而日常开发中难免需要用IDE debug引用。下面描述下如何配置eclipse，使其可以进行maven-jetty项目的debug。
+<h2> <span class="Apple-style-span" style="font-size: 26px; font-weight: bold;"><strong>1.首先设置启动方式。</strong></span></h2>
+在Ecipse -&gt;Run-&gt;External Tools -&gt;External Tool Configuration&#8230;中打开配置窗口，选中Program节点，双击新建一个新的配置。</p>
+
+<p>Name自定义，Main Tab下，Location设置为mvn命令的路径，Working Directory设置为需要进行debug的项目目录，Arguments设置为jetty:run</p>
+
+<p><a href="/images/uploads/2011/08/Run.png"><img class="aligncenter size-full wp-image-45" title="Run" src="/images/uploads/2011/08/Run.png" alt="" width="702" height="664" /></a></p>
+
+<p>在Envriroment Tab中新建一个环境变量MAVEN_OPTS，值为</p>
+
+<p>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=8089,server=y,suspend=y</p>
+
+<p><a href="/images/uploads/2011/08/MAVEN_OPTS.png"><img class="aligncenter size-full wp-image-46" title="MAVEN_OPTS" src="/images/uploads/2011/08/MAVEN_OPTS.png" alt="" width="702" height="664" /></a></p>
+
+<p>点击Apply，保存配置；close，关闭窗口。
+<h2>2.设置Debug信息</h2>
+打开Eclipse-&gt;Run-&gt;Debug Configurations窗口，在左侧列表中选择新建一个 Remote Java Application配置。在Connect Tab下，Project设置为当前需要debug的项目，Host设置为localhost，端口为8089（上面MAVEN_OPTS里的address=8089）</p>
+
+<p><a href="/images/uploads/2011/08/debug.png"><img class="aligncenter size-full wp-image-47" title="debug" src="/images/uploads/2011/08/debug.png" alt="" width="719" height="720" /></a></p>
+
+<p>点击Apply，保存配置，close，关闭窗口</p>
+
+<p>&nbsp;
+<h2><strong>3.运行应用。</strong></h2>
+Eclipse-&gt;Run-&gt;External Tools-&gt;Extrernal Tools Configurations，选择第一步设置的启动配置，执行Run，启动应用。Eclipse终端中会输出</p>
+
+<p>Listening for transport dt_socket at address: 8089</p>
+
+<p>表示应用启动监听debug端口8089</p>
+
+<p>&nbsp;
+<h2><strong>4.开启debug</strong></h2>
+Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，启动debug</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/09/mac-config-docbook-tool-chain/">Mac配置docbook工具链</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-09T00:00:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+<strong>一、安装工具链</strong>
+docbook工具链包含三部分<br />
+1.xsltproc（mac自带）<br />
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
+3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
+下载解压后得到：<br />
+docbook-xsl-1.76.1<br />
+fop-1.0<br />
+两个目录。<br />
+此时可以已经可以进行docbook撰写了，不过只限英文:)
+<strong>二、撰写docbook，并生成pdf</strong>
+使用文本编辑器编写如下xml，保存为webx.xml
+<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
+
+<p>&lt;!DOCTYPE book PUBLIC &#8220;-//OASIS//DTD DocBook XML V4.0//EN&#8221;  &#8220;http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd&#8221;&gt;</p>
+
+<p>&lt;book&gt;<br />
+&lt;bookinfo&gt;<br />
+&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
+&lt;author&gt;<br />
+&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
+&lt;surname&gt;Jiang&lt;/surname&gt;<br />
+&lt;affiliation&gt;<br />
+&lt;address&gt;<br />
+&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
+&lt;/address&gt;<br />
+&lt;/affiliation&gt;<br />
+&lt;/author&gt;<br />
+&lt;copyright&gt;<br />
+&lt;year&gt;2011&lt;/year&gt;<br />
+&lt;/copyright&gt;<br />
+&lt;abstract&gt;<br />
+&lt;para&gt;Webx&lt;/para&gt;<br />
+&lt;/abstract&gt;<br />
+&lt;/bookinfo&gt;<br />
+&lt;part&gt;<br />
+&lt;title&gt;Part1&lt;/title&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;/part&gt;<br />
+&lt;/book&gt;
+使用xsltproc转换为中间文件<br />
+$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
+此时会生成中间文件inter.fo<br />
+使用fop生成pdf<br />
+$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
+最终生成了名为webx.pdf的pdf文件</p>
+
+<p><strong>三、设置FOP支持中文</strong>
+但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
+找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
+<strong>1.生成字体矩阵</strong></p>
+
+<p>进入到fop安装目录，执行</p>
+
+<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr &#8217; &#8217; &#8216;:&#8217;` org.apache.fop.fonts.apps.TTFReader -ttcanme &#8220;SimHei&#8221; /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
+
+<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
+
+<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
+<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
+
+<p>&lt;filterList&gt;</p>
+
+<p>……</p>
+
+<p>&lt;/filterList&gt;</p>
+
+<p>&lt;fonts&gt;</p>
+
+<p>&lt;font metrics-url=&#8221;file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml&#8221; kerning=&#8221;yes&#8221; embed-url=&#8221;file:///Library/Fonts/Microsoft/SimHei.ttf&#8221;&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;/font&gt;</p>
+
+<p>&lt;!&#8211;&lt;directory recursive=&#8221;true&#8221;&gt;/Library/Fonts/&lt;/directory&gt;&#8211;&gt;</p>
+
+<p>&lt;!&#8211;    &lt;auto-detect/&gt;&#8211;&gt;</p>
+
+<p>&lt;/fonts&gt;</p>
+
+<p>……
+<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
+
+<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
+<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
+&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:exsl="http://exslt.org/common"
+                xmlns:fo="http://www.w3.org/1999/XSL/Format"
+                xmlns:ng="http://docbook.org/docbook-ng"
+                xmlns:db="http://docbook.org/ns/docbook"
+                exclude-result-prefixes="db ng exsl"
+                version='1.0'&gt;</pre></p>
+
+<p>&lt;xsl:import href=&#8221;/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl&#8221;/&gt;<br />
+&lt;xsl:param name=&#8221;body.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;monospace.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;title.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;/xsl:stylesheet&gt;
+<strong>4.使用新样式表进行转换</strong></p>
+
+<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
+
+<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/03/mac-osx-install-memcached/">Mac OSX 安装memcached</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-03T00:00:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2011</time>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包<br />
+3.执行下载的脚本，
+<pre class="brush:shell">$ chmod +x install-memcached.sh
+$ sudo ./install-memchaced.sh</pre>
+4.在环境变量里添加EVENT_NOKQUEUE=1<br />
+5.验证是否成功， $memcached -h，应该产生帮助提示
+<a href="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png"><img class="aligncenter size-full wp-image-35" title="Screen shot 2011-08-03 at 11.12.50 AM" src="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png" alt="" width="607" height="423" /></a>
+6.启动memcached,
+<pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
+参考文档<br />
+http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/5/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/3/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/jetty_classloader/">Java ClassLoader笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiangbo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

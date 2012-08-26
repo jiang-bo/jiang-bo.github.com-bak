@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: 技术生活 | Jiang Bo]]></title>
+  <link href="http://jiangbo.me/blog/categories/技术生活/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-26T15:27:33+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiangbo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Mac上制作Ubuntu USB启动盘]]></title>
+    <link href="http://jiangbo.me/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/"/>
+    <updated>2011-11-09T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac</id>
+    <content type="html"><![CDATA[<p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
+
+
+
+
+<p><strong>一、下载ubuntu iso镜像</strong></p>
+
+
+
+
+<p><strong>二、将iso转换为img文件</strong></p>
+
+
+
+
+<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
+
+
+
+
+<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
+
+
+
+
+<p><strong>三、查看USB的盘符</strong></p>
+
+
+
+
+<p>$ diskutil list</p>
+
+
+
+
+<p>/dev/disk0</p>
+
+
+
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+
+
+
+<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
+
+
+
+
+<p>1:                        EFI                         209.7 MB   disk0s1</p>
+
+
+
+
+<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
+
+
+
+
+<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
+
+
+
+
+<p>/dev/disk1</p>
+
+
+
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+
+
+
+<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
+
+
+
+
+<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
+
+
+
+
+<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
+
+
+
+
+<p><strong>四、卸载USB磁盘</strong></p>
+
+
+
+
+<p>$ diskutil unmountDisk /dev/disk1</p>
+
+
+
+
+<p>Unmount of all volumes on disk1 was successful</p>
+
+
+
+
+<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
+
+
+
+
+<p><strong>五、将镜像写入USB</strong></p>
+
+
+
+
+<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
+
+
+
+
+<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
+
+
+
+
+<p><strong>六、弹出USB</strong></p>
+
+
+
+
+<p>$ diskutil eject /dev/disk1</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Eclipse中debug maven jetty应用]]></title>
+    <link href="http://jiangbo.me/blog/2011/08/10/eclipse-debug-maven-jetty/"/>
+    <updated>2011-08-10T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/08/10/eclipse-debug-maven-jetty</id>
+    <content type="html"><![CDATA[<p>Maven和Jetty有很好的集成，可以方便的使用mvn jetty:run 启动一个web应用，但是默认的maven-jetty插件并没有开启debug模式，而日常开发中难免需要用IDE debug引用。下面描述下如何配置eclipse，使其可以进行maven-jetty项目的debug。
+<h2> <span class="Apple-style-span" style="font-size: 26px; font-weight: bold;"><strong>1.首先设置启动方式。</strong></span></h2>
+在Ecipse -&gt;Run-&gt;External Tools -&gt;External Tool Configuration...中打开配置窗口，选中Program节点，双击新建一个新的配置。</p>
+
+
+
+
+<p>Name自定义，Main Tab下，Location设置为mvn命令的路径，Working Directory设置为需要进行debug的项目目录，Arguments设置为jetty:run</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/Run.png"><img class="aligncenter size-full wp-image-45" title="Run" src="http://jiangbo.me/images/uploads/2011/08/Run.png" alt="" width="702" height="664" /></a></p>
+
+
+
+
+<p>在Envriroment Tab中新建一个环境变量MAVEN_OPTS，值为</p>
+
+
+
+
+<p>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=8089,server=y,suspend=y</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/MAVEN_OPTS.png"><img class="aligncenter size-full wp-image-46" title="MAVEN_OPTS" src="http://jiangbo.me/images/uploads/2011/08/MAVEN_OPTS.png" alt="" width="702" height="664" /></a></p>
+
+
+
+
+<p>点击Apply，保存配置；close，关闭窗口。
+<h2>2.设置Debug信息</h2>
+打开Eclipse-&gt;Run-&gt;Debug Configurations窗口，在左侧列表中选择新建一个 Remote Java Application配置。在Connect Tab下，Project设置为当前需要debug的项目，Host设置为localhost，端口为8089（上面MAVEN_OPTS里的address=8089）</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/08/debug.png"><img class="aligncenter size-full wp-image-47" title="debug" src="http://jiangbo.me/images/uploads/2011/08/debug.png" alt="" width="719" height="720" /></a></p>
+
+
+
+
+<p>点击Apply，保存配置，close，关闭窗口</p>
+
+
+
+
+<p>&nbsp;
+<h2><strong>3.运行应用。</strong></h2>
+Eclipse-&gt;Run-&gt;External Tools-&gt;Extrernal Tools Configurations，选择第一步设置的启动配置，执行Run，启动应用。Eclipse终端中会输出</p>
+
+
+
+
+<p>Listening for transport dt_socket at address: 8089</p>
+
+
+
+
+<p>表示应用启动监听debug端口8089</p>
+
+
+
+
+<p>&nbsp;
+<h2><strong>4.开启debug</strong></h2>
+Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，启动debug</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p>&nbsp;</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Zero-Copy&sendfile浅析]]></title>
+    <link href="http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile/"/>
+    <updated>2011-07-16T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile</id>
+    <content type="html"><![CDATA[<p><strong>一、典型IO调用的问题</strong>
+一个典型的web服务器传送静态文件（如CSS，JS，图片等）的过程如下：
+<em>
+read(file, tmp_buf, len);<br />
+write(socket, tmp_buf, len);</em></p>
+
+
+
+
+<p>首先调用read将文件从磁盘读取到tmp_buf，然后调用write将tmp_buf写入到socket，在这过程中会出现四次数据 copy，过程如图1所示</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_1.jpg"><img class="alignnone size-medium wp-image-6" title="图1" src="http://jiangbo.me/images/uploads/2011/07/pic_1-300x230.jpg" alt="" width="300" height="230" /></a></p>
+
+
+
+
+<p>图1</p>
+
+
+
+
+<p>1。当调用read系统调用时，通过DMA（Direct Memory Access）将数据copy到内核模式<br />
+2。然后由CPU控制将内核模式数据copy到用户模式下的 buffer中<br />
+3。read调用完成后，write调用首先将用户模式下 buffer中的数据copy到内核模式下的socket buffer中<br />
+4。最后通过DMA copy将内核模式下的socket buffer中的数据copy到网卡设备中传送。</p>
+
+
+
+
+<p>从上面的过程可以看出，数据白白从内核模式到用户模式走了一 圈，浪费了两次copy，而这两次copy都是CPU copy，即占用CPU资源。</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p><strong>二、Zero-Copy&amp;Sendfile()</strong>
+Linux 2.1版本内核引入了sendfile函数，用于将文件通过socket传送。
+<em>sendfile(socket, file, len);</em>
+该函数通过一次系统调用完成了文件的传送，减少了原来 read/write方式的模式切换。此外更是减少了数据的copy，sendfile的详细过程图2所示：</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_2.jpg"><img class="alignnone size-medium wp-image-7" title="图2" src="http://jiangbo.me/images/uploads/2011/07/pic_2-300x236.jpg" alt="" width="300" height="236" /></a></p>
+
+
+
+
+<p>图2</p>
+
+
+
+
+<p>通过sendfile传送文件只需要一次系统调用，当调用 sendfile时：<br />
+1。首先通过DMA copy将数据从磁盘读取到kernel buffer中<br />
+2。然后通过CPU copy将数据从kernel buffer copy到sokcet buffer中<br />
+3。最终通过DMA copy将socket buffer中数据copy到网卡buffer中发送<br />
+sendfile与read/write方式相比，少了 一次模式切换一次CPU copy。但是从上述过程中也可以发现从kernel buffer中将数据copy到socket buffer是没必要的。</p>
+
+
+
+
+<p>为此，Linux2.4内核对sendfile做了改进，如图3所示</p>
+
+
+
+
+<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_3.jpg"><img class="alignnone size-medium wp-image-8" title="图3" src="http://jiangbo.me/images/uploads/2011/07/pic_3-300x222.jpg" alt="" width="300" height="222" /></a></p>
+
+
+
+
+<p>图3</p>
+
+
+
+
+<p>改进后的处理过程如下：<br />
+1。DMA copy将磁盘数据copy到kernel buffer中<br />
+2。向socket buffer中追加当前要发送的数据在kernel buffer中的位置和偏移量<br />
+3。DMA gather copy根据socket buffer中的位置和偏移量直接将kernel buffer中的数据copy到网卡上。<br />
+经过上述过程，数据只经过了2次copy就从磁盘传送出去了。<br />
+（可能有人要纠结“不是说Zero－Copy么？怎么还有两次copy啊”，事实上这个Zero copy是针对内核来讲的，数据在内核模式下是Zero－copy的。话说回来，文件本身在瓷盘上要真是完全Zero－copy就能传送，那才见鬼了 呢）。<br />
+当前许多高性能http server都引入了sendfile机制，如nginx，lighttpd等。</p>
+
+
+
+
+<p><strong>三、Java NIO</strong><strong>中的transferTo()</strong>
+Java NIO中
+<em>FileChannel.transferTo(long position, long count, WriteableByteChannel target)</em>
+方法将当前通道中的数据传送到目标通道target中，在支持Zero-Copy的linux系统中，transferTo()的实现依赖于 sendfile()调用。</p>
+
+
+
+
+<p>&nbsp;</p>
+
+
+
+
+<p><strong>四、参考文档<br />
+《Zero Copy I: User-Mode Perspective》<a href="http://www.linuxjournal.com/article/6345?page=0,0">http://www.linuxjournal.com/article/6345?page=0,0</a>
+《Efficient data transfer through zero copy》<a href="http://www.ibm.com/developerworks/linux/library/j-zerocopy">http://www.ibm.com/developerworks/linux/library/j-zerocopy</a>
+《The C10K problem》<a href="http://www.kegel.com/c10k.html">http://www.kegel.com/c10k.html</a></strong></p>
+
+]]></content>
+  </entry>
+  
+</feed>
