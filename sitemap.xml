@@ -1,6 +1,18 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
+        <loc>http://jiangbo.me/blog/2009/08/28/adapter-pattern/</loc>
+        <lastmod>2012-08-26T17:10:15+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/08/28/singleton-desgin-pattern/</loc>
+        <lastmod>2012-08-26T17:10:55+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/09/20/decorator-pattern/</loc>
+        <lastmod>2012-08-26T17:10:45+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile/</loc>
         <lastmod>2012-08-26T15:24:53+08:00</lastmod>
     </url>
@@ -96,10 +108,10 @@
     </url>
     <url>
         <loc>http://jiangbo.me/blog/archives/</loc>
-        <lastmod>2012-08-26T16:33:38+08:00</lastmod>
+        <lastmod>2012-08-26T17:10:55+08:00</lastmod>
     </url>
     <url>
         <loc>http://jiangbo.me/</loc>
-        <lastmod>2012-08-26T16:33:38+08:00</lastmod>
+        <lastmod>2012-08-26T17:10:55+08:00</lastmod>
     </url>
 </urlset>

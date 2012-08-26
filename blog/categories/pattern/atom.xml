@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Pattern | Jiang Bo]]></title>
+  <link href="http://jiangbo.me/blog/categories/pattern/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-26T17:30:44+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiangbo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[设计模式学习笔记（2）——装饰模式(Decorator Pattern)]]></title>
+    <link href="http://jiangbo.me/blog/2009/09/20/decorator-pattern/"/>
+    <updated>2009-09-20T16:48:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/09/20/decorator-pattern</id>
+    <content type="html"><![CDATA[<h3>一．目的</h3>
+
+<p>装饰模式的目的是动态的为对象添加一些额外职责。就增加功能来说， Decorator 模式比继承产生的子类给为灵活。 ——GoF《Design Pattern》。</p>
+
+<h3>二．描述</h3>
+
+<p>举HeadFirst中Starbucks的例子，星巴克中有很多种饮料，每种饮料需要有单独的计算价格cost()的功能，以及能够获得该饮料的具体描述的getDescription()功能。如果通过设置一个Beverage超类，</p>
+
+<p><img src="/images/o_clip_image002_2.gif" alt="Beverage" /></p>
+
+<p>所有其它的具体饮料都继承该超类，就会产生类爆炸现象（可以考虑有4大类饮料，HouseBlend，DarkRotast，Decaf，Espresso，4种配料milk，soy，mocha，whip，配料可以自由组合，自己算算一共有多少种具体的饮料类型吧），显然这是不行的（考虑一下某种配料的价格改变了，那么需要改变的类的数目！！）。</p>
+
+<p>一种改进方法是将配料价格的计算放在超类Beverage中，</p>
+
+<p><img src="/images/o_clip_image004_2.gif" alt="" /></p>
+
+<p>这样就不用担心某种配料价格的改变了（可以通过超类来设置配料价格），但是这种设置方式还是有缺陷的，可以想象一下如果创造出一种新的配料（毕竟创新时代嘛），那么就不得不改变超类Beverage，在其中添加新配料的方法，改变现有的代码是OO里极其避讳的事情，因此需要更好的方法来处理类似的问题，于是，就有了Decorator Pattern。</p>
+
+<p>Decorator Pattern的目的就是要动态的想对象中添加功能，针对此例来说，我们可以将配料当作额外的功能，饮料大类当作目标对象，用配料来装饰目标对象，例如，想要一个加鲜奶（whip）摩卡（mocha）的DarkRoast，那么，首先选择目标对象，DarkRoast，然后用添加mocha，（用mocha装饰），形成一个加mocha的DarkRoast，然后添加whip（用whip装饰），产生最终的饮料，但是在这里有一点很重要，如何计算价钱，毕竟人家要赚钱么~设计中很容易，因为所有的目标对象类，以及配料类都是继承自超类Beverage，（不过注意这里，继承并不是为了获取父类功能，只是为了类型的统一），均有一个cost()方法，调用最后包装好的目标对象的cost()方法得到的就是全部的价钱。好像有点乱哈，先看看类图吧：</p>
+
+<p><img src="/images/o_clip_image006_2.gif" alt="" /></p>
+
+<p>每个目标对象类（Espresso等）都继承自超类Beverage，实现超类提供一个抽象方法cost()，配料装饰类继承自一个抽象类CondimentDecorator类，该抽相类同样继承自超类Beverage，并且覆盖了超类中的getDescription()方法，使其成为抽象方法，强制具体的配料类必须实现该方法。并且每个具体的配料类中都拥有一个Beverage实例对象，作为其要包装的目标对象。</p>
+
+<h3>三．代码实现：</h3>
+
+<p>Beverage 类 ：</p>
+
+<pre><code>public abstract class Beverage {  
+    String description="Unknown Beverage";  
+    public abstract double cost();  
+    public String getDescription() {  
+        return description;  
+    }  
+}  
+</code></pre>
+
+<p>具体目标对象类：</p>
+
+<p>DarkRoast类：</p>
+
+<pre><code>public class DarkRoast extends Beverage {  
+    public DarkRoast(){  
+        super.description = "DarkRoast";  
+    }  
+    public double cost() {  
+        return 0.89;//事实上应该提供一个price属性，然后提供该属性的setter，getter方法  
+    }  
+}  
+</code></pre>
+
+<p>这个代码实例是按照HeadFirst上实现的，事实上，个人觉得在实际应用中应该提供一个price属性，并为该属性提供setter和getter方法，用于设置该饮料的价格，而不是直接将价格硬编码到类中。</p>
+
+<p>这个累的实现很简单，就是在构造时设置description为对应的饮料描述。其余的目标类与这个类的实现类似，只不过对应的描述，价格不同而已。</p>
+
+<p>抽象配料装饰类：</p>
+
+<p>CondimentDecorator类：</p>
+
+<pre><code>public abstract class CondimentDecorator extends Beverage {  
+    public abstract String getDescription();  
+}  
+</code></pre>
+
+<p>该抽象类强制具体实现的配料类要提供getDescription方法，这也是HeadFirst中的实现，但是我个人觉得，应该把子类中的beverage也放到该类中，毕竟是共性的东西。</p>
+
+<p>具体配料类的实现：</p>
+
+<p>Mocha类：</p>
+
+<pre><code>public class Mocha extends CondimentDecorator {  
+    private Beverage beverage;  
+
+    public Mocha(Beverage beverage) {  
+        this.beverage = beverage;  
+    }  
+    public double cost() {  
+        return beverage.cost()+0.25;  
+    }  
+    @Override  
+    public String getDescription() {  
+        // TODO Auto-generated method stub  
+        return beverage.getDescription()+", Mocha";  
+    }  
+}  
+</code></pre>
+
+<p>具体配料类的构造方法中有一个参数，也就是目标对象，通过构造方法为属性赋值，计算价格时调用目标对象的cost()方法，然后加上配料的价格，实现抽象配料类中的getDescription()方法，调用目标对象的getDescription()，并添加相应的配料描述。同样在这里，我觉得应该为配料提供一个价格属性，price，而不是直接将价格硬编码到类中。其余的配料实现类与该类的实现类似。</p>
+
+<p>测试类：</p>
+
+<pre><code>public class StarbuzzTest {  
+    public static void main(String[] args){  
+        Beverage beverage = new Espresso();  
+        System.out.println(beverage.getDescription()+" $"+beverage.cost());  
+
+        Beverage beverage2 = new DarkRoast();  
+        beverage2 = new Mocha(beverage2);  
+        beverage2 = new Whip(beverage2);  
+        System.out.println(beverage2.getDescription()+" $"+beverage2.cost());  
+
+        Beverage beverage3 = new HouseBlend();  
+        beverage3 = new Soy(beverage3);  
+        beverage3 = new Mocha(beverage3);  
+        beverage3 = new Mocha(beverage3);  
+        System.out.println(beverage3.getDescription()+" $"+beverage3.cost());  
+    }  
+}  
+</code></pre>
+
+<p>测试类中用于产生目标饮料类型对象的语句，可以采用工厂方法，或者抽象工厂等模式来实现，这里只是为了简化，尊重HeadFirst原书实现。</p>
+
+<p>测试结果：</p>
+
+<pre><code>Espresso $1.05  
+DarkRoast, Mocha, Whip $1.39  
+HouseBlend, Soy, Mocha, Mocha $2.69  
+</code></pre>
+
+<h3>四．总结</h3>
+
+<p>装饰模式的作用就是为目标对象动态添加职责。它提供了一种比继承更加自由的扩展功能的实现。</p>
+
+<p>当然，装饰模式中也用到了继承，但是这里的继承只是为了实现类型的统一，因为需要要使目标对象与装饰对象具有相同的超类。而不是想通常所用继承为了扩展超类的功能。</p>
+
+<p>该模式的参与者包括：</p>
+
+<p>Component：定义一个对象接口，可以给这些对象动态添加职责。</p>
+
+<p>ConcreteComponent：定义一个对象，可以个这个对象添加职责。</p>
+
+<p>Decorator：拥有一个目标对象Component的引用，并且该Decorator实现了目标Component接口。</p>
+
+<p>ConcreteDecorator：负责向目标对象添加职责的具体Decorator实现。</p>
+
+<p>通用的装饰模式类图：</p>
+
+<p><img src="/images/o_clip_image008_2.gif" alt="" /></p>
+
+<p>装饰模式的优点：</p>
+
+<ol>
+<li><p>比静态集成更灵活。</p></li>
+<li><p>避免在层次结构高层的类有太多的特征。</p></li>
+</ol>
+
+
+<p>——GoF 《Design Pattern 》</p>
+
+<p>适用性：</p>
+
+<ol>
+<li><p>在不影响其他对象的情况下，以动态的，透明的方式给单个对象添加职责。</p></li>
+<li><p>处理可撤销的职责。</p></li>
+<li><p>当不能采用生成子类的方法进行扩充时。一种情况是，可能有大量独立的扩展，为支持每一种组合，将产生大量子类（例如上面的类爆炸），使得子类呈现爆炸式增长。另一种就是类定义被隐藏，也就是说不允许生成子类（java中的final类）。</p></li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[设计模式学习笔记(1)——单例模式]]></title>
+    <link href="http://jiangbo.me/blog/2009/08/28/singleton-desgin-pattern/"/>
+    <updated>2009-08-28T16:48:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/08/28/singleton-desgin-pattern</id>
+    <content type="html"><![CDATA[<h4>目的：</h4>
+
+<p>保证一个类仅有一个实例，并为该实例提供也个安全的全局访问点</p>
+
+<h4>用途：</h4>
+
+<p>在很多时候，系统中需要某个类只有一个实例，例如连接数据库时的驱动程序注册，加载属性文件等。</p>
+
+<p>实现的核心是要有一个私有的构造方法，静态实例变量，以及返回该静态变量的公有静态方法作为全局访问接口。</p>
+
+<p>一个最基本的实现：</p>
+
+<pre><code>public class Singleton { 
+    private static Singleton instance = null; // 静态实例变量
+
+    private Singleton() { // 私有的构造方法 
+    }
+
+    public static Singleton getInstance() { // 公有的全局访问接口 
+       if (instance == null) { // 检查是否已经实例化，以保证只有一个实例 
+            instance = new Singleton(); 
+        } 
+        return instance; 
+    } 
+}
+</code></pre>
+
+<p>这种实现在单线程环境下是没有什么问题的，但是在多线程环境下就会出现问题，例如现在有两个线程A，B，当A执行完红色的判断语句后切换到线程B，假设此时instance尚未实例化，B执行判断，条件为真，进行实例化instance，返回，当再次切换到线程A时，继续上一次的执行，实例化instance，这是系统中就存在了两个实例。</p>
+
+<p>最简单的改进方法就是在对getInstance方法进行同步限制，也就是</p>
+
+<pre><code>public static synchronized Singleton getInstance() {…}
+</code></pre>
+
+<p>但是这样synchronized的效率很差，存在更好的改进方法</p>
+
+<h4>1.直接加载</h4>
+
+<p>通常使用的都是晚加载（Lazy mode），需要时在实例化，但是，有时能够确定系统中肯定要存在一个该类的实例，直接加载是一种简单的实现方式</p>
+
+<pre><code>public class SingletonEagerInstantiation { 
+    private static SingletonEagerInstantiation instance = new SingletonEagerInstantiation(); //直接静态实例化
+
+    private SingletonEagerInstantiation() { 
+    }
+
+    public static SingletonEagerInstantiation getInstance() { 
+        return instance;//直接返回 
+    } 
+}
+</code></pre>
+
+<h4>2.双重检查</h4>
+
+<p>刚才使用synchronized关键字时，出现了效率差的现象，是因为无论instance是否已经实例化了都要进行同步，synchronized效率很差，而使用双重检查，先判断instance是否已经实例化，如果为空在进行同步，这样就提高了效率，而且这种实现方式也提供了晚加载的能力，但是注意volatile关键字限制了该种实现方式只能用于jdk1.5以上版本</p>
+
+<pre><code>public class SingletonDoubleCheck { 
+    private static volatile SingletonDoubleCheck instance = null; 
+    private SingletonDoubleCheck() { 
+    } 
+    public static SingletonDoubleCheck getInstance() { 
+        if (instance == null) {//先判断 
+            synchronized (SingletonDoubleCheck.class) {//如果没有实例化，同步 
+                if (instance == null) {//再次判断 
+                    instance = new SingletonDoubleCheck();//实例化 
+                } 
+            } 
+        } 
+        return instance; 
+    } 
+}
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ 设计模式学习笔记（3）——适配器模式(Adapter Pattern)]]></title>
+    <link href="http://jiangbo.me/blog/2009/08/28/adapter-pattern/"/>
+    <updated>2009-08-28T16:48:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/08/28/adapter-pattern</id>
+    <content type="html"><![CDATA[<p>一、 目的：</p>
+
+<p>将一个类的接口转换成客户希望的另一个接口。Adapter 模式使原本由于接口不兼容而不能一起工作的那些类可以一起工作。</p>
+
+<p>——GoF 《Design Pattern 》</p>
+
+<p>二、 描述：</p>
+
+<p>其实个人觉得Adapter模式在所有的模式当中算是比较简单的那种，也比较容易理解，就像我们日常生活中经常会使用USB转换器，将某种非USB接口的外设转换我们本本上提供的USB接口一样，在面向对象设计中，有时候我们不得不将将某个类的接口转换成另外一种我们需要的类型，最通常的情况可能是因为我们要想为现有的系统添加额外的一个现有的子系统，而两个系统提供的接口不同，因此，我们不得不讲其中一个转换成另一个，或者进行双向转换。</p>
+
+<p>说起来好像很容易理解，那么到底应该如何应用Adapter模式呢，还是举HeadFirst中的例子吧：</p>
+
+<p>假设现在我们有一个现有系统SimuDuck，提供一个鸭子的接口Duck，要求系统中的所有的类必须实现该Duck接口</p>
+
+<p><img src="/images/_clip_image002.gif" alt="" /></p>
+
+<p>（注：staruml中设置接口图形格式：右键图标->Format->seterotype->None,不过怎么把方法显示出来还么研究好）</p>
+
+<p>该接口提供两个方法，fly(),飞， quack(),叫。</p>
+
+<p>现在要向这个系统中天加一个由一些火鸡组成的子系统，火鸡实现的是火鸡接口Turkey：</p>
+
+<p><img src="/images/o_clip_image004_2_633891499875937500.gif" alt="" /></p>
+
+<p>该接口提供的方法功能包括,fly()飞，gobble()叫。</p>
+
+<p>现在要想将实现Turkey的具体火鸡类在现有的使用Duck接口的系统中使用，就必须将Turkey转换成Duck，实现起来很简单，类图如下：</p>
+
+<p><img src="/images/o_adapter_duck_turkey_4.jpg" alt="" /></p>
+
+<p>设计一个TurkeyAdapter，该适配器实现了Duck接口，并使用一个Turkey作为构造参数，在TurkeyAdapter中实现Duck接口的方法时，实际调用的是Turkey的方法，下面时代码实现：</p>
+
+<p>Duck接口：</p>
+
+<p>[java] view plaincopy
+public interface Duck {</p>
+
+<pre><code>public abstract void quack();  
+public abstract void fly();  
+</code></pre>
+
+<p>}<br/>
+MallardDuck具体鸭子类：</p>
+
+<p>[java] view plaincopy
+public class MallardDuck implements Duck {</p>
+
+<pre><code>public void quack(){  
+    System.out.println("MallardDuck quack");  
+}  
+public void fly(){  
+    System.out.println("MallardDuck fly");  
+}  
+</code></pre>
+
+<p>}<br/>
+注意，这里的实现quack()和fly()方法时使用简单的直接实现，实际中应该采用Strategey（策略）模式，以后再说该模式。</p>
+
+<p>Turkey接口：</p>
+
+<p>[java] view plaincopy
+public interface Turkey {</p>
+
+<pre><code>public void fly();  
+public void gobble();  
+</code></pre>
+
+<p>}<br/>
+实现Turkey的具体WildTurkey：</p>
+
+<p>[c-sharp] view plaincopy
+public class WildTurkey implements Turkey {</p>
+
+<pre><code>public void fly(){  
+    System.out.println("WildTurkey fly");  
+}  
+public void gobble(){  
+    System.out.println("WildTurkey gobble");  
+}  
+</code></pre>
+
+<p>}<br/>
+最关键的TurkeyAdapter：</p>
+
+<p>[java] view plaincopy
+public class TurkeyAdapter implements Duck {</p>
+
+<pre><code>Turkey turkey;  
+public TurkeyAdapter(Turkey turkey){  
+    this.turkey = turkey;  
+}  
+public void quack(){  
+    turkey.gobble();  
+}  
+public void fly(){  
+    turkey.fly();  
+}  
+</code></pre>
+
+<p>}<br/>
+该类拥有一个Turkey的实例变量，一个以Turkey作为参数构造方法，也就是说在构造时将要转换的Turkey对象作为构造参数传递给该适配器，当调用适配器的Duck接口的方法时，实际调用的是turkey对象的方法。</p>
+
+<p>在这里，由于示例比较简单，没有什么问题，在实践中，可能会出现被转换的类不具备目标对象的某种功能，例如，如果Duck中有一个swim()方法，很明显，Turkey不能游泳，也就没有可以调用的方法，通常的做法是抛出一个异常CanNotFindMethodException。</p>
+
+<p>最后是测试程序：</p>
+
+<p>[java] view plaincopy
+public class Client {</p>
+
+<pre><code>public static void main(String[] args){  
+    MallardDuck duck = new MallardDuck();  
+
+    WildTurkey wildTurkey = new WildTurkey();  
+    Duck turkeyAdapter = new TurkeyAdapter(wildTurkey);  
+
+    System.out.println("Duck...");  
+    testDuck(duck);  
+
+    System.out.println("TurkeyAdapter...");  
+    testDuck(turkeyAdapter);  
+}  
+static void testDuck(Duck duck){  
+    duck.fly();  
+    duck.quack();  
+}  
+</code></pre>
+
+<p>}<br/>
+该测试程序的输出结果为：</p>
+
+<p>[java] view plaincopy
+Duck...<br/>
+MallardDuck fly<br/>
+MallardDuck quack<br/>
+TurkeyAdapter...<br/>
+WildTurkey fly<br/>
+WildTurkey gobble</p>
+]]></content>
+  </entry>
+  
+</feed>
