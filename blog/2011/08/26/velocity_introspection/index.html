@@ -133,7 +133,7 @@ for ( PropertyDescriptor pd : info.getPropertyDescriptors() )             System
 <div>Welcome! ${person.name} !</div>
 <div>该模板中有一个引用变量${person.name}，在执行渲染时必须要知道person是个什么东东，person.name又是个什么东东，这里就需要自省机制发挥作用。</div>
 <div>Veloctiy的的自省机制实现位于源码包org.apache.velocity.util.introspection中，其主要类图结构如下：</div>
-<div><a href="/images/uploads/2011/08/类图结构.png"><img class="aligncenter size-full wp-image-63" title="类图结构.png" src="/images/uploads/2011/08/类图结构.png" alt="" width="863" height="351" /></a></div>
+<div><a href="/images/uploads/2011/08/class-structure.png"><img class="aligncenter size-full wp-image-63" title="class-structure.png" src="/images/uploads/2011/08/class-structure.png" alt="" width="863" height="351" /></a></div>
 <div>Uberspect中定义了渲染执行时所需的主要接口。该接口主要提供四个方法：</div>
 <div>
 <ol>
@@ -156,7 +156,7 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
 <div>template.vm</div>
 <div>${person.sayHi()}! I&#8217;m ${person.name}</div>
 <div>该模板的作用表示分别调用context中名为person的对象的sayHi()方法和name属性。该模板经过语法解析生成的AST如下（关于AST解析请参考上一篇velocity源码分析）：</div>
-<div><a href="/images/uploads/2011/08/语法树.png"><img class="aligncenter size-full wp-image-64" title="语法树.png" src="/images/uploads/2011/08/语法树.png" alt="" width="483" height="185" /></a></div>
+<div><a href="/images/uploads/2011/08/syntax-tree.png"><img class="aligncenter size-full wp-image-64" title="syntax-tree.png" src="/images/uploads/2011/08/syntax-tree.png" alt="" width="483" height="185" /></a></div>
 <div>图1.语法解析后的AST</div>
 <div>${person.say()}被解析为一个拥有AST子节点的ASTReference节点，”! I’m”为一个ASTText节点，$person.name被解析为一个拥有ASTIdentifier子节点的ASTReference节点，”。”被解析为一个ASTText节点。</div>
 <div>引擎从根节点开始执行渲染ASTprocess的render方法主要是遍历子节点，依次执行子节点的渲染方法。</div>
@@ -475,7 +475,7 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
 <div>4.如果还没找到，则尝试构造一is”属性名”形式的BooleanPropertyExecutor。</div>
 <div>5.最终返回一个封装了Executor的VelGetImpl，如果未找到则返回null。</div>
 <div>所有的Executor均扩展自AbstractExecutor，VelGetImpl通过内置一个executor执行方法调用。Executor类图关系如下</div>
-<div><a href="/images/uploads/2011/08/Executor类图结构.png"><img class="aligncenter size-full wp-image-76" title="Executor类图结构" src="/images/uploads/2011/08/Executor类图结构.png" alt="" width="682" height="380" /></a></div>
+<div><a href="/images/uploads/2011/08/Excuter-class-structure.png"><img class="aligncenter size-full wp-image-76" title="Executor类图结构" src="/images/uploads/2011/08/Excuter-class-structure.png" alt="" width="682" height="380" /></a></div>
 <div>Executor实现中除MapGetExecutor外，其余的Executor均通过内置一个introspector实现方法的构建，过程与上述ASTMethod节点渲染过程中introspector.getMethod()一致，只是方法名做了封装，如GetExecutor的方法名为get， PropertyExecutor的方法名为get”属性名”， BooleanPropertyExecutor方法名为is”属性名”，具体构建流程不再赘述。</div>
 <div>最终，ASTIndentifier.execute()方法通过UberInspectImpl.getPropertyGet()获得VelGetImpl，并调用VelGetImpl.invoke()获取方法执行的结果，写入输出流，完成渲染。</div>
 <div>UberInspectImpl.getPropertySet()的执行过程于getPropertyGet()大体一致，区别在于获取的是VelSetImpl，内置了SetExecutor，SetExecutor有三个扩展对应为MapSetExecutor（Map.key=value形式），PutExecutor（put(key, value)形式），SetPropertyExecutor（set”属性名”(value)形式）。其内部同样使用introspector.getMethod()方法构建Method，通过反射执行设置属性值。</div>
