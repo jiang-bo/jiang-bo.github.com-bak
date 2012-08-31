@@ -1,0 +1,345 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Mac OSX安装Git - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="一、安装Git
+由于mac git的地址http://code.google.com/p/git-osx-installer/被墙，被迫使用源码安装，源码可以从http://kernel.org/pub/software/scm/git/下载，编译源码需要先安装xcode，参考http:// &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2011/03/15/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Mac OSX安装Git</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-15T00:00:00+08:00" pubdate data-updated="true">Mar 15<span>th</span>, 2011</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><strong>一、安装Git</strong></p>
+<p class="p2"><span class="s1">由于mac git的地址<a href="http://code.google.com/p/git-osx-installer/"><span class="s2">http://code.google.com/p/git-osx-installer/</span></a>被墙，被迫使用源码安装，源码可以从<a href="http://kernel.org/pub/software/scm/git/"><span class="s2">http://kernel.org/pub/software/scm/git/</span></a></span><span class="s3">下载，编译源码需要先安装xcode，参考<a href="http://developer.apple.com/"><span class="s4">http://developer.apple.com</span></a>。</span></p>
+<p class="p3">编译安装</p>
+<p class="p3">1.解压</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;tar xjvf git-1.7.4.1.tar.tar.bz2</p>
+<p class="p3">2. 编译</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;cd git-1.7.4.1</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;./configure &#8211;prefix=/usr/local</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;make</p>
+<p class="p3">3.安装</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;sudo make install</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">Ok 了，which git试一下～</p>
+<p class="p5"><strong>二、设置SSH</strong></p>
+<p class="p3">github使用SSH链接，需要设置SSH</p>
+<p class="p3">1.检查SSH key</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; cd ~/.ssh</p>
+<p class="p3">2.备份已有的key，（如果有的话）</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mkdir key_backup</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mv id_rsa* key_backup</p>
+<p class="p3">3.生成SSH key</p>
+<p class="p3">$ ssh-keygen -t rsa -C <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">Generating public/private rsa key pair.</p>
+<p class="p3">Enter file in which to save the key (/Users/jiangbo/.ssh/id_rsa):&nbsp;</p>
+<p class="p3">Enter passphrase (empty for no passphrase):</p>
+<p class="p3">Enter same passphrase again:</p>
+<p class="p3">Your identification has been saved in yes.</p>
+<p class="p3">Your public key has been saved in id_rsa.pub.</p>
+<p class="p3">The key fingerprint is:</p>
+<p class="p3">fb:c4:b0:e0:47:fd:be:e0:fb:ea:73:ef:a8:29:d5:22 <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">The key&#8217;s randomart image is:</p>
+<p class="p3">+&#8211;[ RSA 2048]&#8212;-+</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . S ..&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp; . oE=o..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . +o+..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ..+.+..&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; oOB=+o&nbsp; |</p>
+<p class="p3">+&#8212;&#8212;&#8212;&#8212;&#8212;&#8211;+</p>
+<p class="p3">4.将SSH key添加到GitHub</p>
+<p class="p3">登录到GitHub页面，Account Settings-&gt;SSH Public Keys-&gt;Add another key</p>
+<p class="p3">将生成的key(id_rsa.pub文件）内容copy到输入框中，save。</p>
+<p class="p4"><img src="http://hi.csdn.net/attachment/201103/15/0_1300170843sWhI.gif" alt="" /></p>
+<p class="p3">5.测试链接</p>
+<p class="p6"><span class="s3">$ ssh <a href="mailto:git@github.com"><span class="s5">git@github.com</span></a></span></p>
+<p class="p3">The authenticity of host &#8217;<a href="http://github.com/"><span class="s5">github.com</span></a> (207.97.227.239)&#8217; can&#8217;t be established.</p>
+<p class="p3">RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.</p>
+<p class="p3">Are you sure you want to continue connecting (yes/no)? yes</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">PTY allocation request failed on channel 0</p>
+<p class="p3">Hi jiang-bo! You&#8217;ve successfully authenticated, but GitHub does not provide shell access.</p>
+<p class="p3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connection to <a href="http://github.com/"><span class="s5">github.com</span></a> closed.</p>
+<p class="p3">别担心，这是正常情况。</p>
+<p class="p5"><strong>三、设置个人信息</strong></p>
+<p class="p3">$ git config &#8211;global <a href="http://user.name/"><span class="s5">user.name</span></a> &#8220;Bo Jiang&#8221;</p>
+<p class="p3">$ git config &#8211;global user.email &#8220;jiang.bo.hit@gmail.com&#8221;</p>
+<p class="p3">&nbsp;</p>
+<p>&nbsp;</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-15T00:00:00+08:00" pubdate data-updated="true">Mar 15<span>th</span>, 2011</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/mac/'>Mac</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2011/03/10/post/" title="Previous Post: Java基础（1）－泛型">&laquo; Java基础（1）－泛型</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2011/08/02/use-mat-analysis-dump-file/" title="Next Post: 使用MAT进行dump文件分析">使用MAT进行dump文件分析 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

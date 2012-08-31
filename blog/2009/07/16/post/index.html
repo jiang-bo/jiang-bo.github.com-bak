@@ -1,0 +1,784 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android文档（一）——什么是Android? - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="<!-- [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2009/07/16/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android文档（一）——什么是Android?</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-07-16T00:00:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2009</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><!--  [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+-->
+<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:WordDocument&gt;
+  &lt;w:View&gt;Normal&lt;/w:View&gt;
+  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
+  &lt;w:PunctuationKerning /&gt;
+  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
+  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
+  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
+  &lt;w:ValidateAgainstSchemas /&gt;
+  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
+  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
+  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
+  &lt;w:Compatibility&gt;
+   &lt;w:SpaceForUL /&gt;
+   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
+   &lt;w:DoNotLeaveBackslashAlone /&gt;
+   &lt;w:ULTrailSpace /&gt;
+   &lt;w:DoNotExpandShiftReturn /&gt;
+   &lt;w:AdjustLineHeightInTable /&gt;
+   &lt;w:BreakWrappedTables /&gt;
+   &lt;w:SnapToGridInCell /&gt;
+   &lt;w:WrapTextWithPunct /&gt;
+   &lt;w:UseAsianBreakRules /&gt;
+   &lt;w:DontGrowAutofit /&gt;
+   &lt;w:UseFELayout /&gt;
+  &lt;/w:Compatibility&gt;
+  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
+ &lt;/w:WordDocument&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
+ &lt;/w:LatentStyles&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if !mso]&gt;
+&lt;object
+ classid="clsid:38481807-CA0E-42D2-BF39-B33AF135CC4D" id=ieooui&gt;
+&lt;/object&gt;
+&lt;mce:style&gt;&lt;!--
+st1/:*{behavior:url(#ieooui) }
+-->
+<!-- [endif]-->
+<!--  [if gte mso 10]&gt;
+&lt;mce:style&gt;&lt;!--
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:普通表格;
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+	mso-para-margin:0cm;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+-->
+<!-- [endif]-->
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">是一个为移动设备设计的软件栈，包括操作系统，中间件和关键应用。</span>
+<span lang="EN-US">Android SDK</span>
+<span style="font-family: 宋体;">提供了使用</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">在</span>
+<span lang="EN-US">Andorid</span>
+<span style="font-family: 宋体;">平台上开发应用所需的工具和</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">。</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">特性</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">应用框架</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">提供了组件的复用和置换</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">Dalvik</span>
+</strong>
+<strong><span style="font-family: 宋体;">虚拟机</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">针对移动设备进行了优化</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">内置浏览器</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">基于开源的</span>
+<span lang="EN-US">WebKit</span>
+<span style="font-family: 宋体;">（</span>
+<span lang="EN-US">webkit.org</span>
+<span style="font-family: 宋体;">）引擎</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">优化图形支持</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">包括自定义的</span>
+<span lang="EN-US">2D</span>
+<span style="font-family: 宋体;">图形库；</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">图形基于</span>
+<span lang="EN-US">OpenGL ES1.0</span>
+<span style="font-family: 宋体;">标准</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">SQLite</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">用于结构话的数据存储</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">多媒体支持</span>
+</strong>
+<span style="font-family: 宋体;">：支持常用的音频视频和图像格式（</span>
+<span lang="EN-US">MPEG4</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US"> H264</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">MP3</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">AAC</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">AMR</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">JPG</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">PNG</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">GIF</span>
+<span style="font-family: 宋体;">）</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">GSM</span>
+</strong>
+<strong><span style="font-family: 宋体;">技术</span>
+</strong>
+<span style="font-family: 宋体;">：依赖于具体硬件实现</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">蓝牙，</span>
+<span lang="EN-US">EDGE</span>
+</strong>
+<strong><span style="font-family: 宋体;">，</span>
+<span lang="EN-US">3G</span>
+<span lang="EN-US">,WiFi:</span>
+</strong>
+<span lang="EN-US"> </span>
+<span style="font-family: 宋体;">依赖于具体硬件</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">摄像，</span>
+<span lang="EN-US">GPS</span>
+</strong>
+<strong><span style="font-family: 宋体;">，加速：</span>
+</strong>
+<span style="font-family: 宋体;">依赖于硬件</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">丰富的开发环境</span>
+</strong>
+<span style="font-family: 宋体;">：包括设备模拟器，调试工具，内存和性能分析，以及</span>
+<span lang="EN-US">Eclipse IDE</span>
+<span style="font-family: 宋体;">插件</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">架构</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">下图显示了</span>
+<span lang="EN-US">Android OS</span>
+<span style="font-family: 宋体;">的主要组件。下面每段对各个模块进行了详细描述</span>
+</p>
+<p>&nbsp;</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;"><img src="http://p.blog.csdn.net/images/p_blog_csdn_net/JiangBo_HIT/EntryImages/20090716/system-architecture.jpg" alt="" width="713" height="512" />
+</span>
+</h3>
+<p>&nbsp;</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><!--  [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+-->
+<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:WordDocument&gt;
+  &lt;w:View&gt;Normal&lt;/w:View&gt;
+  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
+  &lt;w:PunctuationKerning /&gt;
+  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
+  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
+  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
+  &lt;w:ValidateAgainstSchemas /&gt;
+  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
+  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
+  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
+  &lt;w:Compatibility&gt;
+   &lt;w:SpaceForUL /&gt;
+   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
+   &lt;w:DoNotLeaveBackslashAlone /&gt;
+   &lt;w:ULTrailSpace /&gt;
+   &lt;w:DoNotExpandShiftReturn /&gt;
+   &lt;w:AdjustLineHeightInTable /&gt;
+   &lt;w:BreakWrappedTables /&gt;
+   &lt;w:SnapToGridInCell /&gt;
+   &lt;w:WrapTextWithPunct /&gt;
+   &lt;w:UseAsianBreakRules /&gt;
+   &lt;w:DontGrowAutofit /&gt;
+   &lt;w:UseFELayout /&gt;
+  &lt;/w:Compatibility&gt;
+  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
+ &lt;/w:WordDocument&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
+ &lt;/w:LatentStyles&gt;
+&lt;/xml&gt;&lt;![endif]-->
+<!--  [if gte mso 10]&gt;
+&lt;mce:style&gt;&lt;!--
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:普通表格;
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+	mso-para-margin:0cm;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+-->
+<!-- [endif]--><span style='font-size: 10.5pt; font-family: "Times New Roman";' lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype id="_x0000_t75" coordsize="21600,21600"
+ o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f"
+ stroked="f"&gt;
+ &lt;v:stroke joinstyle="miter" /&gt;
+ &lt;v:formulas&gt;
+  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
+  &lt;v:f eqn="sum @0 1 0" /&gt;
+  &lt;v:f eqn="sum 0 0 @1" /&gt;
+  &lt;v:f eqn="prod @2 1 2" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @0 0 1" /&gt;
+  &lt;v:f eqn="prod @6 1 2" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="sum @8 21600 0" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @10 21600 0" /&gt;
+ &lt;/v:formulas&gt;
+ &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
+ &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
+&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
+ height:278.25pt'&gt;
+ &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
+  o:title="" /&gt;
+&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
+</p>
+<p class="MsoNormal" style="text-align: center;" align="center"><span lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype
+ id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
+ path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"&gt;
+ &lt;v:stroke joinstyle="miter" /&gt;
+ &lt;v:formulas&gt;
+  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
+  &lt;v:f eqn="sum @0 1 0" /&gt;
+  &lt;v:f eqn="sum 0 0 @1" /&gt;
+  &lt;v:f eqn="prod @2 1 2" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @0 0 1" /&gt;
+  &lt;v:f eqn="prod @6 1 2" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="sum @8 21600 0" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @10 21600 0" /&gt;
+ &lt;/v:formulas&gt;
+ &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
+ &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
+&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
+ height:278.25pt'&gt;
+ &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
+  o:title="" /&gt;
+&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">封装了一组核心应用，包括</span>
+<span lang="EN-US">Email</span>
+<span style="font-family: 宋体;">客户端，</span>
+<span lang="EN-US">SMS</span>
+<span style="font-family: 宋体;">应用，日历，地图，浏览器，联系人和其他应用。所有的应用都是有</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">编写。</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用框架</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">开发者能够访问所有核心应用所使用的框架</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">。应用架构被设计成简洁的组建复用；任何应用发布本身的兼容性，任何其他的应用都可一利用这些兼容性（遵循框架的安全原则）。这种机制使得组建可以被其它用户置换。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">应用之下是一系列服务和系统，包括：</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
+<strong><span style="font-family: 宋体;">丰富的可扩展的视图（</span>
+<span lang="EN-US">View</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span style="font-family: 宋体;">集合可以被用来构建应用，包括</span>
+<span lang="EN-US">lists, grids, text
+boxes,buttons,</span>
+<span style="font-family: 宋体;">以及嵌入式浏览器</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2.</span>
+<strong><span style="font-family: 宋体;">内容提供者</span>
+<span lang="EN-US">(Content Providers)</span>
+</strong>
+<span style="font-family: 宋体;">能够是应用访问来自其他应用的数据，例如联系人（</span>
+<span lang="EN-US">Contacts</span>
+<span style="font-family: 宋体;">）</span>
+<span lang="EN-US">,</span>
+<span style="font-family: 宋体;">或者与其他应用共享数据</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">3<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">资源管理器（</span>
+<span lang="EN-US">Resource Manager)</span>
+</strong>
+<span style="font-family: 宋体;">，支持访问非代码资源，例如本地字符，图像，布局文件</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4.</span>
+<strong><span style="font-family: 宋体;">消息管理器（</span>
+<span lang="EN-US">Notification Manager</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span style="font-family: 宋体;">使得应用能够在状态栏中显示自定义的警告</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">5<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">活动管理器（</span>
+<span lang="EN-US">Activity Manager)</span>
+</strong>
+<span lang="EN-US"> </span>
+<span style="font-family: 宋体;">管理应用的生命周期，提供通用的导航返回栈。</span>
+</p>
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">库</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">包括了一组被各个组件使用</span>
+<span lang="EN-US">C/C++</span>
+<span style="font-family: 宋体;">库。这些兼容性通过</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">应用框架暴露给开发者。下面列出一些核心库：</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
+<strong><span style="font-family: 宋体;">系统</span>
+<span lang="EN-US">C</span>
+</strong>
+<strong><span style="font-family: 宋体;">库（</span>
+<span lang="EN-US">System C
+library</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">一个基于</span>
+<span lang="EN-US">BSD</span>
+<span style="font-family: 宋体;">实现的标准</span>
+<span lang="EN-US">C</span>
+<span style="font-family: 宋体;">系统库（</span>
+<span lang="EN-US">libc</span>
+<span style="font-family: 宋体;">），支持嵌入式</span>
+<span lang="EN-US">linux</span>
+<span style="font-family: 宋体;">的所有设备。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">多媒体库（</span>
+<span lang="EN-US">Media Libraries</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">PacketVideo</span>
+<span style="font-family: 宋体;">的</span>
+<span lang="EN-US">OpenCORE</span>
+<span style="font-family: 宋体;">；这个库支持播放和录制多种流行视频和音频格式，包括静态图像格式。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.</span>
+</strong>
+<strong><span style="font-family: 宋体;">表面管理器（</span>
+<span lang="EN-US">Surface Manager</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">管理访问显示子系统与多种应用的</span>
+<span lang="EN-US">2D</span>
+<span style="font-family: 宋体;">和</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">图形层无缝连接。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.LibWebCore-</span>
+</strong>
+<span style="font-family: 宋体;">一个现代的</span>
+<span lang="EN-US">web</span>
+<span style="font-family: 宋体;">浏览器引擎，支持</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">浏览器和嵌入式</span>
+<span lang="EN-US">Web</span>
+<span style="font-family: 宋体;">视图。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4<strong>.SGL-</strong>
+</span>
+<strong><span style="font-family: 宋体;">底层的</span>
+<span lang="EN-US">2D</span>
+</strong>
+<span style="font-family: 宋体;">图形引擎。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">5.3DLibraries</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">OpenGL ES1.0</span>
+<span style="font-family: 宋体;">实现的</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">；该库使用</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">硬件加速（如果硬件支持）或这高度优化的软件渲染。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">6.FreeType</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">位图和向量字体渲染。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">7.SQLite</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">一个强大的轻量级关系数据库引擎，可以被所有应用使用</span>
+</p>
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">运行时环境</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Anroid</span>
+<span style="font-family: 宋体;">包括一系列的核心库，这些库提供了绝大多数</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">核心库所需的功能。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">每个</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">应用是一个独立运行的进程，在</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">虚拟机中有独立的例程。</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">被实现用于在一个设备上有效的运行多个虚拟机。</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">虚拟机的可执行文件</span>
+<span lang="EN-US">Dalvik Executeable(.dex)</span>
+<span style="font-family: 宋体;">被优化的占用最小的内存空间。虚拟机以注册为基础，</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">类编译的字节码被</span>
+<span lang="EN-US">dx</span>
+<span style="font-family: 宋体;">工具优化为</span>
+<span lang="EN-US">.dex</span>
+<span style="font-family: 宋体;">文件。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Dalvik VM</span>
+<span style="font-family: 宋体;">底层依赖于</span>
+<span lang="EN-US">Linux</span>
+<span style="font-family: 宋体;">内核，</span>
+<span lang="EN-US">linux</span>
+<span style="font-family: 宋体;">内核为其提供线程和低级内存管理。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">&nbsp;</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Linux</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">内核</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">Linux2.6</span>
+<span style="font-family: 宋体;">内核所提供的服务，包括安全，内存管理，进程管理，网络堆栈，以及驱动模型。内核同时扮演了一个介于硬件和其余软件栈之间的一个抽象层。</span>
+</p>
+<p>&nbsp;</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-07-16T00:00:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2009</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2009/06/29/post/" title="Previous Post: ［转载］20年嵌入式领域开发经验精华">&laquo; ［转载］20年嵌入式领域开发经验精华</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2009/08/19/post/" title="Next Post: [转]Alexandru Popescu谈InfoQ.com网站架构">[转]Alexandru Popescu谈InfoQ.com网站架构 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

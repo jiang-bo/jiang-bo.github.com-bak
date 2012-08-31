@@ -1,0 +1,448 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>在Spring中使用Quartz - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="Spring 提供了几个帮助类用于在应用中做调度，包括JDK Timer类和OpenSymphony Quartz Scheduler两种. Quartz基础 Quartz包括五种主要结构用于实现调度： Job接口
+JobDetail类
+Trigger 抽象类
+Scheduler接口 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2010/10/18/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">在Spring中使用Quartz</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-10-18T00:00:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2010</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>	Spring 提供了几个帮助类用于在应用中做调度，包括JDK Timer类和OpenSymphony Quartz Scheduler两种.</p>
+<h3><a name="在Spring中使用Quartz-Quartz基础"></a>
+
+Quartz基础	</h3>
+<p>	Quartz包括五种主要结构用于实现调度：</p>
+<ul>
+<li>Job接口</li>
+<li>JobDetail类</li>
+<li>Trigger 抽象类</li>
+<li>Scheduler接口</li>
+<li>SchedulerFactory 接口</li>
+</ul>
+<p>	Job接口表示一个作业(job)。一个作业专注做一件事。它的API非常简洁。只有一个execute方法，该方法在作业被执行时有Quartz调度。该方法有一个JobExecuteContext参数，可以通过该参数给execute()方法传递有用信息。</p>
+<p><pre class="brush: java">public interface Job{
+    void execute(JobExecuteContext ctx);
+}</pre>
+</p>
+<p>一些数据可以通过JobDataMap传递给作业。如果一个JobDataMap被注册到JobDetail中，就能够在作业中通过
+JobExecuteContext来访问。JobDetail用来描述一个特定Job的信息。Job通过触发器（Trigger）触发。Quartz提
+供了集中Trigger的实现，如SimpleTrigger和CronTrigger。SimpleTrigger类似一个简单时钟，你可以定义开始是
+建，结束时间，重复次数，重复周期。CronTrigger类似Linux系统中的cron。CronTrigger的设置可以非常详细，如在每个月最后
+一个周五的上午10:15执行作业。需要注意的是Trigger和Job是具名的，可以被赋值给一个组，在同一组内不能出现同名。你可以对一个组创建一个
+触发器，在该组内的所有Job都将会执行。<br />
+
+	SchedulerFactory 用于获得Scheduler实例，可以用于注册作业和触发器。<br />
+
+	实现一个简单的实例：每十秒钟打印一次欢迎。<br />
+
+	首先实现一个作业：</p>
+<p><pre class="brush: java">public class SimpleJob implements Job {
+	@Override
+	public void execute(JobExecutionContext arg0)
+	throws JobExecutionException {
+		System.out.println(&quot;[JOB] Welcome to Quartz!&quot;);
+	}
+}</pre>
+</p>
+<p>定义一个Scheduler，注册触发器和作业:</p>
+<p><pre class="brush: java">public class SimpleSchedule {
+	public static void main(String[] args) {
+		SchedulerFactory factory=new StdSchedulerFactory();
+		try {
+			Scheduler scheduler = factory.getScheduler();
+			scheduler.start();
+										            
+			JobDetail jobDetail = new JobDetail(&quot;SimpleJob&quot;,null, SimpleJob.class);
+			Trigger simplerTrigger = TriggerUtils.makeSecondlyTrigger(10);
+			simplerTrigger.setName(&quot;SimpleTrigger&quot;);
+										            
+			scheduler.scheduleJob(jobDetail, simplerTrigger);
+		}catch (SchedulerException e) {
+		    // TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+}</pre>
+</p>
+<p>执行过后，每十秒输出<span class="nobr">[JOB]</span>
+
+Welcome to Quartz!</p>
+<h3>Spring中的Quartz</h3>
+<p>	Spring中的Quartz API位于org.springframework.scheduling.quartz包中。主要类结构包括：</p>
+<ul>
+<li>QuartzJobBean 抽象类</li>
+<li>JobDetailBean</li>
+<li>SimpleTriggerBean</li>
+<li>CronTriggerBean</li>
+<li>SchedulerFactoryBean</li>
+<li>MethodInvokingDetailFactoryBean
+</li>
+</ul>
+<p>
+很明显对应实现Quartz中相应的接口。QuartzJob实现Job，JobDetailBean继承JobDetail。
+SimpleTriggerBean和CronTriggerBean继承自相应的Trigger。
+MethodInvokingJobDetailFactoryBean用于在类中调用任何对象的方法。<br />
+<strong>声明Job
+</strong>
+</p>
+<p>JobDetailBean用于声明作业。可以为其设置作业名，以及需要的数据。</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleJob&quot; class=&quot;org.springframework.scheduling.quartz.JobDetailBean&quot;&gt;
+	&lt;property name=&quot;jobClass&quot; value=&quot;com.alibaba.jiang.learn.quartz.SimpleJob&quot; /&gt;
+	&lt;property name=&quot;jobDataAsMap&quot;&gt;
+		&lt;map&gt;
+			&lt;entry key=&quot;message&quot; value=&quot;Welcome to Quartz&quot; /&gt;
+		&lt;/map&gt;
+	&lt;/property&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>实现Job类：</p>
+<p><pre class="brush: java">public class SimpleJob extends QuartzJobBean {
+	@Override
+	protected void executeInternal(JobExecutionContext ctx) throws JobExecutionException {
+		String message = ctx.getJobDetail().getJobDataMap().getString(&quot;message&quot;);
+		System.out.println(message);
+	}
+}</pre>
+</p>
+<p>还可以通过setter注入的方式注入message。<br />
+声明触发器：</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
+	&lt;property name=&quot;jobDetail&quot; ref=&quot;simpleJob&quot;/&gt;
+	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
+	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>声明调度器,设置Job和Trigger：</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;schedulerFactory&quot; class=&quot;org.springframework.scheduling.quartz.SchedulerFactoryBean&quot;&gt;
+	&lt;property name=&quot;triggers&quot;&gt;
+		&lt;list&gt;
+			&lt;ref bean=&quot;simpleTrigger&quot;/&gt;
+		&lt;/list&gt;
+	&lt;/property&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>所有都设置好后，可以通过加载Context，调度器将自动执行：</p>
+<p><pre class="brush: java">public class SimpleSpringQuartz {
+	public static void main(String[] args) {
+		ApplicationContext ctx = new ClassPathXmlApplicationContext(&quot;beans.xml&quot;);
+	}
+}</pre>
+</p>
+<h4>使用MethodInvokingJobFactoryBean</h4>
+<p>上面的范例使用的是Quartz Job，事实上在Spring中可以使用自定义Pojo Bean，无须继承自QuartzJobBean。<br />
+首先声明一个PojoBean</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;welcomeBean&quot; class=&quot;com.alibaba.jiang.learn.quartz.WelcomeBean&quot;&gt;
+	&lt;property name=&quot;message&quot; value=&quot;Welcome to Quartz Method&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>对应的Pojo Bean：</p>
+<p><pre class="brush: java">public class WelcomeBean {
+    private String message;
+	public void setMessage(String message) {
+		this.message = message;
+	}
+	public void welcome(){
+		System.out.println(message);
+	}
+}</pre>
+</p>
+<p>声明MethodInvokingJobDetailFactoryBean:</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;methodInvokingJob&quot; class=&quot;org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean&quot;&gt;
+	&lt;property name=&quot;targetObject&quot; ref=&quot;welcomeBean&quot;/&gt;
+	&lt;property name=&quot;targetMethod&quot; value=&quot;welcome&quot;/&gt;
+&lt;/bean&gt;
+&lt;bean name=&quot;methodTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
+	&lt;property name=&quot;jobDetail&quot; ref=&quot;methodInvokingJob&quot; /&gt;
+	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
+	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<h4>注意</h4>
+<p>一个触发器只能触发一个Job，不过一个Job可以有多个Trigger触发，这回带来并发问题。在Quartz中，如果你不想并发执行一个同一个
+Job，你可以实现StatefulJob，而不是Job。在Spring中如果使用
+MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&quot;属性来实现。</p>
+<h3><a name="在Spring中使用Quartz-尾注"></a>
+尾注</h3>
+<p>在Spring中使用Quartz而不是单独的一个应用的好处包括：</p>
+<ul>
+<li>将所有的任务调度设置放在同一个地方，是任务易于维护。</li>
+<li>只对Job编码，Trigger和Scheduler可以通过配置设置</li>
+<li>可以使用Pojo Java Bean执行job，而无需实现Job接口</li>
+</ul></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-10-18T00:00:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2010</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/spring/'>Spring</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2010/09/06/post/" title="Previous Post: DBunit入门">&laquo; DBunit入门</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2010/10/26/post/" title="Next Post: Linux启动过程分析">Linux启动过程分析 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

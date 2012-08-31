@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Linux | 非纯种程序猿]]></title>
   <link href="http://jiangbo.me/blog/categories/linux/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-08-31T19:54:58+08:00</updated>
+  <updated>2012-08-31T23:56:35+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -37,122 +37,372 @@ set fileencodings=utf-8,gbk,gb2312</p>
   </entry>
   
   <entry>
-    <title type="html"><![CDATA[Zero-Copy&sendfile浅析]]></title>
-    <link href="http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile/"/>
-    <updated>2011-07-16T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile</id>
-    <content type="html"><![CDATA[<p><strong>一、典型IO调用的问题</strong>
-一个典型的web服务器传送静态文件（如CSS，JS，图片等）的过程如下：
-<em>
-read(file, tmp_buf, len);<br />
-write(socket, tmp_buf, len);</em></p>
+    <title type="html"><![CDATA[AWK学习笔记]]></title>
+    <link href="http://jiangbo.me/blog/2010/12/13/post/"/>
+    <updated>2010-12-13T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2010/12/13/post</id>
+    <content type="html"><![CDATA[<p>
+</p>
 
 
+<p><em>by BoBo</em></p>
 
 
-<p>首先调用read将文件从磁盘读取到tmp_buf，然后调用write将tmp_buf写入到socket，在这过程中会出现四次数据 copy，过程如图1所示</p>
+<p><em></em><br /><strong><span>一点历史</span></strong><br />&nbsp;&nbsp;&nbsp; AWK上世纪70年代诞生于传奇的Bell实验室，名字取于它的三位发明人，Alfred Aho, Peter Weinberger和 Brian Kernighan名字的首字母。发音类似《The AWK Programing Language》封面上的海雀（一种海鸟）的英文发音(auck[ɔ:k])。AWK最早出现在Unix V7中，Linux诞生后，AWK被LSB纳入其中，这意味者所有的Linux发行版都会提供awk的实现。目前linux上广发使用的是GNU实现的gawk，此外还有nawk，mawk，pgawk等版本。这些实现在AWK的语言规范基础上，扩展了一些其他功能，本文只关心最基础最通用的AWK规范，不探究相关实现的具体实现区别，欲知详情，请查看相关实现的手册。<br />以下是其中一位创始人Alfred V.Aho对AWK的描述。<br />&nbsp;&nbsp;&nbsp;&nbsp;<em>AWK is a language for processing files of text. A file is treated as a sequence of records, and by default each line is a record. Each line is broken up into a sequence of fields, so we can think of the first word in a line as the first field, the second word as the second field, and so on. An AWK program is of a sequence of pattern-action statements. AWK reads the input a line at a time. A line is scanned for each pattern in the program, and for each pattern that matches, the associated action is executed.&amp;quot; - Alfred V.Aho</em><br />尊重原文，不翻译。<br /><br /><strong><span>瞟一眼</span></strong><br />准备一份数据文件datafile<br /><br />Nike  green   X   10  10.00<br />Nike blue    XL  10  10.00<br />Nike red  L  10  12.00<br />Adiddas  yellow  L   10  10.00<br />Adiddas  brown   M   10  10.00<br />Adiddas  gray    M   20  8.00<br /><br />打开终端，执行<br /><br /><span><span><strong>awk '/Nike/ {print $2}' datafile</strong><br /></span></span><br />输出<br /><br />green<br />blue<br />red<br /><br />解释下:<br />awk表示AWK解析器命令<br />两个'之间的部分表示这次执行的命令行脚本,其中/Nike/叫模式pattern,{print $2}叫操作action，print表示打印，$2表示每一记录中的第2个域。<br />datafile表示输入文件。<br />整个命令的意思表示：<br />对datafile中所有匹配Nike的行，执行print $2操作，打印含有Nike行中的第二个被空白符隔开的字段。<br />晕了么？来看点概念的解释吧:)<br /><br /><strong><span>一些枯燥的概念</span></strong><br /><strong>输入文件：</strong>待处理的数据文件datafile，每个输入文件为多个记录的集合<br /><strong>记录分割符：</strong>将输入文件划分为多个记录的符号，默认为'/n'<br /><strong>记录：</strong>默认数据文件中的每一行，如&amp;quot;Nike&nbsp;&nbsp;&nbsp; green&nbsp;&nbsp; X&nbsp;&nbsp; 10&nbsp; 10.00&amp;quot;，每个记录是多个域的集合<br /><strong>域分隔符：</strong>将每个记录划分为多个域的符号，默认为空白符<br /><strong>域：</strong>记录被域分割符划分后的单元，每个输入文件中的最小处理单元。如Nike， green，X，10，10.00分别为第一个记录的第1，2，3，4，5个域（注意，这里不是从0开始计数的）<br /><strong>Buffer：</strong>AWK中支持两种Buffer，域buffer和记录buffer<br />record buffer:表示整条记录，可以通过$0获取<br />field buffer:当前记录中的每一个field，可以通过$1,$2,$3获取。<br /><strong>内置变量：</strong><br />FS:Field separator，域分隔符，默认为空白符<br />RS:Record Separator，记录分隔符，默认为换行符<br />NF:Number of Fields in current record，当前记录中的域数<br />NR:Number of the current Record，当前的记录数<br />OFS:Output Field Separator，输出域分隔符，默认为空白符<br />ORS:Output Record Separator，输出记录分隔符，默认为换行符<br />FILENAME: Current filename，当前输入文件名<br /><br />针对一个awk命令行</p>
 
 
+<p><span><span><strong>awk 'pattern {action}' datafile</strong></span></span><br />awk的执行流程：<br />1.读取：awk会按行读取输入文件(Line by Line)<br />2.切分：将输入行划分为多个域<br />3.匹配：根据pattern匹配<br />4.执行：对匹配的行执行action<br /><br /><strong><span>命令行</span></strong><br />AWK的命令行语法有两种形式</p>
 
 
-<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_1.jpg"><img class="alignnone size-medium wp-image-6" title="图1" src="http://jiangbo.me/images/uploads/2011/07/pic_1-300x230.jpg" alt="" width="300" height="230" /></a></p>
+<p><br />awk [options] -f program-file file...<br />awk [options] 'program-text' file...</p>
 
 
+<p><br />前者通过-f参数指定使用后面的名为program-file的文件作为AWK脚本处理输入文件file<br />后者表示 program-text是一段AWK命令行脚本，用于处理输入文件file.<br />options表示参数可选项，具体参数列表请参考相关手册。<br />基本语法：<br />当通过awk [options] 'program-text' file...方式执行awk时，program-text表示一段脚本。AWK的命令行脚本由模式和操作两部分组成：<br />pattern {action}，表示对输入文件中所有匹配pattern的行，执行action操作。<br />缺少pattern时，默认对输入文件中所有行执行action<br />缺少action时，默认向标准输出打印所有匹配pattern的行<br />两者都没有时，不进行任何操作。</p>
 
 
-<p>图1</p>
+<p><br /><strong><span>例子：</span></strong><br />awk '/for/ {print $1}'<strong>&nbsp;&nbsp; &nbsp;</strong>datafile 表示打印datafile中所有匹配含有for的行的第一个域（关于域，请看下文）<br />awk '/for/' &nbsp; &nbsp;datafile 表示打印datafile中所有包含for的行<br />awk '{print}' &nbsp; &nbsp;datafile 表示打印datafile中所有行<br /><br /><strong><span>模式pattern:</span></strong></p>
 
 
+<p><strong></strong>pattern分为Simple pattern和Range pattern两大类。<br /><strong><span>Simple Pattern</span></strong>包括：<br />a.BEGIN:标示对输入文件进行处理之前<br />b.END:标示对输入文件完成处理之后<br />c.EXPRESSION:表达式，包括正则表达式，算数表达式，逻辑表达式<br />d.NOTHING:什么都没有，表示无pattern，默认匹配所有行<br /><strong>Expression Pattern：</strong><br />正则表达式/regx/：<br />通过两个/标记的pattern为正则表达式，如/^bi/匹配所有以bi开始的记录，正则表达式语法与grep语法类似，不再赘述，请查看相关手册。<br />需要注意的是 ~/regx/表示不匹配，如~/^bi/表示不是以bi开始的所有记录。<br />算数表达式：<br />模式$3*$4&amp;gt;100 表示匹配所有$3与$4的积大于100的记录，类似的算数操作符还包括：<br />逻辑表达式：<br />模式 $NR&amp;gt;2 &amp;amp;&amp;amp; /^bi/ 表示匹配所有行数大于2以bi开头的的行， &amp;amp;&amp;amp;表示逻辑与<br /><br /><strong><span>Range Pattern</span></strong><br />Range Pattern用于匹配输入行中一个连续的区域，其语法由两个Simple Pattern构成：<br />pattern1, pattern2 {action}<br />pattern1表示从第一个匹配pattern1的行开始，执行action操作。<br />pattern2表示从第一个匹配pattern2的行开始，停止执行action操作。<br /><strong><span>例子：</span></strong><br /><br /><span>awk '/blue/,/yellow/ {print}' datafile</span></p>
 
 
-<p>1。当调用read系统调用时，通过DMA（Direct Memory Access）将数据copy到内核模式<br />
-2。然后由CPU控制将内核模式数据copy到用户模式下的 buffer中<br />
-3。read调用完成后，write调用首先将用户模式下 buffer中的数据copy到内核模式下的socket buffer中<br />
-4。最后通过DMA copy将内核模式下的socket buffer中的数据copy到网卡设备中传送。</p>
+<p><br />表示从datafile中第一匹配blue的行开始执行print操作，打印整行，到第一个匹配yellow的行为止，停止打印。<br /><br /><span>awk '$NR==2, $NR==10 {print}' datafile</span><br /><br />表示打印datafile中的第2～10行。<br /><br /><strong><span>操作Action</span></strong><br />Action语句分为：表达式，输出，判断，循环，和控制语句。<br /><strong><span>表达式</span></strong><br />作为一门编程语言，AWK与其他语言一样，有变量，运算符，可以进行表达式计算。<br /><strong><span>变量</span></strong><br />AWK是弱类型的，变量无须声明，且第一次引用后就一直存在。所有的变量都被初始化为空字符串。变量名必须以字母开头，可以包含字母，数字和下划线。AWK支持三类变量，数字，字符串，数组。<br />需要特殊说明的是数组，数组只支持一维，且索引可以是数字也可以是字符串（因此我更倾向于它是个map）。可以通过<br /><br />delete arr[index]<br /><br />删除数组arr中index元素<br /><br /><strong><span>赋值操作符</span></strong><br />=    assign result of right-hand-side expression to left-hand-side variable<br />++ Add 1 to variable<br />--    Subtract 1 from variable<br />+=   Assign result of addition<br />-=    Assign result of subtraction<br />*=    Assign result of multiplication<br />/=     Assign result of division<br />%=  Assign result of modulo<br />^=  Assign result of exponentiation<br /><strong><span>输出语句</span></strong><br />AWK中有三种用于输出的内置函数：<br />print   直接输出到终端<br />printf   格式化输出到终端（与C中的printf类似）<br />sprintf   格式化字符串（与C中不同的是，通过返回值方式返回新的字符串）<br />可以通过输出重定向将输出打印到其他地方：<br />&amp;gt; &amp;quot;file&amp;quot;  清空file，并打印输出到file<br />&amp;gt;&amp;gt; &amp;quot;file&amp;quot;  将输出追加到file末尾<br />| &amp;quot;command&amp;quot; 管道符，将输出作为command命令的输入。<br /><br /><strong><span>条件判断</span></strong><br /><strong>if-else语法：</strong><br /><br />if (条件语句)<br />执行语句1<br />else<br />执行语句2<br /><br /><strong>例子:</strong><br /><br /><span>if(NR&lt;3)<br />print $2<br />else<br />print $3</span><br /><br /><span>循环</span><br /><strong><span>for循环</span></strong><br /><strong>语法<br /></strong><br />for(初始条件;限制条件;条件更新)<br />执行语句<br /><br /><strong>例子</strong><br /><br /><span>for(i=1; i&lt;NR; i++)<br />{<br />total +=$i;<br />count++<br />}</span><br /><br /><span><strong>do-while循环</strong></span><br /><strong>语法</strong><br /><br />do<br />执行语句<br />while(条件)<br /><br /><strong>例子</strong><br /><br /><span>i=1<br />do {<br />print $0<br />i++<br />} while (i&lt;=10)</span><br /><br />AWK同样支持break,continue两个循环控制语句。<br /><br /><span><strong>脚本编程</strong></span><br />上文主要讲述了命令行下，AWK可以进行操作的基本知识，事实上，AWK作为一种编程语言，可以独立写成脚本文件，采用<br /><br /><span>awk [options] -f script-file inputfile...</span><br /><br />的方式执行。<br />通常一个awk包含三段式基本结构<br /><br />--------BEGIN区----------<br />|   BEGIN {初始化操作 } |<br />--------命令执行----------<br />|   pattern {action} &nbsp; &nbsp; &nbsp; |<br />|  ...<br />|  pattern {action} &nbsp; &nbsp; &nbsp; |<br />---------END区-----------<br />|  EDN &nbsp;{结尾操作} &nbsp; &nbsp; &nbsp; |<br />----------------------------<br />BEGIN语句进行文件处理前的初始化操作，如定义FS，定义变量值等。该语句在一次文件处理过程中只在处理前执行一次<br />中间的命令执行是对每一个输入记录都进行的操作，语法与上述的基础语法一样<br />END区只在文件处理完成后执行一次。<br />例子<br /><br /><span><span>BEGIN { FS=: }<br />/for/ {print $2}<br />END {print "this is end!" }</span><br /></span><br />先定义域分隔符为":"，然后对所有匹配for的记录，打印第2个域，文件处理完后打印"this is end!"<br /><br /><span><span><strong>内置函数</strong></span></span><br />AWK提供一些内置函数。<br />字符串内置函数：<br />sub (regex, substr), 使用substr替换匹配自左向右做大匹配regex的部分。<br />gsub (regex,substr), 与sub类似，只是在全文中进行替换<br />length(string), 获取string字符串的长度<br />toupper(string), 将string转换为大写<br />tolower(string), 将string转换为小写<br />split(string, array, field separator), 将string以field separator为分隔符分割为数组存储到array中。<br />以上只是常用的一些内置函数，其他请参考相关手册<br /><br /><span><strong>示例</strong></span><br />分析日志，现有一份日志pic.log，格式如下，需要提取出其中的url链接<br /><br />INFO 10/18/2010 00:00:05--offerId=[836952303]. url=[http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br />INFO 10/18/2010 00:00:05--offerId=[836952303]. url=[http://fb.images22.51img1.com/6000/hw3255311/bfe077567231f7d8efae4a1ac1b19477.jpg].<br />INFO 10/18/2010 00:00:05--offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br />INFO 10/18/2010 00:00:05--offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br /><br /><strong><span>脚本</span></strong><br /><br /><span>awk -F "[" '{split($3, url, "]");print url[1]}' pic.log</span><br /><br />通过 -F ":"定义域分隔符为"[",这样每行数据会被划分为三个域<br /><br />INFO 10/18/2010 00:00:05--offerId=  --[-- 836952303]. url=  --[-- http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br /><br />所需要提取的url位于第三个域中，通过内置函数<br /><br /><span>split($3, url, "]")</span><br /><br />将第三个域以"]"分割，存储到url数组中，url数组为["http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg", "."]<br />url[1]即为所需的url<br /><br /><strong><span>参考资料</span></strong><br />a. man awk<br />b. AWK wiki，http://en.wikipedia.org/wiki/AWK<br />c.《AWK学习笔记》http://man.lupaworld.com/content/manage/ringkee/awk.htm</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Linux启动过程分析]]></title>
+    <link href="http://jiangbo.me/blog/2010/10/26/post/"/>
+    <updated>2010-10-26T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2010/10/26/post</id>
+    <content type="html"><![CDATA[<h3>史前时代：BIOS-计算机的启动过程</h3>
 
 
+<ol>
+<li><strong>加电</strong>
+ 
+电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
+这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令，跳到真正BIOS启动代码除。</li>
+<li><strong>自检</strong>
+ BIOS启动代码首先进行POST（Power-On Self 
+Test，上电自检），POST的主要任务是检测系统中一些关键设备是否存在和能否正常工作， 
+例如内存和显卡等。如果系统BIOS在POST过程中发现致命错误，如未找到内存或内存有问题（640K内的常规内存），系统会直接控制喇叭报告错误，声
+音的长短和次数代表错误的类型。</li>
+<li><strong>设备初始化</strong>
+ 
+POST完成后BIOS会查找显卡的BIOS，存放显卡BIOS的ROM芯片的起始地址通常设在0xC0000处，找到显卡BIOS后，调用其初始代码，
+由显卡BIOS来初始化显卡， 
+此时多数显卡会在屏幕上显示出一些初始化信息，介绍生产厂商，图形芯片等内容。类似地，BIOS会查找其它设备的BIOS程序，调用这些BIOS内部的初
+始化代码来初始化相关设备。</li>
+<li><strong>测试设备</strong>
+ 
+查找完所遇其它设备的BIOS之后，系统BIOS将显示自己的启动画面，其中包括系统BIOS类型，序列号和版本号等内容。接着BIOS将检测和显示
+CPU的类型和工作频率，然后开始测试所有的RAM，并同时在屏幕上显示内存测试的进度。 
+内存测试通过后，系统BIOS将开始检测系统中安装的一些标准硬件设备，包括硬盘，光驱，串口，并口，软驱等，另外绝大多数较新版本的BIOS在这一过程
+中回自动检测和设置内存的定时参数，硬盘参数和配置系统中安装的即插即用设备，没找到一个设备之后，BIOS会在屏幕上显示出设备的名称和型号等信息，同
+时为该设备分配中断，DMA通道和I/O端口。</li>
+<li><strong>更新ESCD</strong>
+ 
+所有硬件检测配置完毕后，多数BIOS会重新清屏，并在屏幕上方显示出一个表格，其中概略的列出系统中安装的各种标准硬件设备，以及他们使用的资源和一些
+相关工作参数。接下来系统BIOS将更新ESCE（Extended System Configration Data， 
+扩展系统配置数据）。ESCD是系统BIOS用来与操作系统交换硬件配置信息的一种手段，这些数据被存放在CMOS（Complementary 
+metal oxide Semiconductor,互补金属氧化物半导体）之中。</li>
+<li><strong>启动操作系统</strong>
+ 
+ESCD更新完毕后，系统BIOS的启动代码将进行他的最后一项工作，即根据用户指定的启动顺序从软盘，硬盘或光驱启动操作系统。系统BIOS将启动盘的
+第一个扇区读入到内存的0x7C00除，并检查0x7dfe地址的内存，如果其内容是0xaa55，跳转到0x7c00处执行MBR（Master 
+Boot 
+Record，主引导记录），MBR从分区表中找到第一个活动分区，按照类似方式读取并执行这个活动分区的引导扇区，该引导扇区负责读取并执行
+bootloader（windows下C盘中的NTLDR），由bootloader加载系统内核</li>
+</ol>
 
 
-<p>从上面的过程可以看出，数据白白从内核模式到用户模式走了一 圈，浪费了两次copy，而这两次copy都是CPU copy，即占用CPU资源。</p>
+<h3><a name="Linux启动过程-远古时代：Bootloader"></a>
+远古时代：Bootloader</h3>
 
 
+<p> 引导装入程序（Bootloader）是BIOS将操作系统内核映像装载到RAM中执行的第一个程序。<br />
+    软盘启动与磁盘启动过程稍有不同，软盘启动时，BIOS将启动软盘的第一扇区指令装载到RAM中，由于通常现代内核都大于一个扇区大小(512B)，因此第一扇区的指令通常是将包含内核映像的扇区加载到RAM中。<br />
+    从硬盘启动时，硬盘的第一个扇区MBR中包含分区表和一小段程序，这段小程序用来装载被启动的操作系统所在分区的第一个扇区。Win98采用MBR中的小程序加载操作系统内核，而Linux在用一种更灵活的加载方式，bootloader。<br />
+    Linux2.4及以前的版本，在第一个512字节有一个最小的引导程序，因此在第一扇区拷贝一个内核镜像就可以使软盘启动，但在2.6内核中不再有该引导程序，要想在软盘中启动，必须采用与磁盘类似的方式，在第一个扇区中装入一个引导程序。<br />
+    
+Bootloader通常被安装在MBR上代替上面负责引导的小程序。Bootloader通常由于大于一个扇区，会被分为两部分，在BIOS将
+Bootloader的第一部分加载到RAM的0x00007c00处开始执行，bootloader自己加载到0x00096a00，建立实模式站
+(0x00098000~0x000969ff),并将bootloader的第二部分装入到0x00096c00开始的RAM中。<br />
+    第二部分一次从此版读取操作系统映射表，提示给用户，用户可以选择要启动的系统，引动程序将相应分区的引导扇区拷贝到RAM中并执行，或直接将内核拷贝到RAM中。<br />
+    Bootloader的主要执行过程：</p>
+
+
+<ol>
+<li>调用BIOS输出&quot;Loading...&quot;</li>
+<li>调用BIOS从磁盘装入内核映像的第一个扇区(512B)，从0x00090000装入RAM，并将setup()函数的代码从0x00090200开始装入RAM。</li>
+<li>调用一个BIOS从磁盘装入其余内核映像，并把内核映像放入从0x00010000(低装载，适用于make zImage的小内核映像）或0x00100000(高装载，make bzImage的大内核映像）</li>
+<li>跳转执行setup()</li>
+</ol>
+
+
+<h3><a name="Linux启动过程-奴隶社会：setup()"></a>
+奴隶社会：setup()</h3>
+
+
+<p> setup()函数有汇编实现放在内核映像文件的偏移量0x200处，bootloader将其装载到0x00090200开始的RAM中。<br />
+    setup()函数的主要工作是初始化计算机中的硬件设备，并为内核程序的执行建立环境。尽管BIOS已经完成大部分设备的初始化，但是Linux并不依赖与BIOS，而已自己的方式重新初始化设备，以增强可移植性和健壮性。<br />
+    @TO-DO setup()过程</p>
+
+
+<h3><a name="Linux启动过程-封建社会：startup32()"></a>
+封建社会：startup_32()</h3>
+
+
+<p> 
+存在两个startup_32函数，setup()的最后是跳转执行的是arch/i386/boot/compressed/head.S中的
+startup_32()，此时startup_32已经被移动到0x00100000或0x00001000，对应于高装载或低装载。该函数的主要工作
+是解压内核。<br />
+    解压完的内核映像从arch/i386/kernel/head.S开始执行。该文件中包含另一个startup_32函数。改startup_32为Linux的第一个进程(pid=0)建立执行环境。<br />
+    @TO-DO startup_32()过程</p>
+
+
+<h3><a name="Linux启动过程-民国时代：startkernel()"></a>
+民国时代：start_kernel()</h3>
+
+
+<p> startup_32函数最后回跳转执行start_kernel()，start_kernel完成内核初始化工作。start_kernel开始执行后会显示&quot;Linux version 2.6.11...&quot;<br />
+    该函数中最主要的一个步骤是调用kernel_thread()为进程1创建内核线程。这个线程回创建其它线程并执行/sbin/init程序。该程序会在控制台输出初始化信息，直至最后出现登录提示符，或X登录窗口。通知用户内核已启动，正在运行。</p>
+
+
+<h3><a name="Linux启动过程-新中国：启动脚本"></a>
+新中国：启动脚本</h3>
+
+
+<p>(该部分只适用Redhat系，如RHEL，CentOS，Fedora等，Debian/Ubuntu启动过程与此不同，后期会有分析)</p>
+
+
+<h5><a name="Linux启动过程-inittab"></a>
+inittab</h5>
+
+
+<p> /sbin/init（进程1）会利用/etc/inittab获取运行级，并根据不同运行级的配置启动不同的服务项目。<br />
+    inittab配置文件格式</p>
+
+
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">[设置项目]:[run level]:[init的操作行为]:[命令项目]<br />
+设置项目:最多4个字符，表示init的主要目的，就是一个名字<br />
+run level:该条目的运行级别<br />
+init操作行为:<br />
+    主要可选值如下：<br />
+        initdefault:表示默认的运行级别值<br />
+        sysinit:系统初始化操作项目<br />
+        ctrlaltdel:表示[ctrl+alt+del<br />
+        wait:表示必须等待后面的命令执行完才可以执行后续操作<br />
+        respawn:表示后面的操作会重新启动<br />
+命令项目:执行该项目的命令，通常为一个脚本命令</pre>
+</div>
+</div>
+
+
+<h5><a name="Linux启动过程-系统初始化(rc.sysinit)"></a>
+系统初始化(rc.sysinit)</h5>
+
+
+<p> inittab中的有个条目是</p>
+
+
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">si::sysinit:/etc/rc.d/rc.sysinit</pre>
+</div>
+</div>
+
+
+<p>按上述条目解释，系统初始化时会执行/etc/rc.d/rc.sysinit脚本，该脚本的主要功能如下:<br />
+1.获取网络环境与主机名<br />
+2.测试与载入内存设备/proc以及USB设备/sys<br />
+3.决定是否启动SELinux<br />
+4.检测接口设备与即插即用设备参数<br />
+5.用户自定义模块加载<br />
+6.加载核心的相关设置<br />
+7.设置系统时间<br />
+8.设置终端控制台字体<br />
+9.设置RAID与LVM等硬盘功能<br />
+10.fsck检查磁盘文件系统<br />
+11.进行磁盘配额quota的转换<br />
+12.重新怡可读取模式载入系统磁盘<br />
+13.启动quota功能<br />
+14.启动系统随机设备（产生随机数）<br />
+15.清除启动过程的临时文件<br />
+16.将启动相关信息加载到/var/log/dmesg文件中</p>
+
+
+<h5><a name="Linux启动过程-启动相关运行级服务"></a>
+启动相关运行级服务</h5>
+
+
+<p> inittab中包含</p>
+
+
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">id:3:initdefault:<br />
+<br />
+l3:3:wait:/etc/rc.d/rc 3</pre>
+</div>
+</div>
+
+
+<p> 第一行表示默认运行级为3，第二行表示第3级运行时以wait方式执行/etc/rc.d/rc 参数为3。<br />
+    rc脚本的主要功能是调用相应运行级X的配置脚本目录/etc/rcX.d/下的脚本。例如3级时对应的脚本目录是/etc/rc3.d/目录。<br />
+    脚本目录下的脚本名分为两类：一类是以K开头的，用于kill相应服务；另一类是以S开头的，用于开启相应服务。文件中还包含一个两位数字和服务名。rc脚本负责按照数字有小到大先kill所有服务然后开启所有服务的顺序执行。<br />
+    每个rcX.d的目录下的脚本都是链接到init.d目录下的脚本的软连接。并且均包含一个S99local-&gt;../rc.local，该脚本表示最后执行../rc.local脚本。<br />
+    rc.local即用户自定义的启动项配置脚本。可以在其中添加想开机启动的命令。比如想自动挂载一个windows下的分区，可以在rc.local中添加</p>
+
+
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">mount -ntfs /dev/sda5 /media/disk5</pre>
+</div>
+</div>
+
+
+<h5><a name="Linux启动过程-启动终端"></a>
+启动终端</h5>
+
+
+<p> 根据inittab中的配置，需要等待/etc/rc 3 运行完成。rc.local时期最后一个脚本。在rc.local执行完之后，继续按照inittab执行</p>
+
+
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java"># Run gettys in standard runlevels<br />
+1:2345:respawn:/sbin/mingetty tty1<br />
+2:2345:respawn:/sbin/mingetty tty2<br />
+3:2345:respawn:/sbin/mingetty tty3<br />
+4:2345:respawn:/sbin/mingetty tty4<br />
+5:2345:respawn:/sbin/mingetty tty5<br />
+6:2345:respawn:/sbin/mingetty tty6<br />
+<br />
+# Run xdm in runlevel 5<br />
+x:5:respawn:/etc/X11/prefdm -nodaemon</pre>
+</div>
+</div>
+
+
+<p>该段配置表示在2,3,4,5运行级下执行/sbin/mingetty开启终端，并且执行六次，由此可知为何会有6个纯文本终端。最后的x:5:respawn:/etc/X11/prefdm -nodaemon表示在运行级5时开启X Window。</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Linux批量转换文件名编码]]></title>
+    <link href="http://jiangbo.me/blog/2010/08/01/post/"/>
+    <updated>2010-08-01T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2010/08/01/post</id>
+    <content type="html"><![CDATA[<p>今天从网上用wget下了很多的电子书，不过文件名的编码都是GBK，系统默认为UTF-8，可以用convmv来转换文件名编码，例如将GBK编码的文件filename重命名为UTF-8：</p>
+
+
+<p><pre class="brush: ruby:nogutter">convmv -f gbk -t utf-8 filename --notest</pre>&nbsp;</p>
+
+
+<p>由于需要转换的文件比较多，写了个脚本来实现，主要就是一个文件目录的递归遍历：</p>
+
+
+<p><pre class="brush: python:nogutter">list_dir(){
+for file in $1/*
+do
+if [ -d $file ]; then
+echo "$file is dirctory"
+list_dir $file
+elif [ -f $file ]; then
+echo "convert $file..."
+convmv -f gbk -t utf-8 $file --notest
+fi
+done
+}
+if [ $# -gt 0 ]; then
+list_dir "$1"
+else
+list_dir "."
+fi
+</pre>&nbsp;</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[linux批量重命名方法]]></title>
+    <link href="http://jiangbo.me/blog/2010/06/28/post/"/>
+    <updated>2010-06-28T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2010/06/28/post</id>
+    <content type="html"><![CDATA[<p>经常会遇到需要批量重命名文件的情况，用鼠标太夸张了，简单总结两种比较简单的方法：</p>
+
+
+<p>问题：</p>
+
+
+<p>存在大量html文件，需要重命名为htm文件</p>
+
+
+<p>1.rename</p>
+
+
+<p>通常重命名的命令是mv，Larry Wall写的rename具有更强大的功能。能够用perl的正则语法结构进行文件重命名。<pre class="brush: css:nogutter">NAME
+       rename - renames multiple files
+SYNOPSIS
+       rename [ -v ] [ -n ] [ -f ] perlexpr [ files ]
+DESCRIPTION
+       &quot;rename&quot; renames the filenames supplied according to the rule specified
+       as the first argument.  The perlexpr argument is a Perl expression
+       which is expected to modify the $_ string in Perl for at least some of
+       the filenames specified.  If a given filename is not modified by the
+       expression, it will not be renamed.  If no filenames are given on the
+       command line, filenames will be read via standard input.
+       For example, to rename all files matching &quot;*.bak&quot; to strip the
+       extension, you might say
+               rename 's//.bak$//' *.bak
+       To translate uppercase names to lower, you'd use
+               rename 'y/A-Z/a-z/' *&nbsp;</pre>
+</p>
+
+
+<p>上面是rename的man手册，针对上面重命名html文件的问题，解决如下：</p>
+
+
+<p>rename 's/.html$/.htm/' *.html</p>
+
+
+<p>简单来说就是重命名所有html文件（*.html），将文件名结尾处.html替换为.htm('s/.html$/.htm/')，其实更简单的表达式可以为's/l$//'</p>
+
+
+<p>2.printf</p>
+
+
+<p>使用shell命令中的prinf打印出需要的文件名，然后在使用mv重命名</p>
+
+
+<p>for i in *.html</p>
+
+
+<p>do</p>
+
+
+<p>newname=&quot;`printf &quot;%s&quot; ${i/html}`&quot;htm</p>
+
+
+<p>mv $i $newname</p>
+
+
+<p>done</p>
 
 
 <p>&nbsp;</p>
 
 
-
-
-<p><strong>二、Zero-Copy&amp;Sendfile()</strong>
-Linux 2.1版本内核引入了sendfile函数，用于将文件通过socket传送。
-<em>sendfile(socket, file, len);</em>
-该函数通过一次系统调用完成了文件的传送，减少了原来 read/write方式的模式切换。此外更是减少了数据的copy，sendfile的详细过程图2所示：</p>
-
-
-
-
-<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_2.jpg"><img class="alignnone size-medium wp-image-7" title="图2" src="http://jiangbo.me/images/uploads/2011/07/pic_2-300x236.jpg" alt="" width="300" height="236" /></a></p>
-
-
-
-
-<p>图2</p>
-
-
-
-
-<p>通过sendfile传送文件只需要一次系统调用，当调用 sendfile时：<br />
-1。首先通过DMA copy将数据从磁盘读取到kernel buffer中<br />
-2。然后通过CPU copy将数据从kernel buffer copy到sokcet buffer中<br />
-3。最终通过DMA copy将socket buffer中数据copy到网卡buffer中发送<br />
-sendfile与read/write方式相比，少了 一次模式切换一次CPU copy。但是从上述过程中也可以发现从kernel buffer中将数据copy到socket buffer是没必要的。</p>
-
-
-
-
-<p>为此，Linux2.4内核对sendfile做了改进，如图3所示</p>
-
-
-
-
-<p><a href="http://jiangbo.me/images/uploads/2011/07/pic_3.jpg"><img class="alignnone size-medium wp-image-8" title="图3" src="http://jiangbo.me/images/uploads/2011/07/pic_3-300x222.jpg" alt="" width="300" height="222" /></a></p>
-
-
-
-
-<p>图3</p>
-
-
-
-
-<p>改进后的处理过程如下：<br />
-1。DMA copy将磁盘数据copy到kernel buffer中<br />
-2。向socket buffer中追加当前要发送的数据在kernel buffer中的位置和偏移量<br />
-3。DMA gather copy根据socket buffer中的位置和偏移量直接将kernel buffer中的数据copy到网卡上。<br />
-经过上述过程，数据只经过了2次copy就从磁盘传送出去了。<br />
-（可能有人要纠结“不是说Zero－Copy么？怎么还有两次copy啊”，事实上这个Zero copy是针对内核来讲的，数据在内核模式下是Zero－copy的。话说回来，文件本身在瓷盘上要真是完全Zero－copy就能传送，那才见鬼了 呢）。<br />
-当前许多高性能http server都引入了sendfile机制，如nginx，lighttpd等。</p>
-
-
-
-
-<p><strong>三、Java NIO</strong><strong>中的transferTo()</strong>
-Java NIO中
-<em>FileChannel.transferTo(long position, long count, WriteableByteChannel target)</em>
-方法将当前通道中的数据传送到目标通道target中，在支持Zero-Copy的linux系统中，transferTo()的实现依赖于 sendfile()调用。</p>
-
-
-
-
 <p>&nbsp;</p>
 
 
-
-
-<p><strong>四、参考文档<br />
-《Zero Copy I: User-Mode Perspective》<a href="http://www.linuxjournal.com/article/6345?page=0,0">http://www.linuxjournal.com/article/6345?page=0,0</a>
-《Efficient data transfer through zero copy》<a href="http://www.ibm.com/developerworks/linux/library/j-zerocopy">http://www.ibm.com/developerworks/linux/library/j-zerocopy</a>
-《The C10K problem》<a href="http://www.kegel.com/c10k.html">http://www.kegel.com/c10k.html</a></strong></p>
+<p>&nbsp;</p>
 
 ]]></content>
   </entry>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Python | 非纯种程序猿]]></title>
+  <link href="http://jiangbo.me/blog/categories/python/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-31T23:56:35+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiang-bo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Python简单CGI服务器os.execve(scriptfile,args,os.environ)权限错误]]></title>
+    <link href="http://jiangbo.me/blog/2010/01/01/post/"/>
+    <updated>2010-01-01T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2010/01/01/post</id>
+    <content type="html"><![CDATA[<p>这段时间在学Python，今天开始进入到CGI编程，示例中有个简单CGI Server的例子，代码如下：</p>
+
+
+<p>webserver.py:</p>
+
+
+<p><pre class="brush: python">webdir = &quot;.&quot;    #html files directory
+port = 8000    ＃server port
+import os, sys
+from BaseHTTPServer import HTTPServer
+from CGIHTTPServer import CGIHTTPRequestHandler
+if sys.platform[:3] == &quot;win&quot;:
+    CGIHTTPRequestHandler.have_popen2 = False
+    CGIHTTPRequestHandler.have_popen3 = False
+os.chdir(webdir)
+srvraddr = (&quot;&quot;, port)
+srvrobj = HTTPServer(srvraddr, CGIHTTPRequestHandler)
+srvrobj.serve_forever()&nbsp;</pre>
+</p>
+
+
+<p>页面CGI为cgi101.py:</p>
+
+
+<p><pre class="brush: python">#!/usr/bin/python
+import cgi
+form = cgi.FieldStorage()
+print &quot;Content-type: text/html/n&quot;
+print &quot;&lt;title&gt;Reply Page&lt;/title&gt;&quot;
+if not form.has_key(&quot;username&quot;):
+    print &quot;&lt;h1&gt;Who are you?&lt;/h1&gt;&quot;
+else:
+    print &quot;&lt;h1&gt;Hello &lt;i&gt;%s&lt;/i&gt;!&lt;/h1&gt;&quot; % cgi.escape(form['username'].value)
+</pre>
+</p>
+
+
+<p>HTML页面为：</p>
+
+
+<p><pre class="brush: xhtml">&lt;html&gt;
+    &lt;title&gt;Interactive Page&lt;/title&gt;
+    &lt;body&gt;
+        &lt;form method=&quot;post&quot; action=&quot;cgi-bin/cgi101.py&quot;&gt;
+            &lt;p&gt;&lt;b&gt;Enter your name:&lt;/b&gt;&lt;/p&gt;
+            &lt;p&gt;Username:&lt;input type=&quot;text&quot; name=&quot;username&quot;/&gt;&lt;/p&gt;
+            &lt;p&gt;Password:&lt;input type=&quot;password&quot; name=&quot;pwd&quot;/&gt;&lt;/p&gt;
+            &lt;input type=&quot;submit&quot; name=&quot;submit&quot; text=&quot;submit&quot;/&gt;
+        &lt;/form&gt;
+&lt;/html&gt;
+</pre>
+</p>
+
+
+<p>先运行webserver.py（我是在Ubuntu上，用sudo python webserver.py)启动了server，然后在Firefox中访问：http://localhost:8000/cgi101.html</p>
+
+
+<p>结果Firefox中弹出下载cgi101.py脚本的对话框，而不是运行cgi返回结果，server终端中显示：</p>
+
+
+<p><pre class="brush: python">localhost - - [01/Jan/2010 17:05:32] &quot;GET /cgi-bin/cgi101.py?username=Jone HTTP/1.1&quot; 200 -
+Traceback (most recent call last):
+  File &quot;/usr/lib/python2.6/CGIHTTPServer.py&quot;, line 255, in run_cgi
+    os.execve(scriptfile, args, os.environ)
+OSError: [Errno 13] Permission denied
+</pre>
+</p>
+
+
+<p>说明os.execve权限出问题了，解决方法如下，将cgi101.py的权限设为777，如果还是不行的话，要将整个cgi目录的权限设为777(例如，本例中使用命令chmod -R 777 cgi-bin)</p>
+
+
+<p>然后就可以了。</p>
+
+
+<p>Good Luck!</p>
+
+
+<p>PS: Happy New Year !</p>
+
+]]></content>
+  </entry>
+  
+</feed>

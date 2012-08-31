@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Android SDK1.5开发体验 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="&nbsp;
+今天在机房尝试了一下Android SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去http://developer.android.com/sdk/1.5_r1/index.html上自己看吧。
+下面说个小问题，之前版本的SDK，你写个HelloWorld， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2009/05/05/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Android SDK1.5开发体验</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-05T00:00:00+08:00" pubdate data-updated="true">May 5<span>th</span>, 2009</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>&nbsp;</p>
+<p>今天在机房尝试了一下<a onclick="tagshow(event, 'Android');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>Android</strong></span></a> SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去<a href="http://developer.android.com/sdk/1.5_r1/index.html">http://developer.android.com/sdk/1.5_r1/index.html</a>上自己看吧。</p>
+<p>下面说个小问题，之前版本的SDK，你写个HelloWorld，按照<a onclick="tagshow(event, 'google');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>google</strong></span></a>网站上说的，run的时候，会出现</p>
+<p>[2009-05-05 16:18:13 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:18:13 - HelloWorld] Android Launch!<br />[2009-05-05 16:18:13 - HelloWorld] adb is running normally.<br />[2009-05-05 16:18:13 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:18:13 - HelloWorld] Failed to find an <a onclick="tagshow(event, 'AVD');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>AVD</strong></span></a> compatible with target &#8216;Android 1.1&#8217;. Launch aborted.</p>
+<p>针对这个问题官方的解释在</p>
+<p><a href="http://developer.android.com/guide/developing/eclipse-adt.html#Running">http://developer.android.com/guide/developing/eclipse-adt.html#Running</a></p>
+<p>看懂了之后其实很容易，就是在运行模拟器之前必须要自己创建一个AVD（Android Virtual Device，Android虚拟设备），相当于配置你要模拟的目标平台一样，方法如下：</p>
+<p>1.打开CMD，输入命令android list targets，查看所有可用的目标平台（如果出现android命令无法找到，是因为你的PATH变量没配置，这就不用我多说了），显示结果为</p>
+<p>Available Android targets:</p>
+<p>id: 1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
+<p>id: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.5<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
+<p>id: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Add-On<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Vendor: Google Inc.<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Description: Android + Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Based on Android 1.5 (API level 3)<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Libraries:<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />* com.google.android.maps (maps.jar)<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />API for Google Maps<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: QVGA-P, HVGA-L, HVGA (default), QVGA-L, HVGA-P</p>
+<p>2.创建一个你想要的AVD，使用如下<a onclick="tagshow(event, '%C3%FC%C1%EE');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>命令</strong></span></a>：</p>
+<p>android create avd &#8211;name<em>&lt;your_avd_name&gt;</em>&#8211;target<em>&lt;targetID&gt;</em></p>
+<p>例如：andorid create avd &#8211;name adt15 &#8211;target 2命令，创建了一个名为adt15的2号（Android1.5）平台的AVD。</p>
+<p>3.然后会询问是否配置硬件设备，我没有硬件，就没配置，默认是NO，如果你想配置的话，输入yes就行。</p>
+<p>4.回到Eclipse里，继续RUN，这是就能搞定了。</p>
+<p>PS一下：模拟器编译装载实在是太慢了，一个HelloWorld要用7分钟，才能运行，不过好歹是能运行了，一下是Eclipse里的输出：</p>
+<p>[2009-05-05 16:35:26 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:35:26 - HelloWorld] Android Launch!<br />[2009-05-05 16:35:26 - HelloWorld] adb is running normally.<br />[2009-05-05 16:35:26 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:35:26 - HelloWorld] Automatic Target Mode: launching new emulator with compatible AVD &#8216;android15r1&#8217;<br />[2009-05-05 16:35:26 - HelloWorld] Launching a new emulator with Virtual Device &#8216;android15r1&#8217;<br />[2009-05-05 16:35:30 - HelloWorld] New emulator found: emulator-5554<br />[2009-05-05 16:35:30 - HelloWorld] Waiting for HOME (&#8216;android.process.acore&#8217;) to be launched&#8230;<br />[2009-05-05 16:40:28 - HelloWorld] HOME is up on device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:28 - HelloWorld] Uploading HelloWorld.apk onto device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:29 - HelloWorld] Installing HelloWorld.apk&#8230;<br />[2009-05-05 16:42:11 - HelloWorld] Success!<br />[2009-05-05 16:42:11 - HelloWorld] Starting activity com.jiang.android.HelloWorld on device<br />[2009-05-05 16:42:51 - HelloWorld] ActivityManager: Starting: Intent { comp={com.jiang.android/com.jiang.android.HelloWorld} }</p>
+<p>这时你在模拟器里就能看到Helloworld了，注意，一定要耐心等待。</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-05T00:00:00+08:00" pubdate data-updated="true">May 5<span>th</span>, 2009</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2008/07/12/post/" title="Previous Post: Eclipse 中中文乱码的问题">&laquo; Eclipse 中中文乱码的问题</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2009/05/06/post/" title="Next Post: Ubuntu 9.04安装arm-linux-gcc交叉编译工具">Ubuntu 9.04安装arm-linux-gcc交叉编译工具 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

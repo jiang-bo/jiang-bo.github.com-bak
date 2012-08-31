@@ -1,0 +1,300 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>cygwin 和 ns-2的安装 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="由于这段时间要和老师一起做一个无限传感器网络的研究课题，所以要用到开源的网络模拟软件ns-2,这个东东虽好，可是安装起来继承了linux/unix软件的安装的特点，超级麻烦~ 由于课题的大部分开发还是要在windows下开发，所以不得不选择使用cygwin（如果不知道这个是什么，那就不用学了~） &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2008/06/23/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Cygwin 和 Ns-2的安装</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2008-06-23T00:00:00+08:00" pubdate data-updated="true">Jun 23<span>rd</span>, 2008</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>由于这段时间要和老师一起做一个无限传感器网络的研究课题，所以要用到开源的网络模拟软件ns-2,这个东东虽好，可是安装起来继承了linux/unix软件的安装的特点，超级麻烦~ </p>
+<p>由于课题的大部分开发还是要在windows下开发，所以不得不选择使用cygwin（如果不知道这个是什么，那就不用学了~）</p>
+<p><strong>安装cygwin</strong> </p>
+<p>1.连到cygwin的网站上，http://www.cygwin.com，点击Install or Update now这个按钮，会下载一个网络安装的程序。 </p>
+<p>2.点击安装程序，按照步骤一步一步往下做，主要是在遇到Select Package这一个步骤的时候，要安装ns2需要的组件。（还有一点，就是选择下载的源，我用的是http://mirrors.kernel.org,感觉速度还可以,如果网速太慢，可以联系我，我这又全部所需的）点击View这个按钮使得Category变成full，可以看到所有的软件包，包括安装的和没安装的，点击下列软&nbsp;&nbsp; 件的New这一栏的Skip状态，使之变成日期（即最新版本）。 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFree86-base、XFree86-bin、XFree86-prog、XFree86-lib、XFree86-etc、make、patch、perl、gcc、gcc-&nbsp;&nbsp;&nbsp;g++、gawk、gnuplot、tar和gzip，还有X-startup-scripts、xorg-x11-base、xorg-x11-bin、xorg-x11-devel、xorg-x11-bin-dlls、xorg-x11-bin-lndir、xorg-x11-etc、xorg-x11-fenc、xorg-x11-fnts、xorg-x11-libs-data、xorg-x11-xwin，最好把vi 也安装上，会有用的。然后一路next就行了下面是关键的 </p>
+<p><strong>安装ns-2</strong> </p>
+<p>1.到http://nsnam.isi.edu/nsnam/index.php/Main_Page&nbsp; 下载ns-2.31 </p>
+<p>2.将ns-allinone-2.31.tar.gz解压到C:/cygwin/home下，如果没有就自己建一个 </p>
+<p>3.在cygwin中运行如下命令： &nbsp;&nbsp; cd /home/ns-allinone-2.31 &nbsp;&nbsp; /.install &nbsp;&nbsp; 然后就等着安装完成就行了（要安装很长时间，我装了一个多小时） </p>
+<p>4.看到install sucessfully的时候，恭喜了，你顺利地装完了，不过别高兴，关键的配置PATH才刚开始 &nbsp;&nbsp; 如果你能在 /home/你的用户名 的文件夹下找到后缀名为.bashrc的文件（反正我是没找到，以下都是老师教的，我没试过），注意，不是.bashrc.bak,用UltraEdit把它打开，（最好用UltraEdit，不要用记事本，应为该文件是unix文件，用记事本会出现意想不到的错误，当然如果你会用vi，肯定也没什么问题），在文件后加上 </p>
+<p>export NS_HOME=/home/<strong>Benson/</strong>ns-allinone-<strong>2.31</strong> 　</p>
+<p>export PATH=$NS_HOME/t<strong>cl8.4.14/</strong>unix:$NS_HOME<strong>/tk8.4.14</strong>/unix:$NS_HOME/bin:$PATH </p>
+<p>export LD_LIBRARY_PATH=$NS_HOME/<strong>tcl8.4.14</strong>/unix:$NS_HOME/<strong>tcl8.4.14/</strong>unix:$NS_HOME/otcl-<strong>1.13</strong>:$NS_HOME/lib:$LD_LIBRARY_PATH </p>
+<p>export TCL_LIBRARY=$NS_HOME/<strong>tcl8.4.14</strong>/librar</p>
+<p>注意修改你的相应的路径名和版本号（黑体的部分）</p>
+<p>##如果你找不到在/home/你的用户名 的目录下找不到那个文件，那么就去/etc 下 找到bash.bashrc文件，用UltraEdit打开，按上面的方式添加到文件末尾，点击保存，不过这时候，修改还是没有生效，必须在cygwin下运行</p>
+<p>cd /etc</p>
+<p>source bash.bashrc</p>
+<p>从而使修改生效</p>
+<p>至此，如果一切顺利的话你的ns-2就安装好了</p>
+<p>可以使用如下命令检测是否成功安装：</p>
+<p>startxwin.bat</p>
+<p>cd /home/ns-allinone-2.31/ns-2.31/tcl/ex(路径名可能和你安装的不一样，注意修改)</p>
+<p>ns wireless-flooding.tcl</p>
+<p>你将会看到一个ns-2的模拟事例</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2008-06-23T00:00:00+08:00" pubdate data-updated="true">Jun 23<span>rd</span>, 2008</time>
+      
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+      
+        <a class="basic-alignment right" href="/blog/2008/07/12/post/" title="Next Post: Eclipse 中中文乱码的问题">Eclipse 中中文乱码的问题 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

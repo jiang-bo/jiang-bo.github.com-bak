@@ -4,7 +4,7 @@
   <title><![CDATA[Category: Mac | 非纯种程序猿]]></title>
   <link href="http://jiangbo.me/blog/categories/mac/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-08-31T19:54:58+08:00</updated>
+  <updated>2012-08-31T23:56:35+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -387,6 +387,196 @@ $ sudo ./install-memchaced.sh</pre>
 <pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
 参考文档<br />
 http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Mac OSX安装Git]]></title>
+    <link href="http://jiangbo.me/blog/2011/03/15/post/"/>
+    <updated>2011-03-15T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2011/03/15/post</id>
+    <content type="html"><![CDATA[<p><strong>一、安装Git</strong></p>
+
+
+<p class="p2"><span class="s1">由于mac git的地址<a href="http://code.google.com/p/git-osx-installer/"><span class="s2">http://code.google.com/p/git-osx-installer/</span></a>被墙，被迫使用源码安装，源码可以从<a href="http://kernel.org/pub/software/scm/git/"><span class="s2">http://kernel.org/pub/software/scm/git/</span></a></span><span class="s3">下载，编译源码需要先安装xcode，参考<a href="http://developer.apple.com/"><span class="s4">http://developer.apple.com</span></a>。</span></p>
+
+
+<p class="p3">编译安装</p>
+
+
+<p class="p3">1.解压</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;tar xjvf git-1.7.4.1.tar.tar.bz2</p>
+
+
+<p class="p3">2. 编译</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;cd git-1.7.4.1</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;./configure --prefix=/usr/local</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;make</p>
+
+
+<p class="p3">3.安装</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;sudo make install</p>
+
+
+<p class="p4">&nbsp;</p>
+
+
+<p class="p3">Ok 了，which git试一下～</p>
+
+
+<p class="p5"><strong>二、设置SSH</strong></p>
+
+
+<p class="p3">github使用SSH链接，需要设置SSH</p>
+
+
+<p class="p3">1.检查SSH key</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp; cd ~/.ssh</p>
+
+
+<p class="p3">2.备份已有的key，（如果有的话）</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp; mkdir key_backup</p>
+
+
+<p class="p3">&nbsp;&nbsp; &nbsp; mv id_rsa* key_backup</p>
+
+
+<p class="p3">3.生成SSH key</p>
+
+
+<p class="p3">$ ssh-keygen -t rsa -C <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+
+
+<p class="p3">Generating public/private rsa key pair.</p>
+
+
+<p class="p3">Enter file in which to save the key (/Users/jiangbo/.ssh/id_rsa):&nbsp;</p>
+
+
+<p class="p3">Enter passphrase (empty for no passphrase):</p>
+
+
+<p class="p3">Enter same passphrase again:</p>
+
+
+<p class="p3">Your identification has been saved in yes.</p>
+
+
+<p class="p3">Your public key has been saved in id_rsa.pub.</p>
+
+
+<p class="p3">The key fingerprint is:</p>
+
+
+<p class="p3">fb:c4:b0:e0:47:fd:be:e0:fb:ea:73:ef:a8:29:d5:22 <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+
+
+<p class="p3">The key's randomart image is:</p>
+
+
+<p class="p3">+--[ RSA 2048]----+</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . S ..&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp; . oE=o..&nbsp;&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . +o+..&nbsp;&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ..+.+..&nbsp;&nbsp; |</p>
+
+
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; oOB=+o&nbsp; |</p>
+
+
+<p class="p3">+-----------------+</p>
+
+
+<p class="p3">4.将SSH key添加到GitHub</p>
+
+
+<p class="p3">登录到GitHub页面，Account Settings-&gt;SSH Public Keys-&gt;Add another key</p>
+
+
+<p class="p3">将生成的key(id_rsa.pub文件）内容copy到输入框中，save。</p>
+
+
+<p class="p4"><img src="http://hi.csdn.net/attachment/201103/15/0_1300170843sWhI.gif" alt="" /></p>
+
+
+<p class="p3">5.测试链接</p>
+
+
+<p class="p6"><span class="s3">$ ssh <a href="mailto:git@github.com"><span class="s5">git@github.com</span></a></span></p>
+
+
+<p class="p3">The authenticity of host '<a href="http://github.com/"><span class="s5">github.com</span></a> (207.97.227.239)' can't be established.</p>
+
+
+<p class="p3">RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.</p>
+
+
+<p class="p3">Are you sure you want to continue connecting (yes/no)? yes</p>
+
+
+<p class="p4">&nbsp;</p>
+
+
+<p class="p3">PTY allocation request failed on channel 0</p>
+
+
+<p class="p3">Hi jiang-bo! You've successfully authenticated, but GitHub does not provide shell access.</p>
+
+
+<p class="p3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connection to <a href="http://github.com/"><span class="s5">github.com</span></a> closed.</p>
+
+
+<p class="p3">别担心，这是正常情况。</p>
+
+
+<p class="p5"><strong>三、设置个人信息</strong></p>
+
+
+<p class="p3">$ git config --global <a href="http://user.name/"><span class="s5">user.name</span></a> "Bo Jiang"</p>
+
+
+<p class="p3">$ git config --global user.email "jiang.bo.hit@gmail.com"</p>
+
+
+<p class="p3">&nbsp;</p>
+
+
+<p>&nbsp;</p>
 
 ]]></content>
   </entry>

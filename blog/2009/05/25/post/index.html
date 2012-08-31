@@ -1,0 +1,287 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>关于ARM的内存重映射 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="先说说存储器映射：所谓存储器映射，是指将开发板上不同的存储器映射到开发人员可见的4GB地址空间上，例如，假设开发板上有一个32KB的片内FLASH，16KB的片内SRAM（纯属虚构，如有雷同，纯属巧合），那么，将32KBFLASH映射到地址空间的0x00000000~0x0x00008FFF上， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2009/05/25/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">关于ARM的内存重映射</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-25T00:00:00+08:00" pubdate data-updated="true">May 25<span>th</span>, 2009</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>先说说存储器映射：<br />所谓存储器映射，是指将开发板上不同的存储器映射到开发人员可见的4GB地址空间上，例如，假设开发板上有一个32KB的片内FLASH，16KB的片内SRAM（纯属虚构，如有雷同，纯属巧合），那么，将32KBFLASH映射到地址空间的0x00000000~0x0x00008FFF上，将16KB的SRAM映射到x40000000~0x40004fff上，这样开发者在读写0x00000000~0x00008fff内的地址时，访问的就是片内FLASH，不同开发板的映射规则是开发板厂商事先设定好的。</p>
+<p><br />下面说说什么是重映射：<br />重映射分为中断向量的重映射和boot的重映射<br />首先说说中断向量重映射<br />ARM中中断向量的地址位于0x00000000~0x0000003c(每个向量占4字节，但是为了能够实现4GB范围内的任意跳转，通常在中断向量表后附加一个跳转地址空间，跳转空间占4字节，因此，总的中断向量表大小为64B,不熟悉的自己查查ARM的中断向量吧，不多说了)。注意，这里所说的0x0000000~0x0000003C指的是用户可见的4GB地址空间（也就是上面所说的存储器映射后的地址空间），真正的中断向量位于哪块存贮器的哪个地址上可不一定(不过通常都是为与片内FLASH的底部)，因此，需要将不同存储器的中断向量表映射到0x00000000~0x0000003c的地址上。另外，还有一次中断向量的映射，在用户RAM的映射模式（稍后说映射模式）下，需要将中断向量映射到静态RAM的底部(很明显，这样能够提高访问速度)。<br />下面是boot的重映射<br />这里所说的boot不是bootloader，而是厂商实现内嵌到板子中的一段代码，用于执行对FLASH的读写，擦除等任务，通常位于片内存储器上，但是不同的板子上存储器的大小不同，为了程序的兼容，通常需要将boottblock重映射到存储空间的顶端。</p>
+<p>最后说一下映射模式：<br />ARM中支持4中映射模式，由存储器控制寄存器控制<br />四种模式为：<br />1.boot装载程序模式：在任何复位操作后都会执行Boot装载程序。Bootblock中中断向量映射到存储器的底端以允许处理异常，并在Boot装载过程中使用中断。<br />2.用户FLASH模式：当在存储器中识别了一个有效的用户程序标识并且Boot装载操作未被执行时，由Boot装载程序启动。中断向量没有重新映射，位于Flash的存储器底部<br />3.用户Flash：中断向量被映射到静态RAM的底部<br />4.用户外部模式：中断向量有外部存储器映射到存储空间底部。</p>
+<p>大概就这些，该上课去了，全是个人揣摩，有错请轻拍:)</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-25T00:00:00+08:00" pubdate data-updated="true">May 25<span>th</span>, 2009</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/嵌入式开发/'>嵌入式开发</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2009/05/12/post/" title="Previous Post: s3c2410开发日志——关于yaffs无法解压">&laquo; s3c2410开发日志——关于yaffs无法解压</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2009/06/15/post/" title="Next Post: 关于进程间通信">关于进程间通信 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

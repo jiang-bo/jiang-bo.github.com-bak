@@ -1,0 +1,1098 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="by BoBo
+一点历史&nbsp;&nbsp;&nbsp; AWK上世纪70年代诞生于传奇的Bell实验室，名字取于它的三位发明人，Alfred Aho, Peter Weinberger和 Brian Kernighan名字的首字母。发音类似《The AWK Programing &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/6">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/12/13/post/">AWK学习笔记</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-12-13T00:00:00+08:00" pubdate data-updated="true">Dec 13<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/12/13/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>
+</p><p><em>by BoBo</em></p>
+<p><em></em><br /><strong><span>一点历史</span></strong><br />&nbsp;&nbsp;&nbsp; AWK上世纪70年代诞生于传奇的Bell实验室，名字取于它的三位发明人，Alfred Aho, Peter Weinberger和 Brian Kernighan名字的首字母。发音类似《The AWK Programing Language》封面上的海雀（一种海鸟）的英文发音(auck[ɔ:k])。AWK最早出现在Unix V7中，Linux诞生后，AWK被LSB纳入其中，这意味者所有的Linux发行版都会提供awk的实现。目前linux上广发使用的是GNU实现的gawk，此外还有nawk，mawk，pgawk等版本。这些实现在AWK的语言规范基础上，扩展了一些其他功能，本文只关心最基础最通用的AWK规范，不探究相关实现的具体实现区别，欲知详情，请查看相关实现的手册。<br />以下是其中一位创始人Alfred V.Aho对AWK的描述。<br />&nbsp;&nbsp;&nbsp;&nbsp;<em>AWK is a language for processing files of text. A file is treated as a sequence of records, and by default each line is a record. Each line is broken up into a sequence of fields, so we can think of the first word in a line as the first field, the second word as the second field, and so on. An AWK program is of a sequence of pattern-action statements. AWK reads the input a line at a time. A line is scanned for each pattern in the program, and for each pattern that matches, the associated action is executed.&amp;quot; - Alfred V.Aho</em><br />尊重原文，不翻译。<br /><br /><strong><span>瞟一眼</span></strong><br />准备一份数据文件datafile<br /><br />Nike	green	X	10	10.00<br />Nike	blue	XL	10	10.00<br />Nike	red	 L	10	12.00<br />Adiddas	yellow	L	10	10.00<br />Adiddas	brown	M	10	10.00<br />Adiddas	gray	M	20	8.00<br /><br />打开终端，执行<br /><br /><span><span><strong>awk &#8216;/Nike/ {print $2}&#8217; datafile</strong><br /></span></span><br />输出<br /><br />green<br />blue<br />red<br /><br />解释下:<br />awk表示AWK解析器命令<br />两个&#8217;之间的部分表示这次执行的命令行脚本,其中/Nike/叫模式pattern,{print $2}叫操作action，print表示打印，$2表示每一记录中的第2个域。<br />datafile表示输入文件。<br />整个命令的意思表示：<br />对datafile中所有匹配Nike的行，执行print $2操作，打印含有Nike行中的第二个被空白符隔开的字段。<br />晕了么？来看点概念的解释吧:)<br /><br /><strong><span>一些枯燥的概念</span></strong><br /><strong>输入文件：</strong>待处理的数据文件datafile，每个输入文件为多个记录的集合<br /><strong>记录分割符：</strong>将输入文件划分为多个记录的符号，默认为&#8217;/n&#8217;<br /><strong>记录：</strong>默认数据文件中的每一行，如&amp;quot;Nike&nbsp;&nbsp;&nbsp; green&nbsp;&nbsp; X&nbsp;&nbsp; 10&nbsp; 10.00&amp;quot;，每个记录是多个域的集合<br /><strong>域分隔符：</strong>将每个记录划分为多个域的符号，默认为空白符<br /><strong>域：</strong>记录被域分割符划分后的单元，每个输入文件中的最小处理单元。如Nike， green，X，10，10.00分别为第一个记录的第1，2，3，4，5个域（注意，这里不是从0开始计数的）<br /><strong>Buffer：</strong>AWK中支持两种Buffer，域buffer和记录buffer<br />record buffer:表示整条记录，可以通过$0获取<br />field buffer:当前记录中的每一个field，可以通过$1,$2,$3获取。<br /><strong>内置变量：</strong><br />FS:Field separator，域分隔符，默认为空白符<br />RS:Record Separator，记录分隔符，默认为换行符<br />NF:Number of Fields in current record，当前记录中的域数<br />NR:Number of the current Record，当前的记录数<br />OFS:Output Field Separator，输出域分隔符，默认为空白符<br />ORS:Output Record Separator，输出记录分隔符，默认为换行符<br />FILENAME: Current filename，当前输入文件名<br /><br />针对一个awk命令行</p>
+<p><span><span><strong>awk &#8216;pattern {action}&#8217; datafile</strong></span></span><br />awk的执行流程：<br />1.读取：awk会按行读取输入文件(Line by Line)<br />2.切分：将输入行划分为多个域<br />3.匹配：根据pattern匹配<br />4.执行：对匹配的行执行action<br /><br /><strong><span>命令行</span></strong><br />AWK的命令行语法有两种形式</p>
+<p><br />awk [options] -f program-file file&#8230;<br />awk [options] &#8216;program-text&#8217; file&#8230;</p>
+<p><br />前者通过-f参数指定使用后面的名为program-file的文件作为AWK脚本处理输入文件file<br />后者表示 program-text是一段AWK命令行脚本，用于处理输入文件file.<br />options表示参数可选项，具体参数列表请参考相关手册。<br />基本语法：<br />当通过awk [options] &#8216;program-text&#8217; file&#8230;方式执行awk时，program-text表示一段脚本。AWK的命令行脚本由模式和操作两部分组成：<br />pattern {action}，表示对输入文件中所有匹配pattern的行，执行action操作。<br />缺少pattern时，默认对输入文件中所有行执行action<br />缺少action时，默认向标准输出打印所有匹配pattern的行<br />两者都没有时，不进行任何操作。</p>
+<p><br /><strong><span>例子：</span></strong><br />awk &#8216;/for/ {print $1}&#8217;<strong>&nbsp;&nbsp; &nbsp;</strong>datafile 表示打印datafile中所有匹配含有for的行的第一个域（关于域，请看下文）<br />awk &#8216;/for/&#8217; &nbsp; &nbsp;datafile 表示打印datafile中所有包含for的行<br />awk &#8216;{print}&#8217; &nbsp; &nbsp;datafile 表示打印datafile中所有行<br /><br /><strong><span>模式pattern:</span></strong></p>
+<p><strong></strong>pattern分为Simple pattern和Range pattern两大类。<br /><strong><span>Simple Pattern</span></strong>包括：<br />a.BEGIN:标示对输入文件进行处理之前<br />b.END:标示对输入文件完成处理之后<br />c.EXPRESSION:表达式，包括正则表达式，算数表达式，逻辑表达式<br />d.NOTHING:什么都没有，表示无pattern，默认匹配所有行<br /><strong>Expression Pattern：</strong><br />正则表达式/regx/：<br />通过两个/标记的pattern为正则表达式，如/^bi/匹配所有以bi开始的记录，正则表达式语法与grep语法类似，不再赘述，请查看相关手册。<br />需要注意的是 ~/regx/表示不匹配，如~/^bi/表示不是以bi开始的所有记录。<br />算数表达式：<br />模式$3*$4&amp;gt;100 表示匹配所有$3与$4的积大于100的记录，类似的算数操作符还包括：<br />逻辑表达式：<br />模式 $NR&amp;gt;2 &amp;amp;&amp;amp; /^bi/ 表示匹配所有行数大于2以bi开头的的行， &amp;amp;&amp;amp;表示逻辑与<br /><br /><strong><span>Range Pattern</span></strong><br />Range Pattern用于匹配输入行中一个连续的区域，其语法由两个Simple Pattern构成：<br />pattern1, pattern2 {action}<br />pattern1表示从第一个匹配pattern1的行开始，执行action操作。<br />pattern2表示从第一个匹配pattern2的行开始，停止执行action操作。<br /><strong><span>例子：</span></strong><br /><br /><span>awk &#8216;/blue/,/yellow/ {print}&#8217; datafile</span></p>
+<p><br />表示从datafile中第一匹配blue的行开始执行print操作，打印整行，到第一个匹配yellow的行为止，停止打印。<br /><br /><span>awk &#8216;$NR==2, $NR==10 {print}&#8217; datafile</span><br /><br />表示打印datafile中的第2～10行。<br /><br /><strong><span>操作Action</span></strong><br />Action语句分为：表达式，输出，判断，循环，和控制语句。<br /><strong><span>表达式</span></strong><br />作为一门编程语言，AWK与其他语言一样，有变量，运算符，可以进行表达式计算。<br /><strong><span>变量</span></strong><br />AWK是弱类型的，变量无须声明，且第一次引用后就一直存在。所有的变量都被初始化为空字符串。变量名必须以字母开头，可以包含字母，数字和下划线。AWK支持三类变量，数字，字符串，数组。<br />需要特殊说明的是数组，数组只支持一维，且索引可以是数字也可以是字符串（因此我更倾向于它是个map）。可以通过<br /><br />delete arr[index]<br /><br />删除数组arr中index元素<br /><br /><strong><span>赋值操作符</span></strong><br />=	 assign result of right-hand-side expression to left-hand-side variable<br />++	Add 1 to variable<br />&#8211;	 Subtract 1 from variable<br />+=	Assign result of addition<br />-=	 Assign result of subtraction<br />*=	 Assign result of multiplication<br />/=	 Assign result of division<br />%=	Assign result of modulo<br />^=	 Assign result of exponentiation<br /><strong><span>输出语句</span></strong><br />AWK中有三种用于输出的内置函数：<br />print	 直接输出到终端<br />printf	 格式化输出到终端（与C中的printf类似）<br />sprintf	 格式化字符串（与C中不同的是，通过返回值方式返回新的字符串）<br />可以通过输出重定向将输出打印到其他地方：<br />&amp;gt; &amp;quot;file&amp;quot;	清空file，并打印输出到file<br />&amp;gt;&amp;gt; &amp;quot;file&amp;quot;	将输出追加到file末尾<br />| &amp;quot;command&amp;quot;	管道符，将输出作为command命令的输入。<br /><br /><strong><span>条件判断</span></strong><br /><strong>if-else语法：</strong><br /><br />if (条件语句)<br />执行语句1<br />else<br />执行语句2<br /><br /><strong>例子:</strong><br /><br /><span>if(NR&lt;3)<br />print $2<br />else<br />print $3</span><br /><br /><span>循环</span><br /><strong><span>for循环</span></strong><br /><strong>语法<br /></strong><br />for(初始条件;限制条件;条件更新)<br />执行语句<br /><br /><strong>例子</strong><br /><br /><span>for(i=1; i&lt;NR; i++)<br />{<br />total +=$i;<br />count++<br />}</span><br /><br /><span><strong>do-while循环</strong></span><br /><strong>语法</strong><br /><br />do<br />执行语句<br />while(条件)<br /><br /><strong>例子</strong><br /><br /><span>i=1<br />do {<br />print $0<br />i++<br />} while (i&lt;=10)</span><br /><br />AWK同样支持break,continue两个循环控制语句。<br /><br /><span><strong>脚本编程</strong></span><br />上文主要讲述了命令行下，AWK可以进行操作的基本知识，事实上，AWK作为一种编程语言，可以独立写成脚本文件，采用<br /><br /><span>awk [options] -f script-file inputfile&#8230;</span><br /><br />的方式执行。<br />通常一个awk包含三段式基本结构<br /><br />&#8212;&#8212;&#8211;BEGIN区&#8212;&#8212;&#8212;-<br />|	BEGIN {初始化操作 } |<br />&#8212;&#8212;&#8211;命令执行&#8212;&#8212;&#8212;-<br />|	pattern	{action} &nbsp; &nbsp; &nbsp; |<br />|	&#8230;<br />|	pattern	{action} &nbsp; &nbsp; &nbsp; |<br />&#8212;&#8212;&#8212;END区&#8212;&#8212;&#8212;&#8211;<br />|	EDN &nbsp;{结尾操作} &nbsp; &nbsp; &nbsp; |<br />&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-<br />BEGIN语句进行文件处理前的初始化操作，如定义FS，定义变量值等。该语句在一次文件处理过程中只在处理前执行一次<br />中间的命令执行是对每一个输入记录都进行的操作，语法与上述的基础语法一样<br />END区只在文件处理完成后执行一次。<br />例子<br /><br /><span><span>BEGIN { FS=: }<br />/for/ {print $2}<br />END {print &#8220;this is end!&#8221; }</span><br /></span><br />先定义域分隔符为&#8221;:&#8221;，然后对所有匹配for的记录，打印第2个域，文件处理完后打印&#8221;this is end!&#8221;<br /><br /><span><span><strong>内置函数</strong></span></span><br />AWK提供一些内置函数。<br />字符串内置函数：<br />sub (regex, substr), 使用substr替换匹配自左向右做大匹配regex的部分。<br />gsub (regex,substr), 与sub类似，只是在全文中进行替换<br />length(string), 获取string字符串的长度<br />toupper(string), 将string转换为大写<br />tolower(string), 将string转换为小写<br />split(string, array, field separator), 将string以field separator为分隔符分割为数组存储到array中。<br />以上只是常用的一些内置函数，其他请参考相关手册<br /><br /><span><strong>示例</strong></span><br />分析日志，现有一份日志pic.log，格式如下，需要提取出其中的url链接<br /><br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://fb.images22.51img1.com/6000/hw3255311/bfe077567231f7d8efae4a1ac1b19477.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br /><br /><strong><span>脚本</span></strong><br /><br /><span>awk -F &#8220;[&#8221; &#8216;{split($3, url, &#8220;]&#8221;);print url[1]}&#8217; pic.log</span><br /><br />通过 -F &#8220;:&#8221;定义域分隔符为&#8221;[&#8220;,这样每行数据会被划分为三个域<br /><br />INFO 10/18/2010 00:00:05&#8211;offerId=	&#8211;[&#8211; 836952303]. url=	&#8211;[&#8211; http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br /><br />所需要提取的url位于第三个域中，通过内置函数<br /><br /><span>split($3, url, &#8220;]&#8221;)</span><br /><br />将第三个域以&#8221;]&#8221;分割，存储到url数组中，url数组为[&#8220;http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg&#8221;, &#8220;.&#8221;]<br />url[1]即为所需的url<br /><br /><strong><span>参考资料</span></strong><br />a. man awk<br />b. AWK wiki，http://en.wikipedia.org/wiki/AWK<br />c.《AWK学习笔记》http://man.lupaworld.com/content/manage/ringkee/awk.htm</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/10/26/post/">Linux启动过程分析</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-10-26T00:00:00+08:00" pubdate data-updated="true">Oct 26<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/10/26/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h3>史前时代：BIOS-计算机的启动过程</h3>
+<ol>
+<li><strong>加电</strong>
+ 
+电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
+这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令，跳到真正BIOS启动代码除。</li>
+<li><strong>自检</strong>
+ BIOS启动代码首先进行POST（Power-On Self 
+Test，上电自检），POST的主要任务是检测系统中一些关键设备是否存在和能否正常工作， 
+例如内存和显卡等。如果系统BIOS在POST过程中发现致命错误，如未找到内存或内存有问题（640K内的常规内存），系统会直接控制喇叭报告错误，声
+音的长短和次数代表错误的类型。</li>
+<li><strong>设备初始化</strong>
+ 
+POST完成后BIOS会查找显卡的BIOS，存放显卡BIOS的ROM芯片的起始地址通常设在0xC0000处，找到显卡BIOS后，调用其初始代码，
+由显卡BIOS来初始化显卡， 
+此时多数显卡会在屏幕上显示出一些初始化信息，介绍生产厂商，图形芯片等内容。类似地，BIOS会查找其它设备的BIOS程序，调用这些BIOS内部的初
+始化代码来初始化相关设备。</li>
+<li><strong>测试设备</strong>
+ 
+查找完所遇其它设备的BIOS之后，系统BIOS将显示自己的启动画面，其中包括系统BIOS类型，序列号和版本号等内容。接着BIOS将检测和显示
+CPU的类型和工作频率，然后开始测试所有的RAM，并同时在屏幕上显示内存测试的进度。 
+内存测试通过后，系统BIOS将开始检测系统中安装的一些标准硬件设备，包括硬盘，光驱，串口，并口，软驱等，另外绝大多数较新版本的BIOS在这一过程
+中回自动检测和设置内存的定时参数，硬盘参数和配置系统中安装的即插即用设备，没找到一个设备之后，BIOS会在屏幕上显示出设备的名称和型号等信息，同
+时为该设备分配中断，DMA通道和I/O端口。</li>
+<li><strong>更新ESCD</strong>
+ 
+所有硬件检测配置完毕后，多数BIOS会重新清屏，并在屏幕上方显示出一个表格，其中概略的列出系统中安装的各种标准硬件设备，以及他们使用的资源和一些
+相关工作参数。接下来系统BIOS将更新ESCE（Extended System Configration Data， 
+扩展系统配置数据）。ESCD是系统BIOS用来与操作系统交换硬件配置信息的一种手段，这些数据被存放在CMOS（Complementary 
+metal oxide Semiconductor,互补金属氧化物半导体）之中。</li>
+<li><strong>启动操作系统</strong>
+ 
+ESCD更新完毕后，系统BIOS的启动代码将进行他的最后一项工作，即根据用户指定的启动顺序从软盘，硬盘或光驱启动操作系统。系统BIOS将启动盘的
+第一个扇区读入到内存的0x7C00除，并检查0x7dfe地址的内存，如果其内容是0xaa55，跳转到0x7c00处执行MBR（Master 
+Boot 
+Record，主引导记录），MBR从分区表中找到第一个活动分区，按照类似方式读取并执行这个活动分区的引导扇区，该引导扇区负责读取并执行
+bootloader（windows下C盘中的NTLDR），由bootloader加载系统内核</li>
+</ol>
+<h3><a name="Linux启动过程-远古时代：Bootloader"></a>
+远古时代：Bootloader</h3>
+<p>	引导装入程序（Bootloader）是BIOS将操作系统内核映像装载到RAM中执行的第一个程序。<br />
+	软盘启动与磁盘启动过程稍有不同，软盘启动时，BIOS将启动软盘的第一扇区指令装载到RAM中，由于通常现代内核都大于一个扇区大小(512B)，因此第一扇区的指令通常是将包含内核映像的扇区加载到RAM中。<br />
+	从硬盘启动时，硬盘的第一个扇区MBR中包含分区表和一小段程序，这段小程序用来装载被启动的操作系统所在分区的第一个扇区。Win98采用MBR中的小程序加载操作系统内核，而Linux在用一种更灵活的加载方式，bootloader。<br />
+	Linux2.4及以前的版本，在第一个512字节有一个最小的引导程序，因此在第一扇区拷贝一个内核镜像就可以使软盘启动，但在2.6内核中不再有该引导程序，要想在软盘中启动，必须采用与磁盘类似的方式，在第一个扇区中装入一个引导程序。<br />
+	
+Bootloader通常被安装在MBR上代替上面负责引导的小程序。Bootloader通常由于大于一个扇区，会被分为两部分，在BIOS将
+Bootloader的第一部分加载到RAM的0x00007c00处开始执行，bootloader自己加载到0x00096a00，建立实模式站
+(0x00098000~0x000969ff),并将bootloader的第二部分装入到0x00096c00开始的RAM中。<br />
+	第二部分一次从此版读取操作系统映射表，提示给用户，用户可以选择要启动的系统，引动程序将相应分区的引导扇区拷贝到RAM中并执行，或直接将内核拷贝到RAM中。<br />
+	Bootloader的主要执行过程：</p>
+<ol>
+<li>调用BIOS输出&quot;Loading&#8230;&quot;</li>
+<li>调用BIOS从磁盘装入内核映像的第一个扇区(512B)，从0x00090000装入RAM，并将setup()函数的代码从0x00090200开始装入RAM。</li>
+<li>调用一个BIOS从磁盘装入其余内核映像，并把内核映像放入从0x00010000(低装载，适用于make zImage的小内核映像）或0x00100000(高装载，make bzImage的大内核映像）</li>
+<li>跳转执行setup()</li>
+</ol>
+<h3><a name="Linux启动过程-奴隶社会：setup()"></a>
+奴隶社会：setup()</h3>
+<p>	setup()函数有汇编实现放在内核映像文件的偏移量0x200处，bootloader将其装载到0x00090200开始的RAM中。<br />
+	setup()函数的主要工作是初始化计算机中的硬件设备，并为内核程序的执行建立环境。尽管BIOS已经完成大部分设备的初始化，但是Linux并不依赖与BIOS，而已自己的方式重新初始化设备，以增强可移植性和健壮性。<br />
+	@TO-DO setup()过程</p>
+<h3><a name="Linux启动过程-封建社会：startup32()"></a>
+封建社会：startup_32()</h3>
+<p>	
+存在两个startup_32函数，setup()的最后是跳转执行的是arch/i386/boot/compressed/head.S中的
+startup_32()，此时startup_32已经被移动到0x00100000或0x00001000，对应于高装载或低装载。该函数的主要工作
+是解压内核。<br />
+	解压完的内核映像从arch/i386/kernel/head.S开始执行。该文件中包含另一个startup_32函数。改startup_32为Linux的第一个进程(pid=0)建立执行环境。<br />
+	@TO-DO startup_32()过程</p>
+<h3><a name="Linux启动过程-民国时代：startkernel()"></a>
+民国时代：start_kernel()</h3>
+<p>	startup_32函数最后回跳转执行start_kernel()，start_kernel完成内核初始化工作。start_kernel开始执行后会显示&quot;Linux version 2.6.11&#8230;&quot;<br />
+	该函数中最主要的一个步骤是调用kernel_thread()为进程1创建内核线程。这个线程回创建其它线程并执行/sbin/init程序。该程序会在控制台输出初始化信息，直至最后出现登录提示符，或X登录窗口。通知用户内核已启动，正在运行。</p>
+<h3><a name="Linux启动过程-新中国：启动脚本"></a>
+新中国：启动脚本</h3>
+<p>(该部分只适用Redhat系，如RHEL，CentOS，Fedora等，Debian/Ubuntu启动过程与此不同，后期会有分析)</p>
+<h5><a name="Linux启动过程-inittab"></a>
+inittab</h5>
+<p>	/sbin/init（进程1）会利用/etc/inittab获取运行级，并根据不同运行级的配置启动不同的服务项目。<br />
+	inittab配置文件格式</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">[设置项目]:[run level]:[init的操作行为]:[命令项目]<br />
+设置项目:最多4个字符，表示init的主要目的，就是一个名字<br />
+run level:该条目的运行级别<br />
+init操作行为:<br />
+	主要可选值如下：<br />
+		initdefault:表示默认的运行级别值<br />
+		sysinit:系统初始化操作项目<br />
+		ctrlaltdel:表示[ctrl+alt+del<br />
+		wait:表示必须等待后面的命令执行完才可以执行后续操作<br />
+		respawn:表示后面的操作会重新启动<br />
+命令项目:执行该项目的命令，通常为一个脚本命令</pre>
+</div>
+</div>
+<h5><a name="Linux启动过程-系统初始化(rc.sysinit)"></a>
+系统初始化(rc.sysinit)</h5>
+<p>	inittab中的有个条目是</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">si::sysinit:/etc/rc.d/rc.sysinit</pre>
+</div>
+</div>
+<p>按上述条目解释，系统初始化时会执行/etc/rc.d/rc.sysinit脚本，该脚本的主要功能如下:<br />
+1.获取网络环境与主机名<br />
+2.测试与载入内存设备/proc以及USB设备/sys<br />
+3.决定是否启动SELinux<br />
+4.检测接口设备与即插即用设备参数<br />
+5.用户自定义模块加载<br />
+6.加载核心的相关设置<br />
+7.设置系统时间<br />
+8.设置终端控制台字体<br />
+9.设置RAID与LVM等硬盘功能<br />
+10.fsck检查磁盘文件系统<br />
+11.进行磁盘配额quota的转换<br />
+12.重新怡可读取模式载入系统磁盘<br />
+13.启动quota功能<br />
+14.启动系统随机设备（产生随机数）<br />
+15.清除启动过程的临时文件<br />
+16.将启动相关信息加载到/var/log/dmesg文件中</p>
+<h5><a name="Linux启动过程-启动相关运行级服务"></a>
+启动相关运行级服务</h5>
+<p>	inittab中包含</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">id:3:initdefault:<br />
+<br />
+l3:3:wait:/etc/rc.d/rc 3</pre>
+</div>
+</div>
+<p>	第一行表示默认运行级为3，第二行表示第3级运行时以wait方式执行/etc/rc.d/rc 参数为3。<br />
+	rc脚本的主要功能是调用相应运行级X的配置脚本目录/etc/rcX.d/下的脚本。例如3级时对应的脚本目录是/etc/rc3.d/目录。<br />
+	脚本目录下的脚本名分为两类：一类是以K开头的，用于kill相应服务；另一类是以S开头的，用于开启相应服务。文件中还包含一个两位数字和服务名。rc脚本负责按照数字有小到大先kill所有服务然后开启所有服务的顺序执行。<br />
+	每个rcX.d的目录下的脚本都是链接到init.d目录下的脚本的软连接。并且均包含一个S99local-&gt;../rc.local，该脚本表示最后执行../rc.local脚本。<br />
+	rc.local即用户自定义的启动项配置脚本。可以在其中添加想开机启动的命令。比如想自动挂载一个windows下的分区，可以在rc.local中添加</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">mount -ntfs /dev/sda5 /media/disk5</pre>
+</div>
+</div>
+<h5><a name="Linux启动过程-启动终端"></a>
+启动终端</h5>
+<p>	根据inittab中的配置，需要等待/etc/rc 3 运行完成。rc.local时期最后一个脚本。在rc.local执行完之后，继续按照inittab执行</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java"># Run gettys in standard runlevels<br />
+1:2345:respawn:/sbin/mingetty tty1<br />
+2:2345:respawn:/sbin/mingetty tty2<br />
+3:2345:respawn:/sbin/mingetty tty3<br />
+4:2345:respawn:/sbin/mingetty tty4<br />
+5:2345:respawn:/sbin/mingetty tty5<br />
+6:2345:respawn:/sbin/mingetty tty6<br />
+<br />
+# Run xdm in runlevel 5<br />
+x:5:respawn:/etc/X11/prefdm -nodaemon</pre>
+</div>
+</div>
+<p>该段配置表示在2,3,4,5运行级下执行/sbin/mingetty开启终端，并且执行六次，由此可知为何会有6个纯文本终端。最后的x:5:respawn:/etc/X11/prefdm -nodaemon表示在运行级5时开启X Window。</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/10/18/post/">在Spring中使用Quartz</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-10-18T00:00:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/10/18/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/spring/'>Spring</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>	Spring 提供了几个帮助类用于在应用中做调度，包括JDK Timer类和OpenSymphony Quartz Scheduler两种.</p>
+<h3><a name="在Spring中使用Quartz-Quartz基础"></a>
+
+Quartz基础	</h3>
+<p>	Quartz包括五种主要结构用于实现调度：</p>
+<ul>
+<li>Job接口</li>
+<li>JobDetail类</li>
+<li>Trigger 抽象类</li>
+<li>Scheduler接口</li>
+<li>SchedulerFactory 接口</li>
+</ul>
+<p>	Job接口表示一个作业(job)。一个作业专注做一件事。它的API非常简洁。只有一个execute方法，该方法在作业被执行时有Quartz调度。该方法有一个JobExecuteContext参数，可以通过该参数给execute()方法传递有用信息。</p>
+<p><pre class="brush: java">public interface Job{
+    void execute(JobExecuteContext ctx);
+}</pre>
+</p>
+<p>一些数据可以通过JobDataMap传递给作业。如果一个JobDataMap被注册到JobDetail中，就能够在作业中通过
+JobExecuteContext来访问。JobDetail用来描述一个特定Job的信息。Job通过触发器（Trigger）触发。Quartz提
+供了集中Trigger的实现，如SimpleTrigger和CronTrigger。SimpleTrigger类似一个简单时钟，你可以定义开始是
+建，结束时间，重复次数，重复周期。CronTrigger类似Linux系统中的cron。CronTrigger的设置可以非常详细，如在每个月最后
+一个周五的上午10:15执行作业。需要注意的是Trigger和Job是具名的，可以被赋值给一个组，在同一组内不能出现同名。你可以对一个组创建一个
+触发器，在该组内的所有Job都将会执行。<br />
+
+	SchedulerFactory 用于获得Scheduler实例，可以用于注册作业和触发器。<br />
+
+	实现一个简单的实例：每十秒钟打印一次欢迎。<br />
+
+	首先实现一个作业：</p>
+<p><pre class="brush: java">public class SimpleJob implements Job {
+	@Override
+	public void execute(JobExecutionContext arg0)
+	throws JobExecutionException {
+		System.out.println(&quot;[JOB] Welcome to Quartz!&quot;);
+	}
+}</pre>
+</p>
+<p>定义一个Scheduler，注册触发器和作业:</p>
+<p><pre class="brush: java">public class SimpleSchedule {
+	public static void main(String[] args) {
+		SchedulerFactory factory=new StdSchedulerFactory();
+		try {
+			Scheduler scheduler = factory.getScheduler();
+			scheduler.start();
+										            
+			JobDetail jobDetail = new JobDetail(&quot;SimpleJob&quot;,null, SimpleJob.class);
+			Trigger simplerTrigger = TriggerUtils.makeSecondlyTrigger(10);
+			simplerTrigger.setName(&quot;SimpleTrigger&quot;);
+										            
+			scheduler.scheduleJob(jobDetail, simplerTrigger);
+		}catch (SchedulerException e) {
+		    // TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+}</pre>
+</p>
+<p>执行过后，每十秒输出<span class="nobr">[JOB]</span>
+
+Welcome to Quartz!</p>
+<h3>Spring中的Quartz</h3>
+<p>	Spring中的Quartz API位于org.springframework.scheduling.quartz包中。主要类结构包括：</p>
+<ul>
+<li>QuartzJobBean 抽象类</li>
+<li>JobDetailBean</li>
+<li>SimpleTriggerBean</li>
+<li>CronTriggerBean</li>
+<li>SchedulerFactoryBean</li>
+<li>MethodInvokingDetailFactoryBean
+</li>
+</ul>
+<p>
+很明显对应实现Quartz中相应的接口。QuartzJob实现Job，JobDetailBean继承JobDetail。
+SimpleTriggerBean和CronTriggerBean继承自相应的Trigger。
+MethodInvokingJobDetailFactoryBean用于在类中调用任何对象的方法。<br />
+<strong>声明Job
+</strong>
+</p>
+<p>JobDetailBean用于声明作业。可以为其设置作业名，以及需要的数据。</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleJob&quot; class=&quot;org.springframework.scheduling.quartz.JobDetailBean&quot;&gt;
+	&lt;property name=&quot;jobClass&quot; value=&quot;com.alibaba.jiang.learn.quartz.SimpleJob&quot; /&gt;
+	&lt;property name=&quot;jobDataAsMap&quot;&gt;
+		&lt;map&gt;
+			&lt;entry key=&quot;message&quot; value=&quot;Welcome to Quartz&quot; /&gt;
+		&lt;/map&gt;
+	&lt;/property&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>实现Job类：</p>
+<p><pre class="brush: java">public class SimpleJob extends QuartzJobBean {
+	@Override
+	protected void executeInternal(JobExecutionContext ctx) throws JobExecutionException {
+		String message = ctx.getJobDetail().getJobDataMap().getString(&quot;message&quot;);
+		System.out.println(message);
+	}
+}</pre>
+</p>
+<p>还可以通过setter注入的方式注入message。<br />
+声明触发器：</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
+	&lt;property name=&quot;jobDetail&quot; ref=&quot;simpleJob&quot;/&gt;
+	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
+	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>声明调度器,设置Job和Trigger：</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;schedulerFactory&quot; class=&quot;org.springframework.scheduling.quartz.SchedulerFactoryBean&quot;&gt;
+	&lt;property name=&quot;triggers&quot;&gt;
+		&lt;list&gt;
+			&lt;ref bean=&quot;simpleTrigger&quot;/&gt;
+		&lt;/list&gt;
+	&lt;/property&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>所有都设置好后，可以通过加载Context，调度器将自动执行：</p>
+<p><pre class="brush: java">public class SimpleSpringQuartz {
+	public static void main(String[] args) {
+		ApplicationContext ctx = new ClassPathXmlApplicationContext(&quot;beans.xml&quot;);
+	}
+}</pre>
+</p>
+<h4>使用MethodInvokingJobFactoryBean</h4>
+<p>上面的范例使用的是Quartz Job，事实上在Spring中可以使用自定义Pojo Bean，无须继承自QuartzJobBean。<br />
+首先声明一个PojoBean</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;welcomeBean&quot; class=&quot;com.alibaba.jiang.learn.quartz.WelcomeBean&quot;&gt;
+	&lt;property name=&quot;message&quot; value=&quot;Welcome to Quartz Method&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>对应的Pojo Bean：</p>
+<p><pre class="brush: java">public class WelcomeBean {
+    private String message;
+	public void setMessage(String message) {
+		this.message = message;
+	}
+	public void welcome(){
+		System.out.println(message);
+	}
+}</pre>
+</p>
+<p>声明MethodInvokingJobDetailFactoryBean:</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;methodInvokingJob&quot; class=&quot;org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean&quot;&gt;
+	&lt;property name=&quot;targetObject&quot; ref=&quot;welcomeBean&quot;/&gt;
+	&lt;property name=&quot;targetMethod&quot; value=&quot;welcome&quot;/&gt;
+&lt;/bean&gt;
+&lt;bean name=&quot;methodTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
+	&lt;property name=&quot;jobDetail&quot; ref=&quot;methodInvokingJob&quot; /&gt;
+	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
+	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<h4>注意</h4>
+<p>一个触发器只能触发一个Job，不过一个Job可以有多个Trigger触发，这回带来并发问题。在Quartz中，如果你不想并发执行一个同一个
+Job，你可以实现StatefulJob，而不是Job。在Spring中如果使用
+MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&quot;属性来实现。</p>
+<h3><a name="在Spring中使用Quartz-尾注"></a>
+尾注</h3>
+<p>在Spring中使用Quartz而不是单独的一个应用的好处包括：</p>
+<ul>
+<li>将所有的任务调度设置放在同一个地方，是任务易于维护。</li>
+<li>只对Job编码，Trigger和Scheduler可以通过配置设置</li>
+<li>可以使用Pojo Java Bean执行job，而无需实现Job接口</li>
+</ul></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/09/06/post/">DBunit入门</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-09-06T00:00:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/09/06/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>&nbsp;</p>
+<h3></h3>
+<h3><a name="createtest">使用DBTestCase子类设置数据库</a></h3>
+<p><a name="createtest"></a> <a name="createdataset"></a></p>
+<h4><a name="createdataset">第1步：创建你的数据集文件</a></h4>
+<p><a name="createdataset"> </a></p>
+<p>你的测试需要一些数据来辅助。也就是说你必须创建一个数据集。在大多数情况下你会使用XML数据集。你可以手动从头创建一个<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">flat XML数据集</a>或从你的数据库中<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">导出</a>一些数据。</p>
+<h4>第2步：扩展类的DBTestCase</h4>
+<p>现在您需要创建一个测试类。最简单的使用DBUnit的方法是是你的测试类继承DBTestCase。DBTestCase扩展了JUnit TestCase类。一个getDataSet()模板方法必须被实现，该方法返回步骤1中创建的数据集。<a class="code">DBTestCase依赖IDatabaseTester来完成工作，默认配置使用PropertiesBasedJdbcDatabaseTester，它通过系统属性来定位DriverManager的配置。</a><a class="code">最简单的配置方法是通过测试类的构造函数来配置。</a><a class="code">你可以通过使用你自己的或其他3个系统提供的IDatabaseTester实现重载getDatabaseTester()来改变该行为。</a></p>
+<p>你还可以使用如下所述其他的DBTestCase子类：</p>
+<table class="bodyTable" border="0">
+<tbody>
+<tr class="a">
+<td><a class="code">JdbcBasedDBTestCase</a></td>
+<td>使用一个DriverManager创建连接（在JdbcDatabaseTester的辅助之下）。</td>
+</tr>
+<tr class="b">
+<td><a class="code">DataSourceBasedDBTestCase</a></td>
+<td>使用javax.sql.DataSource创建连接（在DataSourceDatabaseTester的辅助之下）。</td>
+</tr>
+<tr class="a">
+<td><a class="code">JndiBasedDBTestCase</a></td>
+<td>使用javax.sql.DataSource通过JNDI定位（在JndiDatabaseTester的辅助之下）。</td>
+</tr>
+</tbody>
+</table>
+<p>&nbsp;</p>
+<p>以下是一个示例实现，返回一个Hypersonic数据库连接和一个XML数据集：</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    public SampleTest(String name)
+    {
+        super( name );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_DRIVER_CLASS, "org.hsqldb.jdbcDriver" );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_CONNECTION_URL, "jdbc:hsqldb:sample" );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_USERNAME, "sa" );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_PASSWORD, "" );
+	// System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_SCHEMA, "" );
+    }
+
+    protected IDataSet getDataSet() throws Exception
+    {
+        return new FlatXmlDataSetBuilder().build(new FileInputStream("dataset.xml"));
+    }
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>第3步：（可选）实现getSetUpOperation（）和getTearDownOperation（）方法</h4>
+<p>默认情况下，DBUnit的执行每个测试之前回进行<a href="http://www.dbunit.org/components.html#cleanInsert">CLEAN_INSERT</a>操作并且在之后没有清除操作。你可以通过重载getSetUpOperation（）和getTearDownOperation（）来改变这一行为。</p>
+<p>下面的示例展现了你可以很简单的重载测试前后的操作</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    ...
+    protected DatabaseOperation getSetUpOperation() throws Exception
+    {
+        return DatabaseOperation.REFRESH;
+    }
+
+    protected DatabaseOperation getTearDownOperation() throws Exception
+    {
+        return DatabaseOperation.NONE;
+    }
+    ...
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>第4步：（可选）重载方法setUpDatabaseConfig(DatabaseConfig congfig)</h4>
+<p>使用如下方法来改变DBUnit的DatabaseConfi中g某些配置设置。</p>
+<p>下面的示例演示如何你可以轻松地重写此方法：</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    ...
+    /**
+     * Override method to set custom properties/features
+     */
+    protected void setUpDatabaseConfig(DatabaseConfig config) {
+        config.setProperty(DatabaseConfig.PROPERTY_BATCH_SIZE, new Integer(97));
+        config.setFeature(DatabaseConfig.FEATURE_BATCHED_STATEMENTS, true);
+    }
+    ...
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>第5步：实现你的testXXX（）方法</h4>
+<p>像正常使用JUnit一样实现你的测试方法。现在你的数据库将按照你之前几步所做设置那样在每个测试方法之前进行初始化并在之后进行清除操作。</p>
+<p> <a name="noextend"></a></p>
+<h3><a name="noextend">用你自己的TestCase子类来是设置数据库</a></h3>
+<p><a name="noextend"></a></p>
+<p>使用Dbunit并不严格要求继承DBTestCase。你可以重写标准的JUnit的setUp()方法并在数据库上执行所需的操作。如果您需要执行清理还可以做一些类似tearDwon()的操作。</p>
+<p>例如：</p>
+<div class="source">
+<pre><pre class="brush: c-sharp">public class SampleTest extends TestCase
+{
+    public SampleTest(String name)
+    {
+        super(name);
+    }
+
+    protected void setUp() throws Exception
+    {
+        super.setUp();
+
+        // initialize your database connection here
+        IDatabaseConnection connection = null;
+        // ...
+
+        // initialize your dataset here
+        IDataSet dataSet = null;
+        // ...
+
+        try1
+        {
+            DatabaseOperation.CLEAN_INSERT.execute(connection, dataSet);
+        }
+        finally
+        {
+            connection.close();
+        }
+    }
+    ...
+}
+</pre> 
+
+
+</pre>
+</div>
+<p>&nbsp;</p>
+<p>自2.2版你可以使用新的IDatabaseTester来完成相同的壮举。如前所述，DBTestCase使用IDatabaseTester在内部进行工作，你的测试类也可以使用此方法来操纵数据集。目前有4个已有的实现：<br />
+<table class="bodyTable" border="0">
+<tbody>
+<tr class="b">
+<td><a class="code">JdbcDatabaseTester</a></td>
+<td>使用一个DriverManager来创建连接。</td>
+</tr>
+<tr class="a">
+<td><a class="code">PropertiesBasedJdbcDatabaseTester</a></td>
+<td>同样使用DriverManager，但配置是采取从系统性能。<br />DBTestCase的默认实现。</td>
+</tr>
+<tr class="b">
+<td><a class="code">DataSourceDatabaseTester</a></td>
+<td>使用javax.sql.DataSource创建连接。</td>
+</tr>
+<tr class="a">
+<td><a class="code">JndiDatabaseTester</a></td>
+<td>使用javax.sql.DataSource通过JNDI定位的。</td>
+</tr>
+</tbody>
+</table>
+<br />你也可以自己实现IDatabaseTester接口。建议以AbstractDatabaseTester作为出发点。</p>
+<p>示例：</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends TestCase
+{
+    private IDatabaseTester databaseTester;
+
+    public SampleTest(String name)
+    {
+        super(name);
+    }
+
+    protected void setUp() throws Exception
+    {
+        databaseTester = new JdbcDatabaseTester("org.hsqldb.jdbcDriver",
+            "jdbc:hsqldb:sample", "sa", "");
+
+        // initialize your dataset here
+        IDataSet dataSet = null;
+        // ...
+
+        databaseTester.setDataSet( dataSet );
+	// will call default setUpOperation
+        databaseTester.onSetUp();
+    }
+
+    protected void tearDown() throws Exception
+    {
+	// will call default tearDownOperation
+        databaseTester.onTearDown();
+    }
+    ...
+}
+</pre> 
+
+
+
+</pre>
+</div>
+<p>&nbsp;</p>
+<p> <a name="assertdata"></a></p>
+<h3><a name="assertdata">数据库数据检查</a></h3>
+<p><a name="assertdata"></a></p>
+<p>DBUnit支持校验两个表或者数据集中包含的数据是否相同。以下两种方法可以用来验证在测试用例执行期间你的数据库是否包含预期的数据。</p>
+<div class="source">
+<pre><pre class="brush: java">public class Assertion
+{
+    public static void assertEquals(ITable expected, ITable actual)
+    public static void assertEquals(IDataSet expected, IDataSet actual)
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>示例</h4>
+<p>下面的示例，说明如何对数据库表的快照和XML数据表进行比较</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    public SampleTest(String name)
+    {
+        super(name);
+    }
+
+    // Implements required setup methods here
+    ...
+
+    public void testMe() throws Exception
+    {
+        // Execute the tested code that modify the database here
+        ...
+
+
+        // Fetch database data after executing your code
+        IDataSet databaseDataSet = getConnection().createDataSet();
+        ITable actualTable = databaseDataSet.getTable("TABLE_NAME");
+
+        // Load expected data from an XML dataset
+        IDataSet expectedDataSet = new FlatXmlDataSetBuilder().build(new File("expectedDataSet.xml"));
+        ITable expectedTable = expectedDataSet.getTable("TABLE_NAME");
+
+        // Assert actual database table match expected table
+        Assertion.assertEquals(expectedTable, actualTable);
+    }
+}
+</pre> 
+
+
+
+</pre>
+</div>
+<p>&nbsp;</p>
+<p>实际数据集是一个你要与预期的数据集进行比较的数据库快照。正如其名称表明，预期数据集包含的期望数据值。</p>
+<p>预期的数据集必须与你用来设置你的数据库的数据集不同。因此，你需要两个数据集，一在测试之前设置数据库，另一个是在测试过程中提供预期的数据。</p>
+<p> <a name="assertquery"></a></p>
+<h4><a name="assertquery">使用查询获取数据库快照</a></h4>
+<p><a name="assertquery"> </a></p>
+<p>你也可以验证一个查询的结果是否与预期的数据集相等。查询可以用来查询单个表的一个子集或多个表的级联查询。</p>
+<div class="source">
+<pre>ITable actualJoinData = getConnection().createQueryTable("RESULT_NAME",
+                "SELECT * FROM TABLE1, TABLE2 WHERE ..."); ;</pre>
+</div>
+<p>&nbsp;</p>
+<p> <a name="compareignorecolumns"></a></p>
+<h4><a name="compareignorecolumns">在比较中忽略一些列</a></h4>
+<p><a name="compareignorecolumns"> </a></p>
+<p>有时需要忽略一些列来进行比较;特别是主键，日期或时间值等根据测试代码生成的字段。一个解决方法是在期望的数据表中声明不需要的字段。然后，您可以筛选实际的数据库表只暴露预期的字段。<br />下面的代码片断显示了如何筛选实际的数据表。为了能够运行，实际的表必须至少包含所有预期表中的字段列。实际表中可以包含期望表中没有的额外字段。</p>
+<div class="source">
+<pre>        
+<pre class="brush: java">ITable filteredTable = DefaultColumnFilter.includedColumnsTable(actual, 
+            expected.getTableMetaData().getColumns());
+    Assertion.assertEquals(expected, filteredTable); </pre> </pre>
+</div>
+<p>&nbsp;</p>
+<p>该技术的一个主要限制是你不能使用你的预期持平的XML数据集的DTD。有了你需要过滤的DTD列从预期的和实际的表。参见常见问题解答有关<a href="http://www.dbunit.org/faq.html#columnfilter">在运行时不包括一些表列</a> 。</p>
+<p> <a name="roworder"></a></p>
+<h4><a name="roworder">排序</a></h4>
+<p><a name="roworder"> </a></p>
+<p>默认情况下，DBUnit是按照主键排序来对获取数据库表的快照的。如果表没有主键或主键是数据库自动生成的，行的顺序是无法预测的，此时<code>assertEquals</code>将失败。</p>
+<p>必须通过使用ORDER BY条件手动设置IDatabaseConnection.createQueryTable来获取排序的数据库表快照或者可以使用<code>SortedTable</code>装饰类：</p>
+<div class="source">
+<pre>Assertion.assertEquals(new SortedTable(expected),
+                new SortedTable(actual, expected.getTableMetaData()));      </pre>
+</div>
+<p>请注意，默认情况下SortedTable使用每一列的字符串值来排序因此，如果排序的是数字类型，排列顺序应该是如<em>1，10，11，12，2，3，4。</em>如果您想使用列的数据类型进行排序，如<em>1，2，3，4，10，12），</em>，可以如下操作：</p>
+<div class="source">
+<pre><pre class="brush: c-sharp">SortedTable sortedTable1 = new SortedTable(table1, new String[]{"COLUMN1"});
+          sortedTable1.setUseComparable(true); // must be invoked immediately after the constructor
+          SortedTable sortedTable2 = new SortedTable(table2, new String[]{"COLUMN1"});
+          sortedTable2.setUseComparable(true); // must be invoked immediately after the constructor
+          Assertion.assertEquals(sortedTable1, sortedTable2);</pre> 
+      </pre>
+</div>
+<p>参数目前不放在构造方法中原因是这样会使SortedTable的构造方法由4个变为8个，太多了。<em>未来还需不断探索如何能更好地实现该功能</em></p>
+<p>&nbsp;</p>
+<p> <a name="assert-collect-diff"></a></p>
+<h4><a name="assert-collect-diff">断言和收集差异</a></h4>
+<p><a name="assert-collect-diff"> </a></p>
+<p>默认情况下，DBUnit发现第一个不一致数据时立即失败从DBunit2.4开始，可以通过注册一个定制的FailHandler来指定什么样的异常会被抛出，以及发现数据不一致时如何处理。使用<a href="http://www.dbunit.org/apidocs/org/dbunit/assertion/DiffCollectingFailureHandler.html">DiffCollectingFailureHandler</a>可以避免数据不匹配是抛出异常，使你可以在事后比对所有的结果集。</p>
+<p>&nbsp;</p>
+<div class="source">
+<pre><pre class="brush: java">IDataSet dataSet = getDataSet();
+DiffCollectingFailureHandler myHandler = new DiffCollectingFailureHandler();
+//invoke the assertion with the custom handler
+assertion.assertEquals(dataSet.getTable("TEST_TABLE"),
+                       dataSet.getTable("TEST_TABLE_WITH_WRONG_VALUE"),
+                       myHandler);
+// Evaluate the results and throw an failure if you wish
+List diffList = myHandler.getDiffList();
+Difference diff = (Difference)diffList.get(0);</pre> </pre>
+</div>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/08/01/post/">Linux批量转换文件名编码</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-08-01T00:00:00+08:00" pubdate data-updated="true">Aug 1<span>st</span>, 2010</time>
+        
+         | <a href="/blog/2010/08/01/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天从网上用wget下了很多的电子书，不过文件名的编码都是GBK，系统默认为UTF-8，可以用convmv来转换文件名编码，例如将GBK编码的文件filename重命名为UTF-8：</p>
+<p><pre class="brush: ruby:nogutter">convmv -f gbk -t utf-8 filename --notest</pre>&nbsp;</p>
+<p>由于需要转换的文件比较多，写了个脚本来实现，主要就是一个文件目录的递归遍历：</p>
+<p><pre class="brush: python:nogutter">list_dir(){
+for file in $1/*
+do
+if [ -d $file ]; then
+echo "$file is dirctory"
+list_dir $file
+elif [ -f $file ]; then
+echo "convert $file..."
+convmv -f gbk -t utf-8 $file --notest
+fi
+done
+}
+if [ $# -gt 0 ]; then
+list_dir "$1"
+else
+list_dir "."
+fi
+</pre>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/7/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/5/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

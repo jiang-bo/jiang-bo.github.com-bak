@@ -1,0 +1,300 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Zero-Copy&amp;sendfile浅析 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="一、典型IO调用的问题一个典型的web服务器传送静态文件（如CSS，JS，图片等）的过程如下：read(file, tmp_buf, len);write(socket, tmp_buf, len);首先调用read将文件从磁盘读取到tmp_buf， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2011/01/17/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Zero-Copy&amp;sendfile浅析</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-01-17T00:00:00+08:00" pubdate data-updated="true">Jan 17<span>th</span>, 2011</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><strong>一、典型<span lang="EN-US">IO</span>调用的问题</strong><span lang="EN-US"><br /></span>一个典型的<span lang="EN-US">web</span>服务器传送静态文件（如<span lang="EN-US">CSS</span>，<span lang="EN-US">JS</span>，图片等）的过程如下：<span lang="EN-US"><br /><em><br />read(file, tmp_buf, len);<br />write(socket, tmp_buf, len);</em><br /><br /></span>首先调用<span lang="EN-US">read</span>将文件从磁盘读取到<span lang="EN-US">tmp_buf</span>，然后调用<span lang="EN-US">write</span>将<span lang="EN-US">tmp_buf</span>写入到<span lang="EN-US">socket</span>，在这过程中会出现四次数据<span lang="EN-US"> copy</span>，过程如图<span lang="EN-US">1</span>所示</p>
+<p style="text-align: center;"><img src="http://hi.csdn.net/attachment/201101/17/0_12952361353NK2.gif" alt="" /></p>
+<p style="text-align: center;">图1</p>
+<p style="text-align: left;">&nbsp;</p>
+<p><span lang="EN-US">1</span><span>。当调用</span><span lang="EN-US">read</span><span>系统调用时，通过</span><span lang="EN-US">DMA</span><span>（</span><span lang="EN-US">Direct Memory Access</span><span>）将数据</span><span lang="EN-US">copy</span><span>到内核模式</span><span lang="EN-US"><br /></span><span lang="EN-US">2</span><span>。然后由</span><span lang="EN-US">CPU</span><span>控制将内核模式数据</span><span lang="EN-US">copy</span><span>到用户模式下的</span><span lang="EN-US"> buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">3</span><span>。</span><span lang="EN-US">read</span><span>调用完成后，</span><span lang="EN-US">write</span><span>调用首先将用户模式下</span><span lang="EN-US"> buffer</span><span>中的数据</span><span lang="EN-US">copy</span><span>到内核模式下的</span><span lang="EN-US">socket buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">4</span><span>。最后通过</span><span lang="EN-US">DMA copy</span><span>将内核模式下的</span><span lang="EN-US">socket buffer</span><span>中的数据</span><span lang="EN-US">copy</span><span>到网卡设备中传送。</span></p>
+<p><span><span>从上面的过程可以看出，数据白白从内核模式到用户模式走了一</span><span> </span><span>圈，浪费了两次</span><span lang="EN-US">copy</span><span>，而这两次</span><span lang="EN-US">copy</span><span>都是</span><span lang="EN-US">CPU copy</span><span>，即占用</span><span lang="EN-US">CPU</span><span>资源。</span></span></p>
+<p>&nbsp;</p>
+<p><strong><span lang="EN-US">二、Zero-Copy&amp;Sendfile()</span></strong><span lang="EN-US"><br /></span><span lang="EN-US">Linux 2.1</span><span>版本内核引入了</span><span lang="EN-US">sendfile</span><span>函数，用于将文件通过</span><span lang="EN-US">socket</span><span>传送。</span><span lang="EN-US"><br /></span><em><span lang="EN-US">sendfile(socket, file, len);</span></em><span lang="EN-US"><br /></span><span>该函数通过一次系统调用完成了文件的传送，减少了原来</span><span lang="EN-US"> read/write</span><span>方式的模式切换。此外更是减少了数据的</span><span lang="EN-US">copy</span><span>，</span><span lang="EN-US">sendfile</span><span>的详细过程图</span><span lang="EN-US">2</span><span>所示：</span></p>
+<p style="text-align: center;"><span><img src="http://hi.csdn.net/attachment/201101/17/0_1295236150Tf0Z.gif" alt="" /></span></p>
+<p style="text-align: center;"><span>图2</span></p>
+<p style="text-align: left;"><span><span>通过</span><span lang="EN-US">sendfile</span><span>传送文件只需要一次系统调用，当调用</span><span lang="EN-US"> sendfile</span><span>时：</span><span lang="EN-US"><br /></span><span lang="EN-US">1</span><span>。首先通过</span><span lang="EN-US">DMA copy</span><span>将数据从磁盘读取到</span><span lang="EN-US">kernel buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">2</span><span>。然后通过</span><span lang="EN-US">CPU copy</span><span>将数据从</span><span lang="EN-US">kernel buffer copy</span><span>到</span><span lang="EN-US">sokcet buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">3</span><span>。最终通过</span><span lang="EN-US">DMA copy</span><span>将</span><span lang="EN-US">socket buffer</span><span>中数据</span><span lang="EN-US">copy</span><span>到网卡</span><span lang="EN-US">buffer</span><span>中发送</span><span lang="EN-US"><br /></span><span lang="EN-US">sendfile</span><span>与</span><span lang="EN-US">read/write</span><span>方式相比，少了</span><span> </span><span>一次模式切换一次</span><span lang="EN-US">CPU copy</span><span>。但是从上述过程中也可以发现从</span><span lang="EN-US">kernel buffer</span><span>中将数据</span><span lang="EN-US">copy</span><span>到</span><span lang="EN-US">socket buffer</span><span>是没必要的。</span></span></p>
+<p style="text-align: left;"><span><span><span>为此，</span><span lang="EN-US">Linux2.4</span><span>内核对</span><span lang="EN-US">sendfile</span><span>做了改进，如图</span><span lang="EN-US">3</span><span>所示</span></span></span></p>
+<p style="text-align: center;"><span><span><span><img src="http://hi.csdn.net/attachment/201101/17/0_1295236158Tr8t.gif" alt="" /></span></span></span></p>
+<p style="text-align: center;">图3</p>
+<p style="text-align: left;">改进后的处理过程如下：<span lang="EN-US"><br />1</span>。<span lang="EN-US">DMA copy</span>将磁盘数据<span lang="EN-US">copy</span>到<span lang="EN-US">kernel buffer</span>中<span lang="EN-US"><br />2</span>。向<span lang="EN-US">socket buffer</span>中追加当前要发送的数据在<span lang="EN-US">kernel buffer</span>中的位置和偏移量<span lang="EN-US"><br />3</span>。<span lang="EN-US">DMA gather copy</span>根据<span lang="EN-US">socket buffer</span>中的位置和偏移量直接将<span lang="EN-US">kernel buffer</span>中的数据<span lang="EN-US">copy</span>到网卡上。<span lang="EN-US"><br /></span>经过上述过程，数据只经过了<span lang="EN-US">2</span>次<span lang="EN-US">copy</span>就从磁盘传送出去了。<span lang="EN-US"><br /></span>（可能有人要纠结<span lang="EN-US">&ldquo;</span>不是说<span lang="EN-US">Zero</span>－<span lang="EN-US">Copy</span>么？怎么还有两次<span lang="EN-US">copy</span>啊<span lang="EN-US">&rdquo;</span>，事实上这个<span lang="EN-US">Zero copy</span>是针对内核来讲的，数据在内核模式下是<span lang="EN-US">Zero</span>－<span lang="EN-US">copy</span>的。话说回来，文件本身在瓷盘上要真是完全<span lang="EN-US">Zero</span>－<span lang="EN-US">copy</span>就能传送，那才见鬼了 呢）。<span lang="EN-US"><br /></span>当前许多高性能<span lang="EN-US">http server</span>都引入了<span lang="EN-US">sendfile</span>机制，如<span lang="EN-US">nginx</span>，<span lang="EN-US">lighttpd</span>等。<span lang="EN-US"><br /><br /><strong>三、Java NIO</strong></span><strong>中的<span lang="EN-US">transferTo()</span></strong><span lang="EN-US"><br />Java NIO</span>中<span lang="EN-US"><br /><em>FileChannel.transferTo(long position, long count, WriteableByteChannel target)</em><br /></span>方法将当前通道中的数据传送到目标通道<span lang="EN-US">target</span>中，在支持<span lang="EN-US">Zero-Copy</span>的<span lang="EN-US">linux</span>系统中，<span lang="EN-US">transferTo()</span>的实现依赖于<span lang="EN-US"> sendfile()</span>调用。</p>
+<p style="text-align: left;">&nbsp;</p>
+<p style="text-align: left;"><strong>四、参考文档<span lang="EN-US"><br /></span>《<span lang="EN-US">Zero Copy I: User-Mode Perspective</span>》<span lang="EN-US"><a href="http://www.linuxjournal.com/article/6345?page=0,0">http://www.linuxjournal.com/article/6345?page=0,0</a><br /></span>《<span lang="EN-US">Efficient data transfer through zero copy</span>》<span lang="EN-US"><a href="http://www.ibm.com/developerworks/linux/library/j-zerocopy">http://www.ibm.com/developerworks/linux/library/j-zerocopy</a><br /></span>《<span lang="EN-US">The C10K problem</span>》<span lang="EN-US"><a href="http://www.kegel.com/c10k.html">http://www.kegel.com/c10k.html</a></span></strong></p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-01-17T00:00:00+08:00" pubdate data-updated="true">Jan 17<span>th</span>, 2011</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/高性能服务器/'>高性能服务器</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2010/12/13/post/" title="Previous Post: AWK学习笔记">&laquo; AWK学习笔记</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2011/02/27/post/" title="Next Post: 使用memcached进行并发控制">使用memcached进行并发控制 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

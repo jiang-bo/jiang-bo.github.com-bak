@@ -1,0 +1,330 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>使用memcached进行并发控制 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="引子 一个使用缓存进行并发控制的讨论，让我学习到成本与收益间的平衡，以及何为真正的可用性&#8230;&#8230;
+防止并发有多种方式，本文只涉及使用缓存memcached控制。
+并发场景：
+&nbsp;&nbsp; &nbsp; 用例：SNS系统中具有高级会员资格的人发起活动。
+&nbsp;& &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2011/02/27/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">使用memcached进行并发控制</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-02-27T00:00:00+08:00" pubdate data-updated="true">Feb 27<span>th</span>, 2011</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p><strong><span style="font-family: mceinline;">引子</span></strong></p>
+<p>
+</p><p class="p2">一个使用缓存进行并发控制的讨论，让我学习到成本与收益间的平衡，以及何为真正的可用性&#8230;&#8230;</p>
+<p class="p2">防止并发有多种方式，本文只涉及使用缓存memcached控制。</p>
+<p class="p1" style="font-weight: bold;"><span style="font-family: mceinline;"><strong>并发场景</strong><span class="s1"><strong>：</strong></span></span></p>
+<p class="p2"><strong>&nbsp;&nbsp; </strong>&nbsp; 用例：SNS系统中具有高级会员资格的人发起活动。</p>
+<p class="p2">&nbsp;&nbsp; &nbsp; 业务规则：1.一个人同时只能创建一个活动。2.具有高级会员资格。</p>
+<p class="p2">&nbsp;&nbsp; &nbsp; 基本流程如下：</p>
+<p style="font-weight: bold;">&nbsp;</p>
+<p class="p1" style="font-weight: bold;">&nbsp;</p>
+
+<p>&nbsp;</p>
+<p class="p2"><img src="http://hi.csdn.net/attachment/201102/27/0_1298804115LLTM.gif" alt="" /></p>
+<p class="p1">这个流程中存在明显的并发问题，当进程A校验过会员M有资格，并且为创建过活动，但为开始执行创建操作，此时另一个进程B也进行了规则判断，顺利通过，并完成创建操作，此时A继续执行，则会产生两条M的活动。（这个并发场景很简单，很普遍）</p>
+<p class="p2"><strong><span style="font-family: mceinline;">最初的解决方案：</span></strong></p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 计划利用memcached的add操作的原子性来控制并发，具体方式如下：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.申请锁：在校验是否创建过活动前，执行add操作key为memberId，如果add操作失败，则表示有另外的进程在并发的为该memberId创建活动，返回创建失败。否则表示无并发</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.执行创建活动</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 3.释放锁：创建活动完成后，执行delete操作，删除该memberId。</p>
+<p class="p2"><strong><span style="font-family: mceinline;">问题：</span></strong></p>
+<p class="p1"><strong>&nbsp;&nbsp; &nbsp;</strong> 如此实现存在一些问题：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.memcached中存放的值有有效期，即过期后自动失效，如add过M1后，M1失效，可以在此add成功</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.即使通过配置，可以使memcached永久有效，即不设有效期，memcached有容量限制，当容量不够后会进行自动替换，即有可能add过M1后，M1被其他key值置换掉，则再次add可以成功。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 3.此外，memcached是基于内存的，掉电后数据会全部丢失，导致重启后所有memberId均可重新add。</p>
+<p class="p2"><strong><span style="font-family: mceinline;">应对问题：</span></strong></p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 针对上述的几个问题，根本原因是add操作有时效性，过期，被替换，重启，都会是原来的add操作失效。解决该问题有两个方法：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.采用持久化的缓存解决方法，如TT（<span class="s1">Tokyo Tyrant：</span><span class="s2">http://fallabs.com/tokyotyrant/</span>）</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.减轻时效性的影响，使用memcached CAS（check and set）方式。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 第一种不必解释了，很简单，原来的所有问题都是时效性惹得祸，时效性源于memcached是基于内存的，那么采用持久话存储的TT可以彻底根治这个问题。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 第二种方式需要简单介绍下：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; memcached中除了add操作是原子的，还有另外两个操作也是原子的：incr和decr，使用CAS模式即：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.预先在memcached中设置一个key值，假设为CREATKEY＝1</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.每次创建活动时，在规则校验前先get出CREATEKEY＝x；</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 3.进行规则校验</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 4.执行incr CREATEKEY操作，检验返回值是否为所期望的x＋1，如果不是，则说明在此期间有另外的进程执行了incr操作，即存在并发，放弃更新。否则</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 5.执行创建活动</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 对比这两种方法，从效果上看可以发现第一种时100％可靠的，不存在问题；第二种，可能存在误判，即本来不存在并发，却被判为并发，如缓存重启，或key值失效后，incr值可能不同于期望值，导致误判。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 但是从成本上考虑，TT是持久化的缓存解决方案，完美意味着高成本，我们必须维护持久化数据，而使用memcached的CAS方式，可以以几乎0成本的方式解决时效性问题，尽管存在一点小缺陷，但这种缺陷可以通过简单的重试即可解决。考虑实际的产出比，采用memcached的CAS方式更适合实际情况。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 成本与收益间的平衡，做科学与做工程的区别～</p>
+<p class="p3">&nbsp;</p>
+<p class="p1">&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-02-27T00:00:00+08:00" pubdate data-updated="true">Feb 27<span>th</span>, 2011</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2011/01/17/post/" title="Previous Post: Zero-Copy&amp;sendfile浅析">&laquo; Zero-Copy&amp;sendfile浅析</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2011/03/10/post/" title="Next Post: Java基础（1）－泛型">Java基础（1）－泛型 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

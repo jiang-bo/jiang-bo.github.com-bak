@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>关于进程间通信 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="简要记录一下今天遇到的问题和解决方法
+主函数需要创建一个监听网络端口的守护进程，并将监听到的数据传递给主函数，用于显示。其中，主函数有Qt实现，因此需要采用多线程来维护显示界面，即用一个线程维护显示界面，另一个线程负责向界面上添加数据。（坦白说，我觉得肯定有很简单的方法就能够实现显示数据，不过， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2009/06/15/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">关于进程间通信</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-15T00:00:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2009</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>简要记录一下今天遇到的问题和解决方法<br />
+主函数需要创建一个监听网络端口的守护进程，并将监听到的数据传递给主函数，用于显示。其中，主函数有Qt实现，因此需要采用多线程来维护显示界面，即用一个线程维护显示界面，另一个线程负责向界面上添加数据。（坦白说，我觉得肯定有很简单的方法就能够实现显示数据，不过，由于图形界面不是我负责，自己又不会Qt，没办法了～～研究中）<br />
+现在的问题是，守护进程如何将监听到的数据传递给父进程中负责显示的线程？很显然，不能采用函数返回值，守护进程要是能返回，也就不叫守护进程了，也不能用全局变量，因为父子进程不共享全局变量。翻了半天书，发现可以用IPC，尝试了最简单的管道，找到一种很笨的方法。<br />
+下面是一个简单的例子<br />
+#include &lt;unistd.h&gt;<br />
+#include &lt;stdio.h&gt;<br />
+#include &lt;pthread.h&gt;<br />
+#define MAXLINE&nbsp;&nbsp;&nbsp; 1024<br />
+int fd[2];<br />
+pthread_t pthid;<br />
+void* getMsg(void* arg)//父进程中负责显示的线程函数<br />
+{<br />
+&nbsp;&nbsp;&nbsp; char buff[MAXLINE];<br />
+&nbsp;&nbsp;&nbsp; int n;<br />
+&nbsp;&nbsp;&nbsp; close(fd[1]); //关闭写管道<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; n=read(fd[0],buff,MAXLINE);//从管道中读取数据<br />
+&nbsp;&nbsp;&nbsp; buff[n]=&#8217;/0&#8217;;<br />
+&nbsp;&nbsp;&nbsp; printf(&quot;%s/n&quot;,buff);//实际应用中要用Qt实现~<br />
+&nbsp;&nbsp;&nbsp; }<br />
+<br />
+}<br />
+int main(void)<br />
+{<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; n;<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; err;<br />
+&nbsp;&nbsp;&nbsp; pid_t&nbsp;&nbsp;&nbsp; pid;<br />
+&nbsp;&nbsp;&nbsp; char&nbsp;&nbsp;&nbsp; line[MAXLINE];<br />
+<br />
+&nbsp;&nbsp;&nbsp; if(pipe(fd)&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr, &quot;pipe error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; if((pid=fork())&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;fork error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else if(pid＝0)//子进程<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; close(fd[0]);//关闭读管道<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; write(fd[1],&quot;hello/n&quot;,sizeof(&quot;hello/n&quot;));//向管道中写数据<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; err=pthread_create(&amp;pthid,NULL,getMsg,NULL);//创建线程<br />
+&nbsp;&nbsp;&nbsp; if(err!=0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;can&#8217;t create thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; exit(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; printf(&quot;this is main thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; return 0;<br />
+}<br />
+<br />
+感觉这个办法非常笨？但又找不到更好的～发愁中&hellip;&hellip;</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-15T00:00:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2009</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2009/05/25/post/" title="Previous Post: 关于ARM的内存重映射">&laquo; 关于ARM的内存重映射</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2009/06/19/post/" title="Next Post: ubuntu在机房上网">ubuntu在机房上网 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

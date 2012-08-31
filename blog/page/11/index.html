@@ -1,0 +1,1390 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="<!-- [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/11">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/07/16/post/">Android文档（一）——什么是Android?</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-07-16T00:00:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/07/16/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><!--  [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+-->
+<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:WordDocument&gt;
+  &lt;w:View&gt;Normal&lt;/w:View&gt;
+  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
+  &lt;w:PunctuationKerning /&gt;
+  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
+  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
+  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
+  &lt;w:ValidateAgainstSchemas /&gt;
+  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
+  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
+  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
+  &lt;w:Compatibility&gt;
+   &lt;w:SpaceForUL /&gt;
+   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
+   &lt;w:DoNotLeaveBackslashAlone /&gt;
+   &lt;w:ULTrailSpace /&gt;
+   &lt;w:DoNotExpandShiftReturn /&gt;
+   &lt;w:AdjustLineHeightInTable /&gt;
+   &lt;w:BreakWrappedTables /&gt;
+   &lt;w:SnapToGridInCell /&gt;
+   &lt;w:WrapTextWithPunct /&gt;
+   &lt;w:UseAsianBreakRules /&gt;
+   &lt;w:DontGrowAutofit /&gt;
+   &lt;w:UseFELayout /&gt;
+  &lt;/w:Compatibility&gt;
+  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
+ &lt;/w:WordDocument&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
+ &lt;/w:LatentStyles&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if !mso]&gt;
+&lt;object
+ classid="clsid:38481807-CA0E-42D2-BF39-B33AF135CC4D" id=ieooui&gt;
+&lt;/object&gt;
+&lt;mce:style&gt;&lt;!--
+st1/:*{behavior:url(#ieooui) }
+-->
+<!-- [endif]-->
+<!--  [if gte mso 10]&gt;
+&lt;mce:style&gt;&lt;!--
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:普通表格;
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+	mso-para-margin:0cm;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+-->
+<!-- [endif]-->
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">是一个为移动设备设计的软件栈，包括操作系统，中间件和关键应用。</span>
+<span lang="EN-US">Android SDK</span>
+<span style="font-family: 宋体;">提供了使用</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">在</span>
+<span lang="EN-US">Andorid</span>
+<span style="font-family: 宋体;">平台上开发应用所需的工具和</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">。</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">特性</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">应用框架</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">提供了组件的复用和置换</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">Dalvik</span>
+</strong>
+<strong><span style="font-family: 宋体;">虚拟机</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">针对移动设备进行了优化</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">内置浏览器</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">基于开源的</span>
+<span lang="EN-US">WebKit</span>
+<span style="font-family: 宋体;">（</span>
+<span lang="EN-US">webkit.org</span>
+<span style="font-family: 宋体;">）引擎</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">优化图形支持</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">包括自定义的</span>
+<span lang="EN-US">2D</span>
+<span style="font-family: 宋体;">图形库；</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">图形基于</span>
+<span lang="EN-US">OpenGL ES1.0</span>
+<span style="font-family: 宋体;">标准</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">SQLite</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">用于结构话的数据存储</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">多媒体支持</span>
+</strong>
+<span style="font-family: 宋体;">：支持常用的音频视频和图像格式（</span>
+<span lang="EN-US">MPEG4</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US"> H264</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">MP3</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">AAC</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">AMR</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">JPG</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">PNG</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">GIF</span>
+<span style="font-family: 宋体;">）</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">GSM</span>
+</strong>
+<strong><span style="font-family: 宋体;">技术</span>
+</strong>
+<span style="font-family: 宋体;">：依赖于具体硬件实现</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">蓝牙，</span>
+<span lang="EN-US">EDGE</span>
+</strong>
+<strong><span style="font-family: 宋体;">，</span>
+<span lang="EN-US">3G</span>
+<span lang="EN-US">,WiFi:</span>
+</strong>
+<span lang="EN-US"> </span>
+<span style="font-family: 宋体;">依赖于具体硬件</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">摄像，</span>
+<span lang="EN-US">GPS</span>
+</strong>
+<strong><span style="font-family: 宋体;">，加速：</span>
+</strong>
+<span style="font-family: 宋体;">依赖于硬件</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">丰富的开发环境</span>
+</strong>
+<span style="font-family: 宋体;">：包括设备模拟器，调试工具，内存和性能分析，以及</span>
+<span lang="EN-US">Eclipse IDE</span>
+<span style="font-family: 宋体;">插件</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">架构</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">下图显示了</span>
+<span lang="EN-US">Android OS</span>
+<span style="font-family: 宋体;">的主要组件。下面每段对各个模块进行了详细描述</span>
+</p>
+<p>&nbsp;</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;"><img src="http://p.blog.csdn.net/images/p_blog_csdn_net/JiangBo_HIT/EntryImages/20090716/system-architecture.jpg" alt="" width="713" height="512" />
+</span>
+</h3>
+<p>&nbsp;</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><!--  [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+-->
+<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:WordDocument&gt;
+  &lt;w:View&gt;Normal&lt;/w:View&gt;
+  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
+  &lt;w:PunctuationKerning /&gt;
+  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
+  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
+  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
+  &lt;w:ValidateAgainstSchemas /&gt;
+  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
+  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
+  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
+  &lt;w:Compatibility&gt;
+   &lt;w:SpaceForUL /&gt;
+   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
+   &lt;w:DoNotLeaveBackslashAlone /&gt;
+   &lt;w:ULTrailSpace /&gt;
+   &lt;w:DoNotExpandShiftReturn /&gt;
+   &lt;w:AdjustLineHeightInTable /&gt;
+   &lt;w:BreakWrappedTables /&gt;
+   &lt;w:SnapToGridInCell /&gt;
+   &lt;w:WrapTextWithPunct /&gt;
+   &lt;w:UseAsianBreakRules /&gt;
+   &lt;w:DontGrowAutofit /&gt;
+   &lt;w:UseFELayout /&gt;
+  &lt;/w:Compatibility&gt;
+  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
+ &lt;/w:WordDocument&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
+ &lt;/w:LatentStyles&gt;
+&lt;/xml&gt;&lt;![endif]-->
+<!--  [if gte mso 10]&gt;
+&lt;mce:style&gt;&lt;!--
+ /* Style Definitions */
+ table.MsoNormalTable
+	{mso-style-name:普通表格;
+	mso-tstyle-rowband-size:0;
+	mso-tstyle-colband-size:0;
+	mso-style-noshow:yes;
+	mso-style-parent:"";
+	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+	mso-para-margin:0cm;
+	mso-para-margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:10.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";
+	mso-ansi-language:#0400;
+	mso-fareast-language:#0400;
+	mso-bidi-language:#0400;}
+-->
+<!-- [endif]--><span style='font-size: 10.5pt; font-family: "Times New Roman";' lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype id="_x0000_t75" coordsize="21600,21600"
+ o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f"
+ stroked="f"&gt;
+ &lt;v:stroke joinstyle="miter" /&gt;
+ &lt;v:formulas&gt;
+  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
+  &lt;v:f eqn="sum @0 1 0" /&gt;
+  &lt;v:f eqn="sum 0 0 @1" /&gt;
+  &lt;v:f eqn="prod @2 1 2" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @0 0 1" /&gt;
+  &lt;v:f eqn="prod @6 1 2" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="sum @8 21600 0" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @10 21600 0" /&gt;
+ &lt;/v:formulas&gt;
+ &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
+ &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
+&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
+ height:278.25pt'&gt;
+ &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
+  o:title="" /&gt;
+&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
+</p>
+<p class="MsoNormal" style="text-align: center;" align="center"><span lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype
+ id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
+ path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"&gt;
+ &lt;v:stroke joinstyle="miter" /&gt;
+ &lt;v:formulas&gt;
+  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
+  &lt;v:f eqn="sum @0 1 0" /&gt;
+  &lt;v:f eqn="sum 0 0 @1" /&gt;
+  &lt;v:f eqn="prod @2 1 2" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @0 0 1" /&gt;
+  &lt;v:f eqn="prod @6 1 2" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="sum @8 21600 0" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @10 21600 0" /&gt;
+ &lt;/v:formulas&gt;
+ &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
+ &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
+&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
+ height:278.25pt'&gt;
+ &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
+  o:title="" /&gt;
+&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">封装了一组核心应用，包括</span>
+<span lang="EN-US">Email</span>
+<span style="font-family: 宋体;">客户端，</span>
+<span lang="EN-US">SMS</span>
+<span style="font-family: 宋体;">应用，日历，地图，浏览器，联系人和其他应用。所有的应用都是有</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">编写。</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用框架</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">开发者能够访问所有核心应用所使用的框架</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">。应用架构被设计成简洁的组建复用；任何应用发布本身的兼容性，任何其他的应用都可一利用这些兼容性（遵循框架的安全原则）。这种机制使得组建可以被其它用户置换。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">应用之下是一系列服务和系统，包括：</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
+<strong><span style="font-family: 宋体;">丰富的可扩展的视图（</span>
+<span lang="EN-US">View</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span style="font-family: 宋体;">集合可以被用来构建应用，包括</span>
+<span lang="EN-US">lists, grids, text
+boxes,buttons,</span>
+<span style="font-family: 宋体;">以及嵌入式浏览器</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2.</span>
+<strong><span style="font-family: 宋体;">内容提供者</span>
+<span lang="EN-US">(Content Providers)</span>
+</strong>
+<span style="font-family: 宋体;">能够是应用访问来自其他应用的数据，例如联系人（</span>
+<span lang="EN-US">Contacts</span>
+<span style="font-family: 宋体;">）</span>
+<span lang="EN-US">,</span>
+<span style="font-family: 宋体;">或者与其他应用共享数据</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">3<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">资源管理器（</span>
+<span lang="EN-US">Resource Manager)</span>
+</strong>
+<span style="font-family: 宋体;">，支持访问非代码资源，例如本地字符，图像，布局文件</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4.</span>
+<strong><span style="font-family: 宋体;">消息管理器（</span>
+<span lang="EN-US">Notification Manager</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span style="font-family: 宋体;">使得应用能够在状态栏中显示自定义的警告</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">5<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">活动管理器（</span>
+<span lang="EN-US">Activity Manager)</span>
+</strong>
+<span lang="EN-US"> </span>
+<span style="font-family: 宋体;">管理应用的生命周期，提供通用的导航返回栈。</span>
+</p>
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">库</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">包括了一组被各个组件使用</span>
+<span lang="EN-US">C/C++</span>
+<span style="font-family: 宋体;">库。这些兼容性通过</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">应用框架暴露给开发者。下面列出一些核心库：</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
+<strong><span style="font-family: 宋体;">系统</span>
+<span lang="EN-US">C</span>
+</strong>
+<strong><span style="font-family: 宋体;">库（</span>
+<span lang="EN-US">System C
+library</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">一个基于</span>
+<span lang="EN-US">BSD</span>
+<span style="font-family: 宋体;">实现的标准</span>
+<span lang="EN-US">C</span>
+<span style="font-family: 宋体;">系统库（</span>
+<span lang="EN-US">libc</span>
+<span style="font-family: 宋体;">），支持嵌入式</span>
+<span lang="EN-US">linux</span>
+<span style="font-family: 宋体;">的所有设备。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">多媒体库（</span>
+<span lang="EN-US">Media Libraries</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">PacketVideo</span>
+<span style="font-family: 宋体;">的</span>
+<span lang="EN-US">OpenCORE</span>
+<span style="font-family: 宋体;">；这个库支持播放和录制多种流行视频和音频格式，包括静态图像格式。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.</span>
+</strong>
+<strong><span style="font-family: 宋体;">表面管理器（</span>
+<span lang="EN-US">Surface Manager</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">管理访问显示子系统与多种应用的</span>
+<span lang="EN-US">2D</span>
+<span style="font-family: 宋体;">和</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">图形层无缝连接。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.LibWebCore-</span>
+</strong>
+<span style="font-family: 宋体;">一个现代的</span>
+<span lang="EN-US">web</span>
+<span style="font-family: 宋体;">浏览器引擎，支持</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">浏览器和嵌入式</span>
+<span lang="EN-US">Web</span>
+<span style="font-family: 宋体;">视图。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4<strong>.SGL-</strong>
+</span>
+<strong><span style="font-family: 宋体;">底层的</span>
+<span lang="EN-US">2D</span>
+</strong>
+<span style="font-family: 宋体;">图形引擎。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">5.3DLibraries</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">OpenGL ES1.0</span>
+<span style="font-family: 宋体;">实现的</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">；该库使用</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">硬件加速（如果硬件支持）或这高度优化的软件渲染。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">6.FreeType</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">位图和向量字体渲染。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">7.SQLite</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">一个强大的轻量级关系数据库引擎，可以被所有应用使用</span>
+</p>
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">运行时环境</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Anroid</span>
+<span style="font-family: 宋体;">包括一系列的核心库，这些库提供了绝大多数</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">核心库所需的功能。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">每个</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">应用是一个独立运行的进程，在</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">虚拟机中有独立的例程。</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">被实现用于在一个设备上有效的运行多个虚拟机。</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">虚拟机的可执行文件</span>
+<span lang="EN-US">Dalvik Executeable(.dex)</span>
+<span style="font-family: 宋体;">被优化的占用最小的内存空间。虚拟机以注册为基础，</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">类编译的字节码被</span>
+<span lang="EN-US">dx</span>
+<span style="font-family: 宋体;">工具优化为</span>
+<span lang="EN-US">.dex</span>
+<span style="font-family: 宋体;">文件。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Dalvik VM</span>
+<span style="font-family: 宋体;">底层依赖于</span>
+<span lang="EN-US">Linux</span>
+<span style="font-family: 宋体;">内核，</span>
+<span lang="EN-US">linux</span>
+<span style="font-family: 宋体;">内核为其提供线程和低级内存管理。</span>
+</p>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">&nbsp;</span>
+</p>
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Linux</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">内核</span>
+</h3>
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">Linux2.6</span>
+<span style="font-family: 宋体;">内核所提供的服务，包括安全，内存管理，进程管理，网络堆栈，以及驱动模型。内核同时扮演了一个介于硬件和其余软件栈之间的一个抽象层。</span>
+</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/29/post/">［转载］20年嵌入式领域开发经验精华</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-29T00:00:00+08:00" pubdate data-updated="true">Jun 29<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/29/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>来源：www.armjishu.com  <br />
+ 作者：jesse  <br />
+ 转载请注明出处  <br />
+<br />
+ &nbsp; &nbsp;<span style="color: #000000;"> 首先，如果你有幸看到这篇文章，千万不要试图在2个小时内阅读完，就算你2个小时阅读完，我相信你也不会
+理解里面讲解的精华之处，我相信，你应该将此文章，慢慢品尝，这绝对是一篇需要品尝2~3天，再结合自己过往的经验，加上自己的思考，我相信会对你不仅仅
+是技术能力，甚至包括整体的思维方式都会有一个非常大的提高。<br />
+<br />
+&nbsp; &nbsp;&nbsp;
+&nbsp;我写这篇文章的目的，是用本人20年的嵌入式经验呈现给大家一副完整的产品，项目开发蓝图，用本人多年经的历总结了一些教训无私的分享给各位，希望各位
+今后能站在本人的肩膀之上，少走弯路，多为公司，为个人多做贡献，那我的愿望就达到了，也同时希望能看到大家反馈和回复，留个脚印，留下你的见解和智慧，
+为后人乘凉打点基础，先在这谢谢各位了。<br />
+<br />
+那么由此开始我们充满知识的旅程吧，最重要的一点，就是在一个产品或项目的开发过程中，如果没有明确的目标，那么成功将无从谈起，做任何事的第一步必须明确目标。<br />
+<br />
+&nbsp; &nbsp; 与日常生活中的大多数事务一样，设计一个嵌入式产品的过程也必须从确定目标开始，对生产的产品进行明确定义。对产品进行定义主要是对产品是什么和能有什么功能进行描述，其次是在我们的整个开发过程中，应该要撰写一些开发文档，大概的框架的如下：</span>
+<br />
+<br />
+ 1）产品需求文档：描述产品的特性  <br />
+ 2）功能需求文档：描述产品必须具备的功能  <br />
+ 3）工程说明文档：描述系统实现的方法和满足需求的手段  <br />
+ 4）硬件说明文档：对有关硬件进行描述  <br />
+ 5）软件或固件说明文档：描述特定处理器下设计微程序以及固件的方法  <br />
+ 6）测试说明文档：描述必须测试的项目和验证系统正常运行的方法  <br />
+<br />
+ 1.需求定义  <br />
+<br />
+ &nbsp; &nbsp; 需求定义用来描述产品的基本功能，对于公司来说，需求一般由该公司的市场销售部门或该公司的主要客户来制定；而对小公司或爱好者(就像armjishu.com里的爱好者一样)，技术人员可以自己负责定义需求，并撰写成文档。  <br />
+<br />
+ 通常需求定义是围绕以下几个因素而来：  <br />
+<br />
+ 1）系统的用途（定义需要系统实现的各种功能）  <br />
+<br />
+ 2）实际输入输出是何种方式实现的（为元器件的选型做参考）  <br />
+<br />
+ 3）系统是否需要操作界面（涉及软件层操作系统的选型）  <br />
+<br />
+ &nbsp; &nbsp; 其实对小型的嵌入式产品来说，定义需求是非常关键的，因为需求清楚了，就可以避免后续开发过程中出现的诸如随机存储器（RAM）容量不足或所选的CPU速度不能满足处理的需要等一系列问题。  <br />
+<br />
+ &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-  <br />
+ 下面举个简单的实际例子，供大家来参考：  <br />
+<br />
+ 系统描述：用于从化温泉的水泵换水系统  <br />
+ 电源输入：使用来自于变压器的9V~12V直流电  <br />
+ 水泵功率：375W  <br />
+ 1）使用单相交流电机，由机械电气进行控制  <br />
+ 2）如果温泉池处于低水位，则输入开关闭合信号，以禁止水泵继续运行  <br />
+ 3）用户可以自由设置水泵运行或关闭的时间长度  <br />
+ 4）除了自动设置控制外，还需要提供一种人工装置来允许维护人员灵活控制水泵进行维修  <br />
+ 5）水泵开启/关闭/人工干预的时间可以30分钟为单位，在30分钟到23小时的范围内进行调节  <br />
+ 6）显示设备可以指示水泵的开关状态，剩余时间，以及水泵是否处于人工干预模式  <br />
+ 7）具备监视低水位的功能，并显示在屏幕上  <br />
+<br />
+ &nbsp; &nbsp; 如果需要商用，那么除了上面给出的功能要求外，其设计文档中还要包括电磁干扰（EMI）和电磁兼容性（EMC）认证、安全认证以及使用环境（包括环境温度、湿度、盐雾腐蚀等）等方面的需求。  <br />
+<br />
+ 实际上，以上的需求确定之后，接下来就是要考虑选择一款合适的CPU来满足和实现系统的功能，那么我们就要将上述7点用户能够理解的需求转化成我们专业领域的需求，转化如下，大家可以参考一下：  <br />
+<br />
+ a.处理或更新输入输出信号的速率究竟需要多快？  <br />
+解释：目前嵌入式处理器的主频一般都在几十兆到几百兆不等，单片机的主频一般是几十兆，ARM处理器可以到几百兆；我们主要看这个产品是否需要对大量数据
+进行处理，或是否需要对缓冲区进行频繁操作，是否有类似的占用CPU资料的工作要做，这就决定我们要选择一款合适的处理器来让该产品得到最佳的性能。 <br />
+<br />
+ b.是否可使用单片集成电路（专用IC）或FPGA来完成数据处理？  <br />
+ 解释：如果可以的话，就不一定要选择处理器来做，用这些专业芯片就能替代  <br />
+<br />
+ c.系统是否有大量的用户输入输出操作（如对开关和显示设备进行频繁操作）？  <br />
+ 解释：如果有的话，要在处理器选型的时候考虑这些因素，选择一款能够满足以上要求的CPU  <br />
+<br />
+ d.系统与其他外部设备之间需要使用何种接口？  <br />
+ 解释：这也是需要评估处理器的一个关键问题，选择具备这些接口功能的处理器会方便于我们的电路设计以及软件编程  <br />
+<br />
+ e.设计完成后是否有可能需要进行改动，或在设计过程中系统需求是否可能出现变化？我们的设计是否能适应系统需求的变化？  <br />
+解释:要避免选择的处理器刚好满足当前要求，这样当以后事务要求逐渐提高，处理器性能如果还有一定空间的话，那么就可以重用目前的产品；第二个就是要选择
+不会即将停产的芯片，很多处理器用得很广乏，可以借鉴的资料也很多，但是很可能这款芯片已经在市场上流行很长时间了，芯片厂商已经推出更新换代的替代品
+了，如果你选择了这款芯片，很可能1，2年后就买不到这款处理器芯片了，导致不得不重新选择新的处理器，重新设计产品，这样的既耗费时间，金钱，更消耗人
+力，延误市场的战机。 <br />
+ &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-  <br />
+<br />
+ 2.处理器的选择  <br />
+<br />
+ 1.1.需要使用的I/O管脚数量  <br />
+<br />
+&nbsp;
+多数处理器都是使用内存和外部管脚来控制输入输出设备的，通常处理器都会有内置ROM和RAM的，如果内置的内存就已经满足需要，那么处理器就可以节省产
+生引用外部存储器信号的引脚，这样处理器可为输入输出提供较多的设备管脚（某些处理器支持外部RAM或ROM的使用，但对外部存储器进行访问时，处理器一
+般需要占用8条到10条I/O管脚）。 <br />
+<br />
+ &nbsp; 还有，有些处理器带有专用的内部定时时钟，这类时钟也需要使用一个端口管脚来实现某些定时功能；某些处理器中还具有漏极输出和高电流输出能力，可以方便的直接驱动继电器或电磁铁线圈，而不再需要额外驱动硬件的支持。  <br />
+<br />
+ &nbsp; 当对处理器I/O管脚进行计数时，我们一定要把使用处理器内部功能（如串行接口和定时器等）时限制使用的某些管脚考虑在内。  <br />
+<br />
+ 1.2.需要使用的接口数量  <br />
+ &nbsp;  <br />
+ &nbsp; 嵌入式处理器的主要功能是与应用环境中的硬件进行交互操作，这不仅需要外部硬件对接口具有实时处理能力，而且还要求处理器必须以足够快的速度对接口数据进行有效处理。  <br />
+<br />
+&nbsp;
+举例来说，AT91RM9200是ATMEL公司出品的一款工业级ARM9微处理器，它基于ARM920T核心，处理速度可达200MIPS，同时处理器
+内部配置了USB、Ethernet
+、支持RS485的红外串口、IIC、SPI、SSC等输出接口，其目的是更方便的利用这些接口开发出嵌入式产品。 <br />
+<br />
+ &nbsp;
+需要注意的是，由于许多处理器具有的局限性没有在处理器技术资料中给予足够的说明，因此一定要仔细阅读处理器的指标说明。例如，在阅读资料的过程中发现，
+该资料可能会说明其串行接口可以在最高波特率下工作，但仔细研究该处理器的指标数据时，可能会发现并非该串口接口的所有操作模式都可以在最大波特率下运
+行。 <br />
+<br />
+ &nbsp; 深入了解并明确接口要求的方法：可以自己动手编写一些程序来对接口进行实际测试，以确认某种处理器是否可以满足应用的要求；因为，确认某个处理器是否可以满足接口要求并非是一件简单的任务。  <br />
+<br />
+ 1.3.需要使用的内存容量  <br />
+<br />
+ &nbsp; 决定内存容量的大小是嵌入式产品设计过程中的一个基本步骤，如果对所需内存容量估计过高，那么我们就有可能会选择成本较高的解决方案；反之，如果低估了所需内存容量，就有可能因系统需要重新设计而导致项目不能按时完工。  <br />
+<br />
+&nbsp;
+a.RAM和ROM的区别：存储器分为随机存储器（RAM）和只读存储器（ROM）两种。其中ROM通常用来固化存储一些生产厂家写入的程序或数据，用于
+启动电脑和控制电脑的工作方式。而RAM则用来存取各种动态的输入输出数据、中间计算结果以及与外部存储器交换的数据和暂存数据。设备断电后，RAM中存
+储的数据就会丢失。 <br />
+<br />
+ &nbsp; b.随即存储器（RAM）的选择：RAM容量的预测是比较直观的，我们只需把所有变量数目与所有内部缓冲区的容量以及先入先出（FIFO）队列长度和堆栈长度直接相加，就能得到所需RAM容量的总数。  <br />
+ &nbsp; &nbsp; 如果所需内存容量超出这类处理器的寻址范围，那么只能通过增加外部RAM来满足需求；然而，增加外部RAM的同时将会占用一定数量的I/O管脚来对扩展内存进行寻址，这种扩展往往会影响到处理器来实现应用的初衷。  <br />
+ &nbsp; &nbsp; 需要注意的一个问题是，某些微处理器限制RAM的使用，这种限制的目的是为了借用部分内存存储器作为内部寄存器组使用。除了以上因素外，所使用的开发语言也对所需RAM容量有一定的影响，某些效率较低的编译程序可能会占用大量宝贵的RAM空间。  <br />
+<br />
+ &nbsp; c.只读存储器（ROM）的选择：系统所需ROM的大小应该是系统程序代码与所有基于ROM的数据表容量之和。预测所需ROM空间容量比较困难的部分是预测程序代码的长度，解决这类问题的方法只能是随着经验的逐步积累来提高预测精度。  <br />
+ &nbsp; &nbsp; 然而，最重要的并不是精确计算程序的代码长度，而是要清楚地估算代码长度的上限。根据经验，如果80%的ROM空间被代码占用的话，那么就太拥挤了，除非能确保系统需求不会有任何变化，否则至少要为可能发生的变化保留足够的备用ROM空间。  <br />
+ &nbsp; &nbsp; 在多数情况下，我们可以试着在ROM中写入一部分程序代码，以便观察代码占用空间的情况，对于带有内部ROM的微处理器系统来说，系统程序都只能占用有限的程序存储器空间。  <br />
+<br />
+ &nbsp; d.经验之谈：ROM与RAM使用情况相类似，程序代码长度与所选用的开发语言有关。举例来说，使用汇编语言编制的程序要比使用C语言编制的程序占用少得多的空间。  <br />
+ &nbsp; &nbsp; 对于追求低成本的小型系统来说，一般不提倡使用高级程序设计语言；这是因为虽然高级语言在使用、调试以及维护方面来的比较容易，但同时这类语言需要占用更多的内存空间和大量的处理器时钟周期。  <br />
+ &nbsp; &nbsp; 如果开发语言选择不当，其后果可能是把一个简单、低成本的单片机系统变为一个需要使用配置若干兆字节RAM空间的64位嵌入式处理器系统。  <br />
+<br />
+ 1.4.需要使用的中断数量  <br />
+<br />
+ &nbsp; 中断的主要用途是向中央处理器通报当前发生的某类特殊事件，这类事件包括诸如定时器超时事件、硬件引发的事件等。  <br />
+<br />
+ &nbsp; 需要强调的是，多数系统设计师经常过多地使用中断功能，实际上，中断的主要作用只是中断现行程序的执行，中断最适用于必须要求中央处理器立即提供服务的事件。  <br />
+<br />
+ &nbsp; 在需要设计和使用中断的情况下，一定要首先确认实际需要的中断数量，然后必须考虑到系统内部占用的中断资源，如果需要使用的中断资源超出了处理器可以接收的中断数量，我们就应借助于某些特殊手段来减少所需中断信号的数量。  <br />
+<br />
+ 1.5.实时处理方面的考虑  <br />
+ &nbsp;  <br />
+ &nbsp; 实时处理是一个涉及范围很广的题目，其主要内容与系统的处理速度有密切联系，实时事件是嵌入式微处理器需要关注的主要任务。  <br />
+<br />
+&nbsp;
+例如：处理器跟串口进行通信时，通常通过上层软件（为了保证实时性，进行任务切换的时间足够短），然后再占用处理器去执行从串口拿数据的任务，并且要保证
+处理器的速率比串口速率快，那么处理器可以以最快的速度反应并处理串口的相关的任务，这样就可以达到最大的实时性； <br />
+<br />
+ &nbsp; 另一方面，如果处理器本身就内置了串口控制器、或DMA、或LCD的控制器等，那么它就可以保证直接使用这些处理器内置的接口去控制串口、液晶屏等对象，以达到最大的实时性能。  <br />
+<br />
+ 1.6.该厂商是否提供好的开发工具和环境  <br />
+<br />
+ &nbsp; &nbsp; 选择一款新的处理器，很可能就要使用一个新的开发工具和开发环境，包括软件的编译环境等；对于开发日程安排比较紧张的项目来说，开发人员往往无法抽出专门的时间来研究，熟悉新的开发工具，从而也无法全面掌握开发工具的使用技巧。  <br />
+<br />
+ &nbsp; 并且，有的开发工具价格也比较昂贵，而且很可能只能从制造商那里购买，还有仿真工具也是需要付费的，这些对我们在选择一款处理器的时候，是都应该考虑进去的成本因素。  <br />
+<br />
+ 1.7.处理器速度方面的考虑  <br />
+<br />
+ &nbsp; 主要考虑几个细节问题：  <br />
+ &nbsp; 1）处理器速度与处理器时钟之间的关系  <br />
+<br />
+&nbsp; &nbsp; &nbsp;
+例：单片机8031为例，由该处理器可以适应12MHz频率的输入时钟，因此就可以认为它是一个速度为12MHz的处理器了吗？不是，实际上，由于该处理
+器内部逻辑电路执行每条指令需要多种不同频率的时钟脉冲，因此该处理器内部时钟电路要对输入的12MHz时钟12分频处理；最终为处理器提供的只是
+1MHz主频。 <br />
+ &nbsp; &nbsp;  <br />
+ &nbsp; &nbsp; &nbsp; 有的时候，80MHz主频的处理器（80MHz输入时钟，80MHz执行速度）要比200MHz主频的处理器（200MHz输入时钟，50MHz执行速度）执行速度要快得多。  <br />
+<br />
+ &nbsp; 2）处理器指令系统  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 如果不需要执行复杂数学运算的应用，那么RISC指令集的处理器要快；如果执行比较复杂的操作，则CISC指令集的处理器速度要更快。  <br />
+<br />
+ &nbsp; 3）芯片结构体系  <br />
+<br />
+&nbsp; &nbsp; &nbsp;
+现在有的芯片是将多个不同功能的核封装到一个芯片IC中，定制某种特定的功能，比如DSP，其中包括用于实现数字解码、乘法运算的硬件乘法器和移相器等；
+然而，这类处理器也由其自身局限，往往在执行某些普通操作之前必须要使用额外的指令来把RAM中的数据放入内部寄存器，相比之下，一般处理器只允许对
+RAM中的数据进行直接访问。 <br />
+<br />
+ 1.8.只读存储器（ROM）的选择  <br />
+<br />
+ &nbsp;
+多数工程项目在其开发阶段一般使用可擦写可编程只读存储器（EPROM）或快速存储器（Flash
+Memory）；这类可擦写可重复写入存储器的主要优点是可多次使用。一旦产品研制完毕，就可以用一次写入设备（OTP）来取代EPROM存储器，一次性
+写入器件的外观与封装几乎与EPROM完全一样，惟一不同之处就是其表面没有擦出窗口，并且价格要比EPROM低很多。 <br />
+<br />
+ &nbsp; 但是，另外一种情况，如果该产品今后需要升级固件，或在线编程，那么我们还是应该选择可擦写可编程的存储器。  <br />
+<br />
+ &nbsp; 还有一种是非易失的存储器，例如制造一台电视机，就有可能需要该设备具有记忆上次观看最后一个频道的功能，即使在切断电源后，该频道信息也不会丢失。  <br />
+<br />
+ 总结：所以，根据不同的产品选择不同的存储器也是一门很讲究的学问。  <br />
+<br />
+ 1.9.电源的要求  <br />
+ &nbsp;  <br />
+ &nbsp; 在某些设计中方案中，电源根本不存在问题，对电源唯一的要求就是可以为电路正常供电；实际上，选择电源主要要考虑三个方面的问题：  <br />
+<br />
+ &nbsp; 1）要注意设计方案中是否对电源的供电方式有所限制，例如,是否像大多数家用电器那样需要使用屋内墙上的电源插座供电，或是是使用USB接口供电  <br />
+<br />
+ &nbsp; 2）看系统是否需要使用电池供电方式，如果这样，我们就要考虑选择那种对驱动电流要求不高的处理器，然后再为其选择合适的电池。  <br />
+<br />
+&nbsp;
+3）休眠电流：许多微处理器都支持低功率运行模式，在这种模式下，系统的CPU处理器将处于休眠状态，同时所有外部设备的电源供电都被暂时切断，以便减少
+系统的电能消耗；某些微处理器在这种方式下需要的维持电流极小，但也有一些微处理器在这种方式下并不能节省多少功率；不管怎样，我们都要对系统在节点模式
+下的工作时间有一个估测，以便对具体情况选择使用的电池。 <br />
+<br />
+ 总之，无论哪种情况，我们都要对系统需要的供电总功率做到心中有数。  <br />
+<br />
+<br />
+ 1.10.设备工作环境的要求  <br />
+<br />
+ &nbsp; 环境要求主要内容是考虑温度，湿度等；如果系统必须在温度范围较大的环境下运行，诸如用于军事设备或汽车的控制系统，那么处理器可选择的范围就要小得多；  <br />
+<br />
+ &nbsp; 并且由于大范围温度变化的设备通常比较昂贵，因此在设计过程中就不能再根据一般工业级器件的价格来制定预算。  <br />
+<br />
+ 1.11.使用周期成本  <br />
+ &nbsp;  <br />
+ &nbsp; 如果我们的产品是mp3，在一般情况下，可以不必考虑在用户现场对mp3程序进行修改的问题，也不用为是否可以得到设备备件而着急，这是因为mp3是一种消费产品；  <br />
+<br />
+ &nbsp; 换句话说，如果我们的产品是价值几万块的工业设备并且需要常年不断地运行，那么我们在产品设计过程中就必须从长计议了：  <br />
+<br />
+ &nbsp; a.首先，我们需要选择一种处理器或存储体系结构都可以升级的器件  <br />
+ &nbsp; b.考虑到程序升级的可能，我们还要选择较大容量的内存  <br />
+ &nbsp; c.最后要注意的则是所选处理器是否可以长期供货，这一点的重要性远远大于处理器的价格  <br />
+<br />
+ &nbsp; 除了上面的考虑之外，使用周期成本也是在设计之初要考虑的因素。总的来说，生产的部件越多，则可以接受的前期开发成本也就越大。如果产品是mp3，我们可能会选择一个低价微处理器，同时投入一大笔钱来开发控制mp3的软件。  <br />
+<br />
+&nbsp;
+但如果我们的产品是价格昂贵的工业用设备，那么在产品的使用期内，该设备的销售量将只有几百台，毫无疑问，开发这种产品最重要的就是降低开发成本（降低开
+发成本而不是硬件成本！！！）；除此之外，工业产品的成本也不像家用电器或消费电子产品那么敏感。综上所述，开发工业产品当然要选择一种便于进行开发并且
+有助于缩短开发过程的处理器。 <br />
+<br />
+ 1.12.处理器相关资料是否丰富  <br />
+<br />
+ &nbsp; &nbsp; 如果该款处理器在市场上已经用得很广了，那么我们可以获取更多的相关资料，观察人家的产品是如何使用处理器的，也能在网络上找到不少的相关的设计资料以及相关技术主题，这样就进一步降低了技术门槛，确保了使用该处理器做产品可行性，减低了风险；  <br />
+ &nbsp;  <br />
+ &nbsp; &nbsp; 反之，如果是厂商全新推出的处理器，因为市场上还没有可以借鉴的产品，我们就只能从全英文的芯片手册开始阅读，了解这款芯片，这样开发周期不仅变长，而且不可预知的风险也很大。  <br />
+<br />
+ 3.开发成本的预测和估计  <br />
+<br />
+ &nbsp; 大多数项目或产品都有专人负责预测整个过程的开发成本，对于任何项目来说，其开发成本主要包括人力和材料开销。  <br />
+<br />
+ &nbsp; 预测开发成本在很大程度上需要根据经验，这也是为什么大型公司一般指定有经验的高级工程师来完成这一任务的原因，除了人力和材料的开销之外，总结下来，还有以下的开销：  <br />
+<br />
+ &nbsp; 1）人力成本（开发人员、管理人员、销售人员、其他行政等辅助人员）的开销  <br />
+<br />
+ &nbsp; 2）材料（硬件物料和损耗，有时候需要投几次PCB版才把产品稳定下来）的开销  <br />
+<br />
+ &nbsp; 3）开发系统和开发工具软件的开销  <br />
+<br />
+ &nbsp; 4）硬件工具的开销（例如示波器、仿真器等）  <br />
+<br />
+ &nbsp; 对于整个项目来说，上述的开销将直接可能导致产品成本增加，其中人力成本最为关键，尤其是在中国，呵呵</p>
+<p>4.产品开发设计文档（需要包括硬件和软件两个方面）  <br />
+<br />
+ 4.1 硬件文档撰写思路  <br />
+<br />
+ &nbsp; &nbsp; 1）首先是需求定义或产品规格：  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 如果这些是产品最终目标的话，那么产品对硬件和软件的要求就是技术方案的最终目标；对硬件和软件的要求是从定义用户界面和系统功能开始的。  <br />
+<br />
+ &nbsp; 2）其次，根据需求，系统整体定义文档中给出硬件接口的具体定义：  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 定义硬件最有效的方法是从需求开始描述，由于硬件必须支持系统定义的所有功能，因此硬件定义是与系统说明不可分割的；  <br />
+&nbsp; &nbsp; &nbsp;
+例如,我们设计一个定时器（事先需求说明定时器不能与个人电脑连接，故无法使用CRT显示时间），我们只有两种选择：一种是使用发光二极管（LED），另
+一种是使用液晶显示器件（LCD）；尽管LCD的显示效果比较好，但考虑到定时器要常年位于户外，并且早期LCD显示器不能在低温下工作，最终还是选择
+LED设备（这整个过程描述了我们硬件选型时的一个思路，这个是密切跟需求挂钩的） <br />
+<br />
+ &nbsp; &nbsp; 3）一旦完成了系统整体说明文档，就开始进行系统设计：  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 首先要对硬件说明的内容进行细化，包括添加能让工程师理解的设计意图，以及软件工程师围绕硬件进行程序设计时需要使用的硬件信息等。  <br />
+ &nbsp; &nbsp; &nbsp; 完成硬件电路板说明文档后，我们还要在该文档中增加一个用来描述系统的原始要求的前言部分，包括说明方案的设计思路和方法，除此之外，还要附上软件工程师用来对硬件进行控制所需的各类信息，这类信息主要包括如下内容（软件工程所需信息）：  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;内存和I/O端口地址（如果需要，还可以提供内存映射图）  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;可用内存容量  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;状态寄存器每一位的定义  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;每个端口管脚的用途  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;外部设备的驱动方法（例如，说明输入定时器电路的时钟频率等）  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;其他有管软件人员设计程序需要了解的信息  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 对于比较复杂的系统来说，硬件文档中经常使用两个独立的部分来进行说明；其第一部分用来描述硬件指标和工作原理，第二部分则主要为软件人员提供程序设计需要的信息。  <br />
+<br />
+<br />
+ 4.2 软件文档撰写思路  <br />
+<br />
+&nbsp; &nbsp; &nbsp; 1)
+软件文档与硬件文档的组织方法类似，软件要求文档的主要内容则是定义软件要实现的功能；一种是在简单项目设计过程中，软件定义也可以只对一种电路板使用的
+软件给予描述；对较复杂的项目来说，由于参与这种项目的软件人员分别负责设计驱动不同硬件部分的代码（同一电路板），因此每个软件人员可能会为自己的设计
+代码指定不同的定义,这类软件说明需要提供下列的内容： <br />
+<br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;论述包括需求定义、工程指标、硬件参数等实施项目需要的内容  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;说明软件之间、处理器之间或处理器与其内部器件之间使用的通信协议：其内容应包括对缓冲区接口机制、命令/应答协议、信号控制等协议的具体说明。  <br />
+ &nbsp; &nbsp; &nbsp; &#8212;&#8211;借助流程图、伪代码或者其他可能的方法来描述软件的实现方法和过程  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 2) 软件与硬件所考虑的不同之处（此经验方便技术总监或其他相关管理者参考，因为无论是多高深的技术管理者，要么是硬件出身，要么是软件出身，要么就是非技术出身）  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; a. 软件的灵活性远远大于硬件，要让软件人员搞清楚某个软件的内部格式是非常困难的任务，解决的办法：详细定义其他程序员需要了解的编程接口具体内容，以及其他工程人员在实施开发项目过程中需要使用的技术细节信息。  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; b. 软件工程师只有在收到硬件说明文档后，才有可能知道如何对系统硬件进行操作；而硬件人员一般不需要了解软件程序的技术细节。  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; c. 由于软件易于更改，因此程序内容经常会按销售人员提供的要求发生变更，在某些情况下，软件文档的内容无法及时反映程序的最新变化。  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; d. 软件经常是工程项目最后完成的部分，因此其文档也经常因时间不够而欠缺完整。实际上，软件文档是否详细、完整，在某种程度上是与公司或客户的要求有关的。例如，军事或国家工程一般要求开发商就其所有软件实现的功能提供全面详细的文档  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; e. 有个潜规则，对软件的要求越复杂，则需求的正确可能性就越小，这个是经验之谈了，我们需要把准需求这个准绳来做文章，而不是陷入个人主义以及对软件要求而凭空发挥自己不切实际的想象。  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; f. 我们可以先硬件设计，接着围绕该硬件编制软件。虽然实际系统的实现过程可能是软硬件并行开发，但软件人员基本上也是围绕着已经实现的硬件来进行程序设计的；对于更为复杂的系统来说，开发过程可能会出现重复。  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 例如，某个项目的硬件工程师和软件工程师可能会坐下来开会，共同决定使用哪种硬件来实现某种功能；软件人员可能提出需要为数据缓冲区口冲内存容量，也可能要求提供某种外部设备接口，以便充分利用现成接口程序提供的各种驱动代码。  <br />
+<br />
+ &nbsp; &nbsp; &nbsp; 总的来说，必须在提高软件开发效率与硬件系统的复杂性与成本之间进行权衡.  <br />
+<br />
+ 转载：http://www.armjishu.com/bbs/viewtopic.php?id=1312
+</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/21/post/">关于Ubuntu9.04中wubi.exe无法运行</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/21/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>用虚拟光驱加载Ubuntu9.04镜像，双击wubi.exe的时候没有任何反应，在网上查了查，说是因为9.04对中文的支持有问题，安装时盘符终不能有中文，可是我检查了一下，所有的盘符都是英文啊，最后发现，光驱中插了一张名为&#8221;我的光盘&#8221;的光盘，退出来之后再运行wubi.exe就没什么问题了&hellip;&hellip;狂汗&amp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/19/post/">Ubuntu在机房上网</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-19T00:00:00+08:00" pubdate data-updated="true">Jun 19<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/19/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。</p>
+<p>Ubuntu默认安装的是DHCP<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+先要取消DHCP<br />
+编辑/etc/network/interfaces
+<br />
+$sudo vim /etc/network/interfaces<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+#iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+设置IP地址和网关地址<br />
+# The primary network interface
+<br />
+iface eth0 inet static
+<br />
+address 192.168.4.148
+<br />
+netmask 255.255.255.0
+<br />
+gateway 192.168.4.254</p>
+<p>设置DNS服务器地址,编辑文件/etc/resolv.conf<br />
+$sudo vim /etc/resolv.conf
+<br />
+nameserver 202.118.224.101
+<br />
+nameserver 202.106.0.20
+<br />
+&nbsp;<br />
+重启eth0<br />
+$sudo ifdown eth0
+<br />
+$sudo ifup eth0</p>
+<p>机房有时会限制MAC地址，修改MAC地址命令如下<br />
+$sudo ifconfig eth0 up
+<br />
+$sudo ifconfig eth0 hw ether 00:10:5C:E1:63:E1
+<br />
+$sudo ifconfig eth0 down</p>
+<p>
+不过每次重启后都会失效<br />
+&nbsp;自己写了一个脚本</p>
+<p>#!/bin/sh<br />
+echo &quot; **************************************************************&quot;<br />
+echo &quot; *&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Configure IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; * Copyright by Jiang Bo &lt;jiang_eis@hotmail.com&gt; 2009.6.10&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; **************************************************************&quot;<br />
+<br />
+echo &quot; shut down eth0&#8230;&quot;<br />
+ifconfig eth0 down<br />
+<br />
+echo &quot; configure MAC&#8230;&quot;<br />
+ifconfig eth0 hw ether 00:10:5C:E1:63:E1<br />
+<br />
+echo &quot; configure ip address&#8230;&quot;<br />
+ifconfig eth0 192.168.4.148 netmask 255.255.255.0<br />
+<br />
+echo &quot; configure gateway address&#8230;&quot;<br />
+route add default gw 192.168.4.254<br />
+<br />
+echo &quot; set up eth0&#8230;&quot;<br />
+ifconfig eth0 up</p>
+<p>&nbsp;</p>
+<p>每次重启后直接执行这个脚本就行了^^</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/15/post/">关于进程间通信</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-15T00:00:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/15/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>简要记录一下今天遇到的问题和解决方法<br />
+主函数需要创建一个监听网络端口的守护进程，并将监听到的数据传递给主函数，用于显示。其中，主函数有Qt实现，因此需要采用多线程来维护显示界面，即用一个线程维护显示界面，另一个线程负责向界面上添加数据。（坦白说，我觉得肯定有很简单的方法就能够实现显示数据，不过，由于图形界面不是我负责，自己又不会Qt，没办法了～～研究中）<br />
+现在的问题是，守护进程如何将监听到的数据传递给父进程中负责显示的线程？很显然，不能采用函数返回值，守护进程要是能返回，也就不叫守护进程了，也不能用全局变量，因为父子进程不共享全局变量。翻了半天书，发现可以用IPC，尝试了最简单的管道，找到一种很笨的方法。<br />
+下面是一个简单的例子<br />
+#include &lt;unistd.h&gt;<br />
+#include &lt;stdio.h&gt;<br />
+#include &lt;pthread.h&gt;<br />
+#define MAXLINE&nbsp;&nbsp;&nbsp; 1024<br />
+int fd[2];<br />
+pthread_t pthid;<br />
+void* getMsg(void* arg)//父进程中负责显示的线程函数<br />
+{<br />
+&nbsp;&nbsp;&nbsp; char buff[MAXLINE];<br />
+&nbsp;&nbsp;&nbsp; int n;<br />
+&nbsp;&nbsp;&nbsp; close(fd[1]); //关闭写管道<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; n=read(fd[0],buff,MAXLINE);//从管道中读取数据<br />
+&nbsp;&nbsp;&nbsp; buff[n]=&#8217;/0&#8217;;<br />
+&nbsp;&nbsp;&nbsp; printf(&quot;%s/n&quot;,buff);//实际应用中要用Qt实现~<br />
+&nbsp;&nbsp;&nbsp; }<br />
+<br />
+}<br />
+int main(void)<br />
+{<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; n;<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; err;<br />
+&nbsp;&nbsp;&nbsp; pid_t&nbsp;&nbsp;&nbsp; pid;<br />
+&nbsp;&nbsp;&nbsp; char&nbsp;&nbsp;&nbsp; line[MAXLINE];<br />
+<br />
+&nbsp;&nbsp;&nbsp; if(pipe(fd)&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr, &quot;pipe error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; if((pid=fork())&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;fork error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else if(pid＝0)//子进程<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; close(fd[0]);//关闭读管道<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; write(fd[1],&quot;hello/n&quot;,sizeof(&quot;hello/n&quot;));//向管道中写数据<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; err=pthread_create(&amp;pthid,NULL,getMsg,NULL);//创建线程<br />
+&nbsp;&nbsp;&nbsp; if(err!=0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;can&#8217;t create thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; exit(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; printf(&quot;this is main thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; return 0;<br />
+}<br />
+<br />
+感觉这个办法非常笨？但又找不到更好的～发愁中&hellip;&hellip;</p></div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/12/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/10/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

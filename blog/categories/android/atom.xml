@@ -1,0 +1,950 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Android | 非纯种程序猿]]></title>
+  <link href="http://jiangbo.me/blog/categories/android/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-08-31T23:56:35+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiang-bo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Android文档（三）-数据存储]]></title>
+    <link href="http://jiangbo.me/blog/2009/11/22/post/"/>
+    <updated>2009-11-22T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/11/22/post</id>
+    <content type="html"><![CDATA[<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">通常的<span style="font-family: Times New Roman;">OS</span>
+<span style="font-family: 宋体;">是采用一个文件系统来存储文件数据，是文件可以被几个文件共同访问。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中采用了不同的数据共享方法。在</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中，每个应用的数据文件是私有的，</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+
+
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">也就是只有自己能够访问，但是<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">同时提供了一种机制，使得应用可以将自己的私有文件暴露给外部的其他应用程序，从而实现文件数据的共享。这种机制即</span>
+<span style="font-family: Times New Roman;">Content&nbsp;Providers</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+
+
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">Content&nbsp;Providers<span style="font-family: 宋体;">是一个应用的可选组件，它提供了对数据进行修改的标准接口。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">为一些类型数据提供了</span>
+<span style="font-family: Times New Roman;">content&nbsp;Provides</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">，</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">例如，<span style="font-family: Times New Roman;">Image</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">audio</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">video</span>
+<span style="font-family: 宋体;">，以及</span>
+<span style="font-family: Times New Roman;">personal&nbsp;contact&nbsp;informations</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+
+
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">无论如何将数据暴露给其他应用，都需要将数据存储起来。<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">提供了四种方法存储和检索数据：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+
+
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">1.Preferences<span style="font-family: 宋体;">：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+
+
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">preferences<span style="font-family: 宋体;">是一种轻量级的存储机制，采用原始数据类型的</span>
+<span style="font-family: Times New Roman;">key-values</span>
+<span style="font-family: 宋体;">对来进行存储和检索。通常用来存储应用的</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">，例如开机界面或者一个电话欢迎界面。通过</span>
+<span style="font-family: Times New Roman;">Context.getSharedPreferences()</span>
+<span style="font-family: 宋体;">方法读取和写入数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">为你想要给同一个应用中的其他组件共享的数据集合起一个名字，或者通过<span style="font-family: Times New Roman;">Activity.getPreferences()</span>
+<span style="font-family: 宋体;">直接访问</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据集。注意：</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据不能够用在不同应用间共享。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">2.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Files</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以直接在设备上或者移动存储设备上存储文件，但是默认条件下，这些文件对其他应用是不可访问的。</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以通过调用<span style="font-family: Times New Roman;">Context.openFileInput()</span>
+<span style="font-family: 宋体;">方法，并向其传递文件名和路径来读取文件。返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileInputStream</span>
+<span style="font-family: 宋体;">对象。写入文件是，调用</span>
+<span style="font-family: Times New Roman;">Context.opernFileOutput()</span>
+<span style="font-family: 宋体;">，返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileOutputStream</span>
+<span style="font-family: 宋体;">对象。但是文件访问只能针对本地文件，如果调用文件操作方法去操作其他应用中的文件是不可以的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">另外一种文件访问方法是，如果文件在编译时是静态的，可以通过将文件存储在<span style="font-family: Times New Roman;">res/raw/myDataFile</span>
+<span style="font-family: 宋体;">，调用</span>
+<span style="font-family: Times New Roman;">Resources.openRawResources(R.raw.myDataFile)</span>
+<span style="font-family: 宋体;">方法来访问，该方法返回一个</span>
+<span style="font-family: Times New Roman;">InputFileStream</span>
+<span style="font-family: 宋体;">对象。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">3.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Databases</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android&nbsp;API<span style="font-family: 宋体;">中包含了</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">API</span>
+<span style="font-family: 宋体;">，用于创建和使用</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">数据库。每个数据库只对创建它的那个应用是开放的，对其他应用都是私有的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">一个<span style="font-family: Times New Roman;">SQLiteDatabase</span>
+<span style="font-family: 宋体;">对象表示一个数据库，并具有可以与之交互的方法。可以调用</span>
+<span style="font-family: Times New Roman;">SQLiteDatabase.create()</span>
+<span style="font-family: 宋体;">方法创建一个数据库。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">同样提供了数据库管理函数用于操作存储封装成对象的复杂数据集合。例如，</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中定义了一个联系人信息</span>
+<span style="font-family: Times New Roman;">(contact&nbsp;information)</span>
+<span style="font-family: 宋体;">的类型，其中包含了姓名（</span>
+<span style="font-family: Times New Roman;">string)</span>
+<span style="font-family: 宋体;">，地址</span>
+<span style="font-family: Times New Roman;">(String)</span>
+<span style="font-family: 宋体;">，照片</span>
+<span style="font-family: Times New Roman;">(bitmap)</span>
+<span style="font-family: 宋体;">的多种描述人的信息数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">所有的数据库，<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">以及其它的，都被存储在设备上的</span>
+<span style="font-family: Times New Roman;">/data/data/package_name/databases</span>
+<span style="font-family: 宋体;">中。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">4.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Network</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+
+
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">可以通过网络来检索和存储数据，当然，前提是可以联网。</span>
+</span>
+</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android示例HelloGallery中R.styleable unresolved的解决办法]]></title>
+    <link href="http://jiangbo.me/blog/2009/11/15/post/"/>
+    <updated>2009-11-15T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/11/15/post</id>
+    <content type="html"><![CDATA[<p>&nbsp; &nbsp;&nbsp; 今天尝试编译Android SDK中APIDemos中的程序，调试到HelloGallery的时候，在下面这段代码中：<pre class="brush: java">public ImageAdapter(Context c) {
+        mContext = c;
+        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
+        mGalleryItemBackground = a.getResourceId(
+                android.R.styleable.Theme_galleryItemBackground, 0);
+        a.recycle();
+    }</pre>
+&nbsp;</p>
+
+
+<p>&nbsp;&nbsp;&nbsp; 编译出错，提示说android.R.styleable unresolved，在网上查了下，说R.styleable在SDK1.5中已经不再支持，所以会出现这个错误。解决方法如下：</p>
+
+
+<p>1.在res/values目录下新建attrs.xml，在其中添加如下内容：</p>
+
+
+<p><pre class="brush: xhtml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;resources&gt;
+    &lt;declare-styleable name=&quot;Gallery&quot;&gt;
+        &lt;attr name=&quot;android:galleryItemBackground&quot;&gt;
+        &lt;/attr&gt;
+    &lt;/declare-styleable&gt;
+&lt;/resources&gt;</pre>
+</p>
+
+
+<p>2.修改HelloGallery.java，将出错的那段代码：</p>
+
+
+<p><pre class="brush: java">public ImageAdapter(Context c) {
+        mContext = c;
+        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
+        mGalleryItemBackground = a.getResourceId(
+                android.R.styleable.Theme_galleryItemBackground, 0);
+        a.recycle();
+    }</pre>
+</p>
+
+
+<p>修改为：</p>
+
+
+<p><pre class="brush: java">public ImageAdapter(Context c) {
+            mContext = c;
+            TypedArray a = obtainStyledAttributes(R.styleable.Gallery);
+            mGalleryItemBackground = a.getResourceId(
+                    R.styleable.Gallery_android_galleryItemBackground, 0);
+            a.recycle();
+        }</pre>
+</p>
+
+
+<p>3.重新运行就可以了</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android文档（二）-应用基础（1）应用组件（Application Components）]]></title>
+    <link href="http://jiangbo.me/blog/2009/08/20/post/"/>
+    <updated>2009-08-20T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/08/20/post</id>
+    <content type="html"><![CDATA[<h4>应用基础</h4>
+
+
+<p> <p>Android应用程序由Java语言编写。Java字节码以及应用所需的所有数据资源文件都通过aapt工具打包成Android package，一种被标记问.apk的归档文件。这类文件是在移动设备上发布和安装应用程序的基础；用户下载这种文件到他们的设备上。一个.apk文件中所有的代码被认为是一个应用。</p> <p>在很多情况下，每个Android应用程序处于自己的生存空间内：</p> <p>1.默认情况下，每个应用运行在它自己的独立的linux进程环境中。当任何应用的代码需要被执行的时候，Android启动这个进程，当不再需要这个进程并且有其他的应用请求他的系统资源时，关闭该进程。</p> <p>2.每个进程有他自己的Java VM，因此应用之间的执行代码是相互隔离的。</p> <p>3.默认情况下，每个应用被赋给唯一的用户ID。通过权限设置使得这个应用的文件只对相应用户及应用本身可见。当然，也可以通过某种方式将这些文件导出给其它应用。</p> <p>可以通过两个应用共享同一个用户ID，使他们可以共享彼此的文件。为了节约系统资源，相同用户ID的应用可以运行在同一个Linux进程中，共享同一个VM。</p> <h5>应用组件（Application Components）</h5> <p>Android的一个核心特性就是一个应用可以利用其他应用的元素（得到这些应用的允许）。例如，你的应用需要显示一个滚动的图像列表，而另外一个应用已经开发了一个可用的滚动条，并且是其他应用可以应用这个滚动条，你可以调用这个滚动条，而不用自己开发一个。你的应用并不和其他应用的代码混合或连接，而是简单的启动其他应用所需的一部分。</p> <p>为了实现这种机制，当任何应用的某一部分被请求时，系统必须能够启动该应用的一个进程，并且为该进程实例化一个Java对象。这与大部分其他系统上的应用不同。Android应用不需要为每个应用设立入口点（无main()函数)。相对而言，只是一些核心组件，系统能够实例化这些组件，并且在需要时运行。</p> <p>共有4类组件：</p> <p><b>活动（Activities</b><b>）</b></p> <p>一个活动表示为一个与用户交互用户图形界面。例如，一个活动可以表示为一个菜单项组成的列表，用户能够从中选择，或者表示为一个可以显示带有标题的照片。一个文本消息应用可能拥有一个显示联系人的列表，另一个活动负责像这个被选中的联系人写消息，还有另外的一个活动负责查看已有的消息或者更改设置。尽管他们一起形成一个完整的用户界面，但是每个活动还是相互独立的。每一个都是基类Activity的子类。</p> <p>一个应用可能有一个或多个活动。这些活动是什么以及数量有多少取决于不同应用的设计。典型的，当应用启动时活动中的被标记为第一的应该第一个展现给用户。活动间的传递是通过当前活动启动下一活动来实现的。</p> <p>每个活动都被会旨在一个给定的窗口（window）上。典型的，一个窗口一改填充满整个屏幕（screen），但是，有时也可能小于屏幕或者漂浮（float）在其他窗口上。一个活动能够利用额外的窗口-例如，一个弹出窗口或者一个当用户在屏幕上选择了特定项是，用于显示重要信息的窗口。</p> <p>窗口的可视内容都是通过继承视图基类View实现的。每个视图控制着窗口内一个特定的矩形区域。父视图负责承接子视图并组织子视图的布局。叶视图（继承树中最低层的）绘制在矩形区域内负责直接控制和响应用户在该区域内的活动。也就是说，视图是活动与用户发生交互的地方。例如，一个试图可能显示一个小图片并且当用户查看该图片时初始化一个动作。Android有一些内置的视图共开发者使用-包括按钮（buttons），文本框（text field），滚动条（scroll bar)，菜单栏（menu items），选择框（check box），等等。</p> <p>视图通过活动窗口的Activity.setContentView()方法设置一个视图。content view是位于继承树根的View对象。</p> <p><b>服务（Services</b><b>）</b></p> <p>一个服务（service)没有可视用户界面，而是在一个不确定的时期内运行于后台。例如，在用户试图处理其他事物时，一个服务可能用于在后台播放音乐，或者从网络中接收数据或者计算一些事情并将结果发送给需要的活动。每个服务都是扩展于基类Service。</p> <p>一个初级的例子就是媒体播放器按照播放列表播放音乐。播放器应用可能拥有一个或多个活动，例如允许哦那个湖选择曲目并且开始播放等活动。然而，在后台播放的音乐并不由活动来处理，因为用户会希望在他们离开播放器，或者处理其他事务时，音乐能够持续播放。为了保持音乐播放，播放器活动必须能够开启一个服务用语在后台运行。当活动开启服务后并离开屏幕后，系统会保持循环播放的服务。</p> <p>可以连接一个正在运行的服务（如果服务没有开启，箱开启服务）。在连接时，你可以通过服务导出的接口与服务进行通信。对于音乐服务，这个接口可能允许用户暂停，倒退，停止，或者重启虚幻播放。</p> <p>类似于活动和其他组件，服务可以运行在应用进程的主线程中。因此他们不会影响其他组件或者用户接口。他们通常产生另外的线程用于耗时任务（例如音乐播放）。</p> <p><b>广播接收者（Broadcast receivers)</b></p> <p>一个广播接收者是一个仅用来接收和反射广播布告的组件。许多广播起源于系统代码-例如，通知说，时区已发生了变化，电池电量低，该图片已经采取，或用户改变了语言偏好。一个应用可以有任意数量的广播接收机，以应付任何它认为重要的通知。所有接收器扩展BroadcastReceiver基类。广播接收机不显示用户界面。然而，他们可能会启动一项活动去响应收到的信息，或者他们可以使用NotificationManager提醒用户。通知可以以各种方式引起用户的注意-闪动的背光，振动设备，播放声音，等等。它们通常在状态栏放置一个图标，用户可以打开它获得的信息。</p> <p><b>内容提供者</b><b>(</b><b>Content providers)</b></p> <p>内容提供商将一系列具体的应用程序数据提供给其他应用程序。这些数据可以存储在文件系统或 SQLite数据库中，或以任何其他有意义的方式存储 。内容提供商扩展于ContentProvider基类，实现了一组标准方法，使其他应用程序来检索和存储它所控制的数据类型。然而，应用程序不直接调用这些方法。相反，他们使用ContentResolver对象，并调用其方法。一个ContentResolver可以与任何内容提供商交互，它与供应商共同管理任何进程间通信。</p> <p>每当有一个请求需要被某一特定组件处理时，Android确保该组件的应用进程的正在运行，否则启动一个新进程，并确保该组件的一个适当实例可用，否则创建一个新的实例。</p> <p><b>活动组件：意图</b><b>(Intents)</b></p> <p>内容供应商在一个ContentResolver向其发出请求时被激活 。其他三个组成部分-活动，服务和广播接收机-被称为意图的异步消息激活 。一个意图是一种持有的内容信息的Intent对象。对于活动和服务，它意味着一个被请求的动作和指定位于其他事物中的所要使用的数据的URI。例如，它可能转达活动提出的请求去想用户展示一幅图片或使用户可以编辑一些文字。对于广播接收机，Intent对象意味着一个被宣布的活动。例如，它可能会向有关各方宣布相机按钮已被按下。</p> <p>有不同的方法激活各种类型的组件：</p> <p>Ÿ 可以通过向Context.startActivity()或Activity.startActivityForResult()传递一个Intent对象 激活一个活动。作出答复的活动可以通过调用getIntent()方法查询导致其激活的最初的意图，Android通过调用活动的onNewIntent()方法，传递intents。一项活动往往启动下一活动。如果期望从启动的活动返回结果，它必须调用startActivityForResult()而不是startActivity() 。例如，如果启动了一个可以让用户选择一个照片的活动，它可能会希望返回所选择的照片。</p> <p>Ÿ 启动一个服务（或新的指示被发送给正在进行的服务）是通过传递一个Intent对象给Context.startService() 。Android调用该服务的onStart()方法并且向其传递Intent对象。同样，一个intent可以被传递给Context.bindService()用于在请求组件和目标服务之间建立一个持续连接。服务通过onBind()调用获得这个intent对象。 （如果该服务尚未运行， bindService()可以有选择地启动它。 ）举例来说，一项活动可能与前面提到的音乐播放服务建立连接，以便它可以为用户提供的手段（用户界面）来控制播放。这项活动将调用bindService()建立连接，然后调用服务所定义的方法影响到播放。在后面的部分中， 远程过程调用（ Remote procedure calls ），有更多细关于绑定到服务的细节。</p> <p>Ÿ 一个应用程序就可以通过向Context.sendBroadcast() ， Context.sendOrderedBroadcast() ，和Context.sendStickyBroadcast()方法传递Intent对象初始化一个广播。Android是通过调用onReceive()方法，向所有有兴趣的广播接收机传递intent对象。</p> <p><b>关闭组件</b><b></b></p> <p>内容提供商只有在回应ContentResolver发出的请求时才被激活 。广播接收器只有在回应一个广播讯息时被激活。因此，没有必要显式地关闭这些组件。</p> <p>另一方面，活动提供了用户界面。他们处于长时间运行的用户会话中，并可能保持活跃，甚至在闲置，只要谈话继续进行。同样，服务也可能持续运行了很长一段时间。因此，Android需要适当方法来有条不紊地关闭活动和服务：</p> <p>Ÿ 一项活动可以通过调用finish()方法关闭。一项活动可以通过调用finishActivity() 关闭其他活动（一个通过startActivityForResult()启动的活动 ）。</p> <p>Ÿ 服务可以通过调用stopSelf()或Context.stopService()方法停止 。</p> <p>当组件不再被使用，或当Android必须收回内存去激活其他组件时，也可能被系统关闭。在后面的部分中， 组件生命周期（Component Lifecycles） ，讨论这种可能性及其影响的更多细节。</p> <p><b>manifest</b><b>文件</b><b></b></p> <p>在Android启动应用组件之前，它必须知道该组件的存在。因此，应用在一个捆绑在Android包中的清单文件中声明其组件， .apk文件还拥有应用程序的代码，文件和资源。</p> <p>该清单文件是一个XML文件和对所有的应用命名总是AndroidManifest.xml。除了声明该应用程序的组件，该文件还处理其他事情，如命名任何应用需要链接的库（除了默认的Android库） ，并确保应用的任何权限设置按预期执行。</p> <p>但其主要任务是主要是要通知Android的应用程序的组件。例如，一项活动可能会声明如下：</p> <p><i>&lt;?xml version='1.0' encoding='utf-8'?></i></p> <p><i><manifest></manifest></i></p> <p><i><application></application></i></p> <p><i><activity android:name="com.example.project.FreneticActivity"></activity></i></p> <p><i>android:icon="@drawable/small_pic.png"</i></p> <p><i>android:label="@string/freneticLabel" </i></p> <p><i>. . . &gt;</i></p> <p><i></i></p> <p><i>. . .</i></p> <p><i></i></p> <p><i></i></p> <p><activity>元素的name属性声明了实现活动的Activity的子类。icon和label属性指向包含一个图标和标签的资源文件，可显示给用户的展示活动。其它组件以同样的方式被生命- <service>元素表示服务， <receiver>元素表示广播接收机，<provider>元素表示内容提供商。没有在manifest中声明的活动，服务和内容提供商是对系统不可见，因此无法运行。</provider></receiver></service></activity></p> <p>然而，广播接收机既可以被声明在manifest中，或者他们可以在代码中动态创建（如BroadcastReceiver对象）和通过系统调用Context.registerReceiver()注册 。</p> <p><b>Intent</b><b>过滤器</b></p> <p>一个Intent对象可以显式的声明一个目标组件。这样一来，Android将查找这个组建（根据manifest文件中的声明） ，并激活它。但是，如果目标没有显式命名，Android必须找到最好的组件对该Intent作出反应。这是通过比较Intent对象和Intent过滤器中的潜在目标来实现的。一个组成部分的Intent过滤器通知Android组建能够处理的各种intent。像其他关于组件的基本信息一样，他们宣布在manifest文件。</p> <p>以下是扩展前面的例子，向活动中增加了两个Intent过滤器：</p> <p><i>&lt;?xml version='1.0' encoding='utf-8'?></i></p> <p><i><manifest></manifest></i></p> <p><i><application></application></i></p> <p><i><activity android:name="com.example.project.FreneticActivity"></activity></i></p> <p><i>android:icon="@drawable/small_pic.png"</i></p> <p><i>android:label="@string/freneticLabel" </i></p> <p><i>. . . &gt;</i></p> <p><i><intent-filter></intent-filter></i></p> <p><i><action android:name="android.intent.action.MAIN"></action></i></p> <p><i><category android:name="android.intent.category.LAUNCHER"></category></i></p> <p><i></i></p> <p><i><intent-filter></intent-filter></i></p> <p><i><action android:name="com.example.project.BOUNCE"></action></i></p> <p><i><data android:mimetype="image/jpeg"></data></i></p> <p><i><category android:name="android.intent.category.DEFAULT"></category></i></p> <p><i></i></p> <p><i></i></p> <p><i>. . .</i></p> <p><i></i></p> <p>事例中第一个过滤器——活动的结合“ android.intent.action.MAIN ”和类别“android.intent.category.LAUNCHER ” -是一种常见的过滤器。它标志着活动应在应用启动器上展示，屏幕列表应用的用户可以在设备上启动。换句话说，该活动是应用的切入点，当用户在应用启动器上选择是他们将能够看到一个初始的活动。</p> <p>第二个过滤器声明了一项，该活动可以在某一特定类型的数据上执行的动作。</p> <p>组件可以有任意数量的Intent过滤器，每一个宣布了一声明了不同的功能。如果它没有任何过滤器，它只能通过Intent显式的声明目标组建的方式激活。</p> <p>对于像广播接收器，在代码中创建和注册，Intent过滤器直接实例化一个IntentFilter对象。所有其他的过滤器的设置在manifest中。</p></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android文档（一）——什么是Android?]]></title>
+    <link href="http://jiangbo.me/blog/2009/07/16/post/"/>
+    <updated>2009-07-16T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/07/16/post</id>
+    <content type="html"><![CDATA[<p><!--  [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+-->
+<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:WordDocument&gt;
+  &lt;w:View&gt;Normal&lt;/w:View&gt;
+  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
+  &lt;w:PunctuationKerning /&gt;
+  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
+  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
+  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
+  &lt;w:ValidateAgainstSchemas /&gt;
+  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
+  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
+  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
+  &lt;w:Compatibility&gt;
+   &lt;w:SpaceForUL /&gt;
+   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
+   &lt;w:DoNotLeaveBackslashAlone /&gt;
+   &lt;w:ULTrailSpace /&gt;
+   &lt;w:DoNotExpandShiftReturn /&gt;
+   &lt;w:AdjustLineHeightInTable /&gt;
+   &lt;w:BreakWrappedTables /&gt;
+   &lt;w:SnapToGridInCell /&gt;
+   &lt;w:WrapTextWithPunct /&gt;
+   &lt;w:UseAsianBreakRules /&gt;
+   &lt;w:DontGrowAutofit /&gt;
+   &lt;w:UseFELayout /&gt;
+  &lt;/w:Compatibility&gt;
+  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
+ &lt;/w:WordDocument&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
+ &lt;/w:LatentStyles&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if !mso]&gt;
+&lt;object
+ classid="clsid:38481807-CA0E-42D2-BF39-B33AF135CC4D" id=ieooui&gt;
+&lt;/object&gt;
+&lt;mce:style&gt;&lt;!--
+st1/:*{behavior:url(#ieooui) }
+-->
+<!-- [endif]-->
+<!--  [if gte mso 10]&gt;
+&lt;mce:style&gt;&lt;!--
+ /* Style Definitions */
+ table.MsoNormalTable
+    {mso-style-name:普通表格;
+    mso-tstyle-rowband-size:0;
+    mso-tstyle-colband-size:0;
+    mso-style-noshow:yes;
+    mso-style-parent:"";
+    mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+    mso-para-margin:0cm;
+    mso-para-margin-bottom:.0001pt;
+    mso-pagination:widow-orphan;
+    font-size:10.0pt;
+    font-family:"Times New Roman";
+    mso-fareast-font-family:"Times New Roman";
+    mso-ansi-language:#0400;
+    mso-fareast-language:#0400;
+    mso-bidi-language:#0400;}
+-->
+<!-- [endif]-->
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">是一个为移动设备设计的软件栈，包括操作系统，中间件和关键应用。</span>
+<span lang="EN-US">Android SDK</span>
+<span style="font-family: 宋体;">提供了使用</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">在</span>
+<span lang="EN-US">Andorid</span>
+<span style="font-family: 宋体;">平台上开发应用所需的工具和</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">。</span>
+</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">特性</span>
+</h3>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">应用框架</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">提供了组件的复用和置换</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">Dalvik</span>
+</strong>
+<strong><span style="font-family: 宋体;">虚拟机</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">针对移动设备进行了优化</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">内置浏览器</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">基于开源的</span>
+<span lang="EN-US">WebKit</span>
+<span style="font-family: 宋体;">（</span>
+<span lang="EN-US">webkit.org</span>
+<span style="font-family: 宋体;">）引擎</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">优化图形支持</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">包括自定义的</span>
+<span lang="EN-US">2D</span>
+<span style="font-family: 宋体;">图形库；</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">图形基于</span>
+<span lang="EN-US">OpenGL ES1.0</span>
+<span style="font-family: 宋体;">标准</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">SQLite</span>
+</strong>
+<span style="font-family: 宋体;">：</span>
+<span style="font-family: 宋体;">用于结构话的数据存储</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">多媒体支持</span>
+</strong>
+<span style="font-family: 宋体;">：支持常用的音频视频和图像格式（</span>
+<span lang="EN-US">MPEG4</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US"> H264</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">MP3</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">AAC</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">AMR</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">JPG</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">PNG</span>
+<span style="font-family: 宋体;">，</span>
+<span lang="EN-US">GIF</span>
+<span style="font-family: 宋体;">）</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">GSM</span>
+</strong>
+<strong><span style="font-family: 宋体;">技术</span>
+</strong>
+<span style="font-family: 宋体;">：依赖于具体硬件实现</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">蓝牙，</span>
+<span lang="EN-US">EDGE</span>
+</strong>
+<strong><span style="font-family: 宋体;">，</span>
+<span lang="EN-US">3G</span>
+<span lang="EN-US">,WiFi:</span>
+</strong>
+<span lang="EN-US"> </span>
+<span style="font-family: 宋体;">依赖于具体硬件</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">摄像，</span>
+<span lang="EN-US">GPS</span>
+</strong>
+<strong><span style="font-family: 宋体;">，加速：</span>
+</strong>
+<span style="font-family: 宋体;">依赖于硬件</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">丰富的开发环境</span>
+</strong>
+<span style="font-family: 宋体;">：包括设备模拟器，调试工具，内存和性能分析，以及</span>
+<span lang="EN-US">Eclipse IDE</span>
+<span style="font-family: 宋体;">插件</span>
+</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">架构</span>
+</h3>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">下图显示了</span>
+<span lang="EN-US">Android OS</span>
+<span style="font-family: 宋体;">的主要组件。下面每段对各个模块进行了详细描述</span>
+</p>
+
+
+<p>&nbsp;</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;"><img src="http://p.blog.csdn.net/images/p_blog_csdn_net/JiangBo_HIT/EntryImages/20090716/system-architecture.jpg" alt="" width="713" height="512" />
+</span>
+</h3>
+
+
+<p>&nbsp;</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><!--  [if !mso]&gt;
+&lt;mce:style&gt;&lt;!--
+v/:* {behavior:url(#default#VML);}
+o/:* {behavior:url(#default#VML);}
+w/:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+-->
+<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:WordDocument&gt;
+  &lt;w:View&gt;Normal&lt;/w:View&gt;
+  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
+  &lt;w:PunctuationKerning /&gt;
+  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
+  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
+  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
+  &lt;w:ValidateAgainstSchemas /&gt;
+  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
+  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
+  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
+  &lt;w:Compatibility&gt;
+   &lt;w:SpaceForUL /&gt;
+   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
+   &lt;w:DoNotLeaveBackslashAlone /&gt;
+   &lt;w:ULTrailSpace /&gt;
+   &lt;w:DoNotExpandShiftReturn /&gt;
+   &lt;w:AdjustLineHeightInTable /&gt;
+   &lt;w:BreakWrappedTables /&gt;
+   &lt;w:SnapToGridInCell /&gt;
+   &lt;w:WrapTextWithPunct /&gt;
+   &lt;w:UseAsianBreakRules /&gt;
+   &lt;w:DontGrowAutofit /&gt;
+   &lt;w:UseFELayout /&gt;
+  &lt;/w:Compatibility&gt;
+  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
+ &lt;/w:WordDocument&gt;
+&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
+ &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
+ &lt;/w:LatentStyles&gt;
+&lt;/xml&gt;&lt;![endif]-->
+<!--  [if gte mso 10]&gt;
+&lt;mce:style&gt;&lt;!--
+ /* Style Definitions */
+ table.MsoNormalTable
+    {mso-style-name:普通表格;
+    mso-tstyle-rowband-size:0;
+    mso-tstyle-colband-size:0;
+    mso-style-noshow:yes;
+    mso-style-parent:"";
+    mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
+    mso-para-margin:0cm;
+    mso-para-margin-bottom:.0001pt;
+    mso-pagination:widow-orphan;
+    font-size:10.0pt;
+    font-family:"Times New Roman";
+    mso-fareast-font-family:"Times New Roman";
+    mso-ansi-language:#0400;
+    mso-fareast-language:#0400;
+    mso-bidi-language:#0400;}
+-->
+<!-- [endif]--><span style='font-size: 10.5pt; font-family: "Times New Roman";' lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype id="_x0000_t75" coordsize="21600,21600"
+ o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f"
+ stroked="f"&gt;
+ &lt;v:stroke joinstyle="miter" /&gt;
+ &lt;v:formulas&gt;
+  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
+  &lt;v:f eqn="sum @0 1 0" /&gt;
+  &lt;v:f eqn="sum 0 0 @1" /&gt;
+  &lt;v:f eqn="prod @2 1 2" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @0 0 1" /&gt;
+  &lt;v:f eqn="prod @6 1 2" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="sum @8 21600 0" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @10 21600 0" /&gt;
+ &lt;/v:formulas&gt;
+ &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
+ &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
+&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
+ height:278.25pt'&gt;
+ &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
+  o:title="" /&gt;
+&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
+</p>
+
+
+<p class="MsoNormal" style="text-align: center;" align="center"><span lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype
+ id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
+ path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"&gt;
+ &lt;v:stroke joinstyle="miter" /&gt;
+ &lt;v:formulas&gt;
+  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
+  &lt;v:f eqn="sum @0 1 0" /&gt;
+  &lt;v:f eqn="sum 0 0 @1" /&gt;
+  &lt;v:f eqn="prod @2 1 2" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @0 0 1" /&gt;
+  &lt;v:f eqn="prod @6 1 2" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
+  &lt;v:f eqn="sum @8 21600 0" /&gt;
+  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
+  &lt;v:f eqn="sum @10 21600 0" /&gt;
+ &lt;/v:formulas&gt;
+ &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
+ &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
+&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
+ height:278.25pt'&gt;
+ &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
+  o:title="" /&gt;
+&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
+</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用</span>
+</h3>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">封装了一组核心应用，包括</span>
+<span lang="EN-US">Email</span>
+<span style="font-family: 宋体;">客户端，</span>
+<span lang="EN-US">SMS</span>
+<span style="font-family: 宋体;">应用，日历，地图，浏览器，联系人和其他应用。所有的应用都是有</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">编写。</span>
+</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用框架</span>
+</h3>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">开发者能够访问所有核心应用所使用的框架</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">。应用架构被设计成简洁的组建复用；任何应用发布本身的兼容性，任何其他的应用都可一利用这些兼容性（遵循框架的安全原则）。这种机制使得组建可以被其它用户置换。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">应用之下是一系列服务和系统，包括：</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
+<strong><span style="font-family: 宋体;">丰富的可扩展的视图（</span>
+<span lang="EN-US">View</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span style="font-family: 宋体;">集合可以被用来构建应用，包括</span>
+<span lang="EN-US">lists, grids, text
+boxes,buttons,</span>
+<span style="font-family: 宋体;">以及嵌入式浏览器</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2.</span>
+<strong><span style="font-family: 宋体;">内容提供者</span>
+<span lang="EN-US">(Content Providers)</span>
+</strong>
+<span style="font-family: 宋体;">能够是应用访问来自其他应用的数据，例如联系人（</span>
+<span lang="EN-US">Contacts</span>
+<span style="font-family: 宋体;">）</span>
+<span lang="EN-US">,</span>
+<span style="font-family: 宋体;">或者与其他应用共享数据</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">3<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">资源管理器（</span>
+<span lang="EN-US">Resource Manager)</span>
+</strong>
+<span style="font-family: 宋体;">，支持访问非代码资源，例如本地字符，图像，布局文件</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4.</span>
+<strong><span style="font-family: 宋体;">消息管理器（</span>
+<span lang="EN-US">Notification Manager</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span style="font-family: 宋体;">使得应用能够在状态栏中显示自定义的警告</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">5<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">活动管理器（</span>
+<span lang="EN-US">Activity Manager)</span>
+</strong>
+<span lang="EN-US"> </span>
+<span style="font-family: 宋体;">管理应用的生命周期，提供通用的导航返回栈。</span>
+</p>
+
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
+</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">库</span>
+</h3>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">包括了一组被各个组件使用</span>
+<span lang="EN-US">C/C++</span>
+<span style="font-family: 宋体;">库。这些兼容性通过</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">应用框架暴露给开发者。下面列出一些核心库：</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
+<strong><span style="font-family: 宋体;">系统</span>
+<span lang="EN-US">C</span>
+</strong>
+<strong><span style="font-family: 宋体;">库（</span>
+<span lang="EN-US">System C
+library</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">一个基于</span>
+<span lang="EN-US">BSD</span>
+<span style="font-family: 宋体;">实现的标准</span>
+<span lang="EN-US">C</span>
+<span style="font-family: 宋体;">系统库（</span>
+<span lang="EN-US">libc</span>
+<span style="font-family: 宋体;">），支持嵌入式</span>
+<span lang="EN-US">linux</span>
+<span style="font-family: 宋体;">的所有设备。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2<strong>.</strong>
+</span>
+<strong><span style="font-family: 宋体;">多媒体库（</span>
+<span lang="EN-US">Media Libraries</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">PacketVideo</span>
+<span style="font-family: 宋体;">的</span>
+<span lang="EN-US">OpenCORE</span>
+<span style="font-family: 宋体;">；这个库支持播放和录制多种流行视频和音频格式，包括静态图像格式。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.</span>
+</strong>
+<strong><span style="font-family: 宋体;">表面管理器（</span>
+<span lang="EN-US">Surface Manager</span>
+</strong>
+<strong><span style="font-family: 宋体;">）</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">管理访问显示子系统与多种应用的</span>
+<span lang="EN-US">2D</span>
+<span style="font-family: 宋体;">和</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">图形层无缝连接。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.LibWebCore-</span>
+</strong>
+<span style="font-family: 宋体;">一个现代的</span>
+<span lang="EN-US">web</span>
+<span style="font-family: 宋体;">浏览器引擎，支持</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">浏览器和嵌入式</span>
+<span lang="EN-US">Web</span>
+<span style="font-family: 宋体;">视图。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4<strong>.SGL-</strong>
+</span>
+<strong><span style="font-family: 宋体;">底层的</span>
+<span lang="EN-US">2D</span>
+</strong>
+<span style="font-family: 宋体;">图形引擎。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">5.3DLibraries</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">OpenGL ES1.0</span>
+<span style="font-family: 宋体;">实现的</span>
+<span lang="EN-US">API</span>
+<span style="font-family: 宋体;">；该库使用</span>
+<span lang="EN-US">3D</span>
+<span style="font-family: 宋体;">硬件加速（如果硬件支持）或这高度优化的软件渲染。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">6.FreeType</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">位图和向量字体渲染。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">7.SQLite</span>
+</strong>
+<span lang="EN-US">-</span>
+<span style="font-family: 宋体;">一个强大的轻量级关系数据库引擎，可以被所有应用使用</span>
+</p>
+
+
+<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
+</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">运行时环境</span>
+</h3>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Anroid</span>
+<span style="font-family: 宋体;">包括一系列的核心库，这些库提供了绝大多数</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">核心库所需的功能。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">每个</span>
+<span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">应用是一个独立运行的进程，在</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">虚拟机中有独立的例程。</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">被实现用于在一个设备上有效的运行多个虚拟机。</span>
+<span lang="EN-US">Dalvik</span>
+<span style="font-family: 宋体;">虚拟机的可执行文件</span>
+<span lang="EN-US">Dalvik Executeable(.dex)</span>
+<span style="font-family: 宋体;">被优化的占用最小的内存空间。虚拟机以注册为基础，</span>
+<span lang="EN-US">Java</span>
+<span style="font-family: 宋体;">类编译的字节码被</span>
+<span lang="EN-US">dx</span>
+<span style="font-family: 宋体;">工具优化为</span>
+<span lang="EN-US">.dex</span>
+<span style="font-family: 宋体;">文件。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Dalvik VM</span>
+<span style="font-family: 宋体;">底层依赖于</span>
+<span lang="EN-US">Linux</span>
+<span style="font-family: 宋体;">内核，</span>
+<span lang="EN-US">linux</span>
+<span style="font-family: 宋体;">内核为其提供线程和低级内存管理。</span>
+</p>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">&nbsp;</span>
+</p>
+
+
+<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Linux</span>
+<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">内核</span>
+</h3>
+
+
+<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
+<span style="font-family: 宋体;">基于</span>
+<span lang="EN-US">Linux2.6</span>
+<span style="font-family: 宋体;">内核所提供的服务，包括安全，内存管理，进程管理，网络堆栈，以及驱动模型。内核同时扮演了一个介于硬件和其余软件栈之间的一个抽象层。</span>
+</p>
+
+
+<p>&nbsp;</p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android SDK1.5开发体验]]></title>
+    <link href="http://jiangbo.me/blog/2009/05/05/post/"/>
+    <updated>2009-05-05T00:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2009/05/05/post</id>
+    <content type="html"><![CDATA[<p>&nbsp;</p>
+
+
+<p>今天在机房尝试了一下<a onclick="tagshow(event, 'Android');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>Android</strong></span></a> SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去<a href="http://developer.android.com/sdk/1.5_r1/index.html">http://developer.android.com/sdk/1.5_r1/index.html</a>上自己看吧。</p>
+
+
+<p>下面说个小问题，之前版本的SDK，你写个HelloWorld，按照<a onclick="tagshow(event, 'google');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>google</strong></span></a>网站上说的，run的时候，会出现</p>
+
+
+<p>[2009-05-05 16:18:13 - HelloWorld] ------------------------------<br />[2009-05-05 16:18:13 - HelloWorld] Android Launch!<br />[2009-05-05 16:18:13 - HelloWorld] adb is running normally.<br />[2009-05-05 16:18:13 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:18:13 - HelloWorld] Failed to find an <a onclick="tagshow(event, 'AVD');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>AVD</strong></span></a> compatible with target 'Android 1.1'. Launch aborted.</p>
+
+
+<p>针对这个问题官方的解释在</p>
+
+
+<p><a href="http://developer.android.com/guide/developing/eclipse-adt.html#Running">http://developer.android.com/guide/developing/eclipse-adt.html#Running</a></p>
+
+
+<p>看懂了之后其实很容易，就是在运行模拟器之前必须要自己创建一个AVD（Android Virtual Device，Android虚拟设备），相当于配置你要模拟的目标平台一样，方法如下：</p>
+
+
+<p>1.打开CMD，输入命令android list targets，查看所有可用的目标平台（如果出现android命令无法找到，是因为你的PATH变量没配置，这就不用我多说了），显示结果为</p>
+
+
+<p>Available Android targets:</p>
+
+
+<p>id: 1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
+
+
+<p>id: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.5<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
+
+
+<p>id: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Add-On<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Vendor: Google Inc.<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Description: Android + Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Based on Android 1.5 (API level 3)<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Libraries:<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />* com.google.android.maps (maps.jar)<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />API for Google Maps<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: QVGA-P, HVGA-L, HVGA (default), QVGA-L, HVGA-P</p>
+
+
+<p>2.创建一个你想要的AVD，使用如下<a onclick="tagshow(event, '%C3%FC%C1%EE');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>命令</strong></span></a>：</p>
+
+
+<p>android create avd --name<em>&lt;your_avd_name&gt;</em>--target<em>&lt;targetID&gt;</em></p>
+
+
+<p>例如：andorid create avd --name adt15 --target 2命令，创建了一个名为adt15的2号（Android1.5）平台的AVD。</p>
+
+
+<p>3.然后会询问是否配置硬件设备，我没有硬件，就没配置，默认是NO，如果你想配置的话，输入yes就行。</p>
+
+
+<p>4.回到Eclipse里，继续RUN，这是就能搞定了。</p>
+
+
+<p>PS一下：模拟器编译装载实在是太慢了，一个HelloWorld要用7分钟，才能运行，不过好歹是能运行了，一下是Eclipse里的输出：</p>
+
+
+<p>[2009-05-05 16:35:26 - HelloWorld] ------------------------------<br />[2009-05-05 16:35:26 - HelloWorld] Android Launch!<br />[2009-05-05 16:35:26 - HelloWorld] adb is running normally.<br />[2009-05-05 16:35:26 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:35:26 - HelloWorld] Automatic Target Mode: launching new emulator with compatible AVD 'android15r1'<br />[2009-05-05 16:35:26 - HelloWorld] Launching a new emulator with Virtual Device 'android15r1'<br />[2009-05-05 16:35:30 - HelloWorld] New emulator found: emulator-5554<br />[2009-05-05 16:35:30 - HelloWorld] Waiting for HOME ('android.process.acore') to be launched...<br />[2009-05-05 16:40:28 - HelloWorld] HOME is up on device 'emulator-5554'<br />[2009-05-05 16:40:28 - HelloWorld] Uploading HelloWorld.apk onto device 'emulator-5554'<br />[2009-05-05 16:40:29 - HelloWorld] Installing HelloWorld.apk...<br />[2009-05-05 16:42:11 - HelloWorld] Success!<br />[2009-05-05 16:42:11 - HelloWorld] Starting activity com.jiang.android.HelloWorld on device<br />[2009-05-05 16:42:51 - HelloWorld] ActivityManager: Starting: Intent { comp={com.jiang.android/com.jiang.android.HelloWorld} }</p>
+
+
+<p>这时你在模拟器里就能看到Helloworld了，注意，一定要耐心等待。</p>
+
+]]></content>
+  </entry>
+  
+</feed>

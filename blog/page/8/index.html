@@ -1,0 +1,717 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="今天终于能用linux上网了，自从换了校园网，用上那个该死的锐捷，已经告别可爱的Ubuntu很久了，差了很多资料，一直无法上，无论是锐捷官方客户端xrgsu，还是xsuppclient,或者ruijieclient，都是有错误，最后找到了一个很好用的mentohust(http://code. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/8">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/24/post/">Linux锐捷上网-mentohust</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-24T00:00:00+08:00" pubdate data-updated="true">Nov 24<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/24/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天终于能用linux上网了，自从换了校园网，用上那个该死的锐捷，已经告别可爱的Ubuntu很久了，差了很多资料，一直无法上，无论是锐捷官方客户端xrgsu，还是xsuppclient,或者ruijieclient，都是有错误，最后找到了一个很好用的mentohust(http://code.google.com/p/mentohust/)华科的牛人开发的锐捷客户端，更新的比较及时，很不错，赞一个，而且安装非常简单，我是Ubuntu，直接下载了deb包，安装完成后，修改/etc/mentohust.conf:<br />
+&nbsp;&nbsp;&nbsp; ;(U)用户名，长度不超过64<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Username=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(P)密码，长度不超过64<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Password=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(N)网卡<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Nic=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(I)静态IP用户可以使用非本机IP<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; IP=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(G)网关，无关紧要<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Gateway=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(S)DNS服务器，无关紧要<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DNS=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(F)认证数据包，如果需要校验客户端，就需要正确设置，否则不必自找麻烦<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Package=/etc/mentohust/3_50.mpf<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(T)每次发包超时时间（秒）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Timeout=3<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(E)发送Echo包的间隔（秒）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EchoInterval=30<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(R)定时重连间隔（分）（如果学校支持使用私有地址认证，就可以把自动重连间隔设短一点，因为这种情况除非掉线才真正开始重连，否则建议设为0）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AutoReconnect=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(A)寻找服务器时的组播地址类型 0标准 1私有<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; StartAddress=1<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(D)DHCP方式 0(不使用) 1(二次认证) 2(认证后) 3(认证前)<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DhcpMode=0<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(C)进行DHCP的脚本（可以为dhclient eth0等）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DhcpScript=dhclient<br />
+将里面的选项都配置成和你学校配置相同就可以了，具体使用请参考官方wiki(http://code.google.com/p/mentohust/wiki/FAQ)</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/22/post/">Android文档（三）-数据存储</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-22T00:00:00+08:00" pubdate data-updated="true">Nov 22<span>nd</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/22/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">通常的<span style="font-family: Times New Roman;">OS</span>
+<span style="font-family: 宋体;">是采用一个文件系统来存储文件数据，是文件可以被几个文件共同访问。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中采用了不同的数据共享方法。在</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中，每个应用的数据文件是私有的，</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">也就是只有自己能够访问，但是<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">同时提供了一种机制，使得应用可以将自己的私有文件暴露给外部的其他应用程序，从而实现文件数据的共享。这种机制即</span>
+<span style="font-family: Times New Roman;">Content&nbsp;Providers</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">Content&nbsp;Providers<span style="font-family: 宋体;">是一个应用的可选组件，它提供了对数据进行修改的标准接口。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">为一些类型数据提供了</span>
+<span style="font-family: Times New Roman;">content&nbsp;Provides</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">，</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">例如，<span style="font-family: Times New Roman;">Image</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">audio</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">video</span>
+<span style="font-family: 宋体;">，以及</span>
+<span style="font-family: Times New Roman;">personal&nbsp;contact&nbsp;informations</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">无论如何将数据暴露给其他应用，都需要将数据存储起来。<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">提供了四种方法存储和检索数据：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;	</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">1.Preferences<span style="font-family: 宋体;">：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;	</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">preferences<span style="font-family: 宋体;">是一种轻量级的存储机制，采用原始数据类型的</span>
+<span style="font-family: Times New Roman;">key-values</span>
+<span style="font-family: 宋体;">对来进行存储和检索。通常用来存储应用的</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">，例如开机界面或者一个电话欢迎界面。通过</span>
+<span style="font-family: Times New Roman;">Context.getSharedPreferences()</span>
+<span style="font-family: 宋体;">方法读取和写入数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">为你想要给同一个应用中的其他组件共享的数据集合起一个名字，或者通过<span style="font-family: Times New Roman;">Activity.getPreferences()</span>
+<span style="font-family: 宋体;">直接访问</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据集。注意：</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据不能够用在不同应用间共享。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">2.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Files</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以直接在设备上或者移动存储设备上存储文件，但是默认条件下，这些文件对其他应用是不可访问的。</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以通过调用<span style="font-family: Times New Roman;">Context.openFileInput()</span>
+<span style="font-family: 宋体;">方法，并向其传递文件名和路径来读取文件。返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileInputStream</span>
+<span style="font-family: 宋体;">对象。写入文件是，调用</span>
+<span style="font-family: Times New Roman;">Context.opernFileOutput()</span>
+<span style="font-family: 宋体;">，返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileOutputStream</span>
+<span style="font-family: 宋体;">对象。但是文件访问只能针对本地文件，如果调用文件操作方法去操作其他应用中的文件是不可以的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">另外一种文件访问方法是，如果文件在编译时是静态的，可以通过将文件存储在<span style="font-family: Times New Roman;">res/raw/myDataFile</span>
+<span style="font-family: 宋体;">，调用</span>
+<span style="font-family: Times New Roman;">Resources.openRawResources(R.raw.myDataFile)</span>
+<span style="font-family: 宋体;">方法来访问，该方法返回一个</span>
+<span style="font-family: Times New Roman;">InputFileStream</span>
+<span style="font-family: 宋体;">对象。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">3.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Databases</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android&nbsp;API<span style="font-family: 宋体;">中包含了</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">API</span>
+<span style="font-family: 宋体;">，用于创建和使用</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">数据库。每个数据库只对创建它的那个应用是开放的，对其他应用都是私有的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">一个<span style="font-family: Times New Roman;">SQLiteDatabase</span>
+<span style="font-family: 宋体;">对象表示一个数据库，并具有可以与之交互的方法。可以调用</span>
+<span style="font-family: Times New Roman;">SQLiteDatabase.create()</span>
+<span style="font-family: 宋体;">方法创建一个数据库。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">同样提供了数据库管理函数用于操作存储封装成对象的复杂数据集合。例如，</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中定义了一个联系人信息</span>
+<span style="font-family: Times New Roman;">(contact&nbsp;information)</span>
+<span style="font-family: 宋体;">的类型，其中包含了姓名（</span>
+<span style="font-family: Times New Roman;">string)</span>
+<span style="font-family: 宋体;">，地址</span>
+<span style="font-family: Times New Roman;">(String)</span>
+<span style="font-family: 宋体;">，照片</span>
+<span style="font-family: Times New Roman;">(bitmap)</span>
+<span style="font-family: 宋体;">的多种描述人的信息数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">所有的数据库，<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">以及其它的，都被存储在设备上的</span>
+<span style="font-family: Times New Roman;">/data/data/package_name/databases</span>
+<span style="font-family: 宋体;">中。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">4.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Network</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">可以通过网络来检索和存储数据，当然，前提是可以联网。</span>
+</span>
+</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/16/post/">IAR开发环境中添加头文件</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-16T00:00:00+08:00" pubdate data-updated="true">Nov 16<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/16/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/嵌入式开发/'>嵌入式开发</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content">&nbsp;
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">今天在添加<span style="font-family: Times New Roman;">uart</span>
+<span style="font-family: 宋体;">驱动时，需要向现有的</span>
+<span style="font-family: Times New Roman;">uC/OS</span>
+<span style="font-family: 宋体;">工程文件中添加头文件。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">1.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">直接在工程目录下新建一个目录，将<span style="font-family: Times New Roman;">uart.c</span>
+<span style="font-family: 宋体;">和</span>
+<span style="font-family: Times New Roman;">uart.h</span>
+<span style="font-family: 宋体;">添加到该目录下，</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">2.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">在工程项目上右键<span style="font-family: Times New Roman;">-&gt;add-&gt;add&nbsp;group</span>
+<span style="font-family: 宋体;">，添加一个组</span>
+<span style="font-family: Times New Roman;">uC-UART</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">3.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">在该组上继续右键<span style="font-family: Times New Roman;">-&gt;add-&gt;add&nbsp;file</span>
+<span style="font-family: 宋体;">，添加</span>
+<span style="font-family: Times New Roman;">uart.c</span>
+<span style="font-family: 宋体;">和</span>
+<span style="font-family: Times New Roman;">uart.h</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt; text-align: center;"><span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">4.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">修改<span style="font-family: Times New Roman;">includes.h</span>
+<span style="font-family: 宋体;">，添加</span>
+<span style="font-family: Times New Roman;">#include&nbsp;&lt;uart.h&gt;</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">5.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">此时直接编译会报错说无法找到<span style="font-family: Times New Roman;">&lt;uart.h&gt;</span>
+<span style="font-family: 宋体;">，还需要将上述目录添加到编译路径中，右键工程</span>
+<span style="font-family: Times New Roman;">-&gt;option-&gt;C/C++&nbsp;Compiler-&gt;preprocessor</span>
+<span style="font-family: 宋体;">，将</span>
+<span style="font-family: Times New Roman;">uart.h</span>
+<span style="font-family: 宋体;">所在路径添加到</span>
+<span style="font-family: Times New Roman;">include</span>
+<span style="font-family: 宋体;">路径中</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt; text-align: center;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">6.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">重新编译，就没有错误了。</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/15/post/">Android示例HelloGallery中R.styleable Unresolved的解决办法</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-15T00:00:00+08:00" pubdate data-updated="true">Nov 15<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/15/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/android/'>Android</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>&nbsp; &nbsp;&nbsp; 今天尝试编译Android SDK中APIDemos中的程序，调试到HelloGallery的时候，在下面这段代码中：<pre class="brush: java">public ImageAdapter(Context c) {
+        mContext = c;
+        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
+        mGalleryItemBackground = a.getResourceId(
+                android.R.styleable.Theme_galleryItemBackground, 0);
+        a.recycle();
+    }</pre>
+&nbsp;</p>
+<p>&nbsp;&nbsp;&nbsp; 编译出错，提示说android.R.styleable unresolved，在网上查了下，说R.styleable在SDK1.5中已经不再支持，所以会出现这个错误。解决方法如下：</p>
+<p>1.在res/values目录下新建attrs.xml，在其中添加如下内容：</p>
+<p><pre class="brush: xhtml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;resources&gt;
+	&lt;declare-styleable name=&quot;Gallery&quot;&gt;
+        &lt;attr name=&quot;android:galleryItemBackground&quot;&gt;
+        &lt;/attr&gt;
+    &lt;/declare-styleable&gt;
+&lt;/resources&gt;</pre>
+</p>
+<p>2.修改HelloGallery.java，将出错的那段代码：</p>
+<p><pre class="brush: java">public ImageAdapter(Context c) {
+        mContext = c;
+        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
+        mGalleryItemBackground = a.getResourceId(
+                android.R.styleable.Theme_galleryItemBackground, 0);
+        a.recycle();
+    }</pre>
+</p>
+<p>修改为：</p>
+<p><pre class="brush: java">public ImageAdapter(Context c) {
+        	mContext = c;
+            TypedArray a = obtainStyledAttributes(R.styleable.Gallery);
+            mGalleryItemBackground = a.getResourceId(
+                    R.styleable.Gallery_android_galleryItemBackground, 0);
+            a.recycle();
+        }</pre>
+</p>
+<p>3.重新运行就可以了</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/10/03/post/">SLF4J: Failed to Load Class &quot;org.slf4j.impl.StaticLoggerBinder&quot;问题解决</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-10-03T00:00:00+08:00" pubdate data-updated="true">Oct 3<span>rd</span>, 2009</time>
+        
+         | <a href="/blog/2009/10/03/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天初次学习Hibernate，按照指导做的时候，出现如下错误：</p> <p>SLF4J: Failed to load class &#8220;org.slf4j.impl.StaticLoggerBinder&#8221;.   <br />SLF4J: See <a href="http://www.slf4j.org/codes.html#StaticLoggerBinder">http://www.slf4j.org/codes.html#StaticLoggerBinder</a> for further details.    <br />Exception in thread &#8220;main&#8221; java.lang.NoClassDefFoundError: org/slf4j/impl/StaticLoggerBinder    <br />    at org.slf4j.LoggerFactory.getSingleton(LoggerFactory.java:223)    <br />    at org.slf4j.LoggerFactory.bind(LoggerFactory.java:120)    <br />    at org.slf4j.LoggerFactory.performInitialization(LoggerFactory.java:111)    <br />    at org.slf4j.LoggerFactory.getILoggerFactory(LoggerFactory.java:269)    <br />    at org.slf4j.LoggerFactory.getLogger(LoggerFactory.java:242)    <br />    at org.slf4j.LoggerFactory.getLogger(LoggerFactory.java:255)    <br />    at org.hibernate.cfg.Configuration.<clinit>(Configuration.java:152)    <br />    at com.jiang.hibernate.Base.main(Base.java:25)</clinit></p> <p>问题的原因是无法找到org.slf4j.impl.StaticLoggerBinder，我找了一下，确实没有该类，网上搜了一下下面是官方的解答<a title="http://www.slf4j.org/codes.html#StaticLoggerBinder" href="http://www.slf4j.org/codes.html#StaticLoggerBinder">http://www.slf4j.org/codes.html#StaticLoggerBinder</a>：</p> <p>This error is reported when the <code>org.slf4j.impl.StaticLoggerBinder</code> class could not be loaded into memory. This happens when no appropriate SLF4J binding could be found on the class path. Placing one (and only one) of <em>slf4j-nop.jar</em>, <em>slf4j-simple.jar</em>, <em>slf4j-log4j12.jar</em>, <em>slf4j-jdk14.jar</em> or <em>logback-classic.jar</em> on the class path should solve the problem. </p> <p>You can download SLF4J bindings from the project <a href="http://www.slf4j.org/download.html">download page</a>. </p> <p>大意是<code>org.slf4j.impl.StaticLoggerBinder</code> 无法载入到内存，原因是没有找到合适的绑定SLF4J，需要添加所列举的包中的某一个。</p> <p>解决方法如下：</p> <p>下载slf4j-nop.jar，添加到路径中，就解决问题了</p></div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/9/">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/7/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

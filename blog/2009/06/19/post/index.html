@@ -5,13 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Zero-Copy&sendfile浅析 - 非纯种程序猿</title>
+  <title>ubuntu在机房上网 - 非纯种程序猿</title>
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、典型IO调用的问题
-一个典型的web服务器传送静态文件（如CSS，JS，图片等）的过程如下： read(file, tmp_buf, len);
-write(socket, tmp_buf, len); 首先调用read将文件从磁盘读取到tmp_buf， &hellip;">
+  <meta name="description" content="最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。
+Ubuntu默认安装的是DHCP
+# The primary network interface auto eth0 iface eth0 inet dhcp &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +20,7 @@ write(socket, tmp_buf, len); 首先调用read将文件从磁盘读取到tmp_buf�
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile">
+  <link rel="canonical" href="http://jiangbo.me/blog/2009/06/19/post">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -83,7 +83,7 @@ write(socket, tmp_buf, len); 首先调用read将文件从磁盘读取到tmp_buf�
   
   <header>
     
-      <h1 class="entry-title">Zero-Copy&sendfile浅析</h1>
+      <h1 class="entry-title">Ubuntu在机房上网</h1>
     
     
       <p class="meta">
@@ -99,7 +99,7 @@ write(socket, tmp_buf, len); 首先调用read将文件从磁盘读取到tmp_buf�
   
 
 
-<time datetime="2011-07-16T00:00:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2011</time>
+<time datetime="2009-06-19T00:00:00+08:00" pubdate data-updated="true">Jun 19<span>th</span>, 2009</time>
         
          | <a href="#disqus_thread">Comments</a>
         
@@ -109,68 +109,79 @@ write(socket, tmp_buf, len); 首先调用read将文件从磁盘读取到tmp_buf�
   </header>
 
 
-<div class="entry-content"><p><strong>一、典型IO调用的问题</strong>
-一个典型的web服务器传送静态文件（如CSS，JS，图片等）的过程如下：
-<em>
-read(file, tmp_buf, len);<br />
-write(socket, tmp_buf, len);</em></p>
-
-<p>首先调用read将文件从磁盘读取到tmp_buf，然后调用write将tmp_buf写入到socket，在这过程中会出现四次数据 copy，过程如图1所示</p>
-
-<p><a href="/images/uploads/2011/07/pic_1.jpg"><img class="alignnone size-medium wp-image-6" title="图1" src="/images/uploads/2011/07/pic_1-300x230.jpg" alt="" width="300" height="230" /></a></p>
-
-<p>图1</p>
-
-<p>1。当调用read系统调用时，通过DMA（Direct Memory Access）将数据copy到内核模式<br />
-2。然后由CPU控制将内核模式数据copy到用户模式下的 buffer中<br />
-3。read调用完成后，write调用首先将用户模式下 buffer中的数据copy到内核模式下的socket buffer中<br />
-4。最后通过DMA copy将内核模式下的socket buffer中的数据copy到网卡设备中传送。</p>
-
-<p>从上面的过程可以看出，数据白白从内核模式到用户模式走了一 圈，浪费了两次copy，而这两次copy都是CPU copy，即占用CPU资源。</p>
-
+<div class="entry-content"><p>最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。</p>
+<p>Ubuntu默认安装的是DHCP<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+先要取消DHCP<br />
+编辑/etc/network/interfaces
+<br />
+$sudo vim /etc/network/interfaces<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+#iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+设置IP地址和网关地址<br />
+# The primary network interface
+<br />
+iface eth0 inet static
+<br />
+address 192.168.4.148
+<br />
+netmask 255.255.255.0
+<br />
+gateway 192.168.4.254</p>
+<p>设置DNS服务器地址,编辑文件/etc/resolv.conf<br />
+$sudo vim /etc/resolv.conf
+<br />
+nameserver 202.118.224.101
+<br />
+nameserver 202.106.0.20
+<br />
+&nbsp;<br />
+重启eth0<br />
+$sudo ifdown eth0
+<br />
+$sudo ifup eth0</p>
+<p>机房有时会限制MAC地址，修改MAC地址命令如下<br />
+$sudo ifconfig eth0 up
+<br />
+$sudo ifconfig eth0 hw ether 00:10:5C:E1:63:E1
+<br />
+$sudo ifconfig eth0 down</p>
+<p>
+不过每次重启后都会失效<br />
+&nbsp;自己写了一个脚本</p>
+<p>#!/bin/sh<br />
+echo &quot; **************************************************************&quot;<br />
+echo &quot; *&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Configure IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; * Copyright by Jiang Bo &lt;jiang_eis@hotmail.com&gt; 2009.6.10&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; **************************************************************&quot;<br />
+<br />
+echo &quot; shut down eth0&#8230;&quot;<br />
+ifconfig eth0 down<br />
+<br />
+echo &quot; configure MAC&#8230;&quot;<br />
+ifconfig eth0 hw ether 00:10:5C:E1:63:E1<br />
+<br />
+echo &quot; configure ip address&#8230;&quot;<br />
+ifconfig eth0 192.168.4.148 netmask 255.255.255.0<br />
+<br />
+echo &quot; configure gateway address&#8230;&quot;<br />
+route add default gw 192.168.4.254<br />
+<br />
+echo &quot; set up eth0&#8230;&quot;<br />
+ifconfig eth0 up</p>
 <p>&nbsp;</p>
-
-<p><strong>二、Zero-Copy&amp;Sendfile()</strong>
-Linux 2.1版本内核引入了sendfile函数，用于将文件通过socket传送。
-<em>sendfile(socket, file, len);</em>
-该函数通过一次系统调用完成了文件的传送，减少了原来 read/write方式的模式切换。此外更是减少了数据的copy，sendfile的详细过程图2所示：</p>
-
-<p><a href="/images/uploads/2011/07/pic_2.jpg"><img class="alignnone size-medium wp-image-7" title="图2" src="/images/uploads/2011/07/pic_2-300x236.jpg" alt="" width="300" height="236" /></a></p>
-
-<p>图2</p>
-
-<p>通过sendfile传送文件只需要一次系统调用，当调用 sendfile时：<br />
-1。首先通过DMA copy将数据从磁盘读取到kernel buffer中<br />
-2。然后通过CPU copy将数据从kernel buffer copy到sokcet buffer中<br />
-3。最终通过DMA copy将socket buffer中数据copy到网卡buffer中发送<br />
-sendfile与read/write方式相比，少了 一次模式切换一次CPU copy。但是从上述过程中也可以发现从kernel buffer中将数据copy到socket buffer是没必要的。</p>
-
-<p>为此，Linux2.4内核对sendfile做了改进，如图3所示</p>
-
-<p><a href="/images/uploads/2011/07/pic_3.jpg"><img class="alignnone size-medium wp-image-8" title="图3" src="/images/uploads/2011/07/pic_3-300x222.jpg" alt="" width="300" height="222" /></a></p>
-
-<p>图3</p>
-
-<p>改进后的处理过程如下：<br />
-1。DMA copy将磁盘数据copy到kernel buffer中<br />
-2。向socket buffer中追加当前要发送的数据在kernel buffer中的位置和偏移量<br />
-3。DMA gather copy根据socket buffer中的位置和偏移量直接将kernel buffer中的数据copy到网卡上。<br />
-经过上述过程，数据只经过了2次copy就从磁盘传送出去了。<br />
-（可能有人要纠结“不是说Zero－Copy么？怎么还有两次copy啊”，事实上这个Zero copy是针对内核来讲的，数据在内核模式下是Zero－copy的。话说回来，文件本身在瓷盘上要真是完全Zero－copy就能传送，那才见鬼了 呢）。<br />
-当前许多高性能http server都引入了sendfile机制，如nginx，lighttpd等。</p>
-
-<p><strong>三、Java NIO</strong><strong>中的transferTo()</strong>
-Java NIO中
-<em>FileChannel.transferTo(long position, long count, WriteableByteChannel target)</em>
-方法将当前通道中的数据传送到目标通道target中，在支持Zero-Copy的linux系统中，transferTo()的实现依赖于 sendfile()调用。</p>
-
-<p>&nbsp;</p>
-
-<p><strong>四、参考文档<br />
-《Zero Copy I: User-Mode Perspective》<a href="http://www.linuxjournal.com/article/6345?page=0,0">http://www.linuxjournal.com/article/6345?page=0,0</a>
-《Efficient data transfer through zero copy》<a href="http://www.ibm.com/developerworks/linux/library/j-zerocopy">http://www.ibm.com/developerworks/linux/library/j-zerocopy</a>
-《The C10K problem》<a href="http://www.kegel.com/c10k.html">http://www.kegel.com/c10k.html</a></strong></p>
-</div>
+<p>每次重启后直接执行这个脚本就行了^^</p></div>
 
 
   <footer>
@@ -192,12 +203,12 @@ Java NIO中
   
 
 
-<time datetime="2011-07-16T00:00:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2011</time>
+<time datetime="2009-06-19T00:00:00+08:00" pubdate data-updated="true">Jun 19<span>th</span>, 2009</time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/linux/'>Linux</a>, <a class='category' href='/blog/categories/技术生活/'>技术生活</a>
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
   
 </span>
 
@@ -213,20 +224,14 @@ Java NIO中
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2009/09/20/decorator-pattern/" title="Previous Post: 设计模式学习笔记（2）——装饰模式(Decorator Pattern)">&laquo; 设计模式学习笔记（2）——装饰模式(Decorator Pattern)</a>
+        <a class="basic-alignment left" href="/blog/2009/06/15/post/" title="Previous Post: 关于进程间通信">&laquo; 关于进程间通信</a>
       
       
-        <a class="basic-alignment right" href="/blog/2011/08/02/use-mat-analysis-dump-file/" title="Next Post: 使用MAT进行dump文件分析">使用MAT进行dump文件分析 &raquo;</a>
+        <a class="basic-alignment right" href="/blog/2009/06/21/post/" title="Next Post: 关于Ubuntu9.04中wubi.exe无法运行">关于Ubuntu9.04中wubi.exe无法运行 &raquo;</a>
       
     </p>
   </footer>
 </article>
-
-  <section>
-    <h1>Comments</h1>
-    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
-</div>
-  </section>
 
 </div>
 
@@ -330,10 +335,7 @@ Java NIO中
       var disqus_shortname = 'jiangbo';
       
         
-        // var disqus_developer = 1;
-        var disqus_identifier = 'http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile/';
-        var disqus_url = 'http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile/';
-        var disqus_script = 'embed.js';
+        var disqus_script = 'count.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;

@@ -1,6 +1,70 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
     <url>
+        <loc>http://jiangbo.me/blog/2008/06/23/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2008/07/12/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/05/05/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/05/06/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/05/12/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/05/25/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/06/15/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/06/19/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/06/21/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/06/29/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/07/16/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/08/19/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/08/20/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/08/22/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/08/24/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/08/26/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://jiangbo.me/blog/2009/08/28/adapter-pattern/</loc>
         <lastmod>2012-08-31T19:50:15+08:00</lastmod>
     </url>
@@ -13,8 +77,88 @@
         <lastmod>2012-08-31T19:50:15+08:00</lastmod>
     </url>
     <url>
-        <loc>http://jiangbo.me/blog/2011/07/16/zero-copy-and-sendfile/</loc>
-        <lastmod>2012-08-31T19:50:15+08:00</lastmod>
+        <loc>http://jiangbo.me/blog/2009/09/23/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/09/24/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/10/03/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/11/15/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/11/16/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/11/22/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2009/11/24/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/01/01/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/04/07/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/04/24/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/06/21/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/06/28/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/08/01/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/09/06/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/10/18/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/10/26/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2010/12/13/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2011/01/17/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2011/02/27/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2011/03/10/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2011/03/15/post/</loc>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
     </url>
     <url>
         <loc>http://jiangbo.me/blog/2011/08/02/use-mat-analysis-dump-file/</loc>
@@ -112,10 +256,10 @@
     </url>
     <url>
         <loc>http://jiangbo.me/blog/archives/</loc>
-        <lastmod>2012-08-31T19:50:15+08:00</lastmod>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
     </url>
     <url>
         <loc>http://jiangbo.me/</loc>
-        <lastmod>2012-08-31T19:50:15+08:00</lastmod>
+        <lastmod>2012-08-31T23:47:01+08:00</lastmod>
     </url>
 </urlset>

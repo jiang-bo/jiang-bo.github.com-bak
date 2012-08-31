@@ -1,0 +1,442 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Linux启动过程分析 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="史前时代：BIOS-计算机的启动过程 加电 电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
+这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2010/10/26/post">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Linux启动过程分析</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-10-26T00:00:00+08:00" pubdate data-updated="true">Oct 26<span>th</span>, 2010</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h3>史前时代：BIOS-计算机的启动过程</h3>
+<ol>
+<li><strong>加电</strong>
+ 
+电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
+这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令，跳到真正BIOS启动代码除。</li>
+<li><strong>自检</strong>
+ BIOS启动代码首先进行POST（Power-On Self 
+Test，上电自检），POST的主要任务是检测系统中一些关键设备是否存在和能否正常工作， 
+例如内存和显卡等。如果系统BIOS在POST过程中发现致命错误，如未找到内存或内存有问题（640K内的常规内存），系统会直接控制喇叭报告错误，声
+音的长短和次数代表错误的类型。</li>
+<li><strong>设备初始化</strong>
+ 
+POST完成后BIOS会查找显卡的BIOS，存放显卡BIOS的ROM芯片的起始地址通常设在0xC0000处，找到显卡BIOS后，调用其初始代码，
+由显卡BIOS来初始化显卡， 
+此时多数显卡会在屏幕上显示出一些初始化信息，介绍生产厂商，图形芯片等内容。类似地，BIOS会查找其它设备的BIOS程序，调用这些BIOS内部的初
+始化代码来初始化相关设备。</li>
+<li><strong>测试设备</strong>
+ 
+查找完所遇其它设备的BIOS之后，系统BIOS将显示自己的启动画面，其中包括系统BIOS类型，序列号和版本号等内容。接着BIOS将检测和显示
+CPU的类型和工作频率，然后开始测试所有的RAM，并同时在屏幕上显示内存测试的进度。 
+内存测试通过后，系统BIOS将开始检测系统中安装的一些标准硬件设备，包括硬盘，光驱，串口，并口，软驱等，另外绝大多数较新版本的BIOS在这一过程
+中回自动检测和设置内存的定时参数，硬盘参数和配置系统中安装的即插即用设备，没找到一个设备之后，BIOS会在屏幕上显示出设备的名称和型号等信息，同
+时为该设备分配中断，DMA通道和I/O端口。</li>
+<li><strong>更新ESCD</strong>
+ 
+所有硬件检测配置完毕后，多数BIOS会重新清屏，并在屏幕上方显示出一个表格，其中概略的列出系统中安装的各种标准硬件设备，以及他们使用的资源和一些
+相关工作参数。接下来系统BIOS将更新ESCE（Extended System Configration Data， 
+扩展系统配置数据）。ESCD是系统BIOS用来与操作系统交换硬件配置信息的一种手段，这些数据被存放在CMOS（Complementary 
+metal oxide Semiconductor,互补金属氧化物半导体）之中。</li>
+<li><strong>启动操作系统</strong>
+ 
+ESCD更新完毕后，系统BIOS的启动代码将进行他的最后一项工作，即根据用户指定的启动顺序从软盘，硬盘或光驱启动操作系统。系统BIOS将启动盘的
+第一个扇区读入到内存的0x7C00除，并检查0x7dfe地址的内存，如果其内容是0xaa55，跳转到0x7c00处执行MBR（Master 
+Boot 
+Record，主引导记录），MBR从分区表中找到第一个活动分区，按照类似方式读取并执行这个活动分区的引导扇区，该引导扇区负责读取并执行
+bootloader（windows下C盘中的NTLDR），由bootloader加载系统内核</li>
+</ol>
+<h3><a name="Linux启动过程-远古时代：Bootloader"></a>
+远古时代：Bootloader</h3>
+<p>	引导装入程序（Bootloader）是BIOS将操作系统内核映像装载到RAM中执行的第一个程序。<br />
+	软盘启动与磁盘启动过程稍有不同，软盘启动时，BIOS将启动软盘的第一扇区指令装载到RAM中，由于通常现代内核都大于一个扇区大小(512B)，因此第一扇区的指令通常是将包含内核映像的扇区加载到RAM中。<br />
+	从硬盘启动时，硬盘的第一个扇区MBR中包含分区表和一小段程序，这段小程序用来装载被启动的操作系统所在分区的第一个扇区。Win98采用MBR中的小程序加载操作系统内核，而Linux在用一种更灵活的加载方式，bootloader。<br />
+	Linux2.4及以前的版本，在第一个512字节有一个最小的引导程序，因此在第一扇区拷贝一个内核镜像就可以使软盘启动，但在2.6内核中不再有该引导程序，要想在软盘中启动，必须采用与磁盘类似的方式，在第一个扇区中装入一个引导程序。<br />
+	
+Bootloader通常被安装在MBR上代替上面负责引导的小程序。Bootloader通常由于大于一个扇区，会被分为两部分，在BIOS将
+Bootloader的第一部分加载到RAM的0x00007c00处开始执行，bootloader自己加载到0x00096a00，建立实模式站
+(0x00098000~0x000969ff),并将bootloader的第二部分装入到0x00096c00开始的RAM中。<br />
+	第二部分一次从此版读取操作系统映射表，提示给用户，用户可以选择要启动的系统，引动程序将相应分区的引导扇区拷贝到RAM中并执行，或直接将内核拷贝到RAM中。<br />
+	Bootloader的主要执行过程：</p>
+<ol>
+<li>调用BIOS输出&quot;Loading&#8230;&quot;</li>
+<li>调用BIOS从磁盘装入内核映像的第一个扇区(512B)，从0x00090000装入RAM，并将setup()函数的代码从0x00090200开始装入RAM。</li>
+<li>调用一个BIOS从磁盘装入其余内核映像，并把内核映像放入从0x00010000(低装载，适用于make zImage的小内核映像）或0x00100000(高装载，make bzImage的大内核映像）</li>
+<li>跳转执行setup()</li>
+</ol>
+<h3><a name="Linux启动过程-奴隶社会：setup()"></a>
+奴隶社会：setup()</h3>
+<p>	setup()函数有汇编实现放在内核映像文件的偏移量0x200处，bootloader将其装载到0x00090200开始的RAM中。<br />
+	setup()函数的主要工作是初始化计算机中的硬件设备，并为内核程序的执行建立环境。尽管BIOS已经完成大部分设备的初始化，但是Linux并不依赖与BIOS，而已自己的方式重新初始化设备，以增强可移植性和健壮性。<br />
+	@TO-DO setup()过程</p>
+<h3><a name="Linux启动过程-封建社会：startup32()"></a>
+封建社会：startup_32()</h3>
+<p>	
+存在两个startup_32函数，setup()的最后是跳转执行的是arch/i386/boot/compressed/head.S中的
+startup_32()，此时startup_32已经被移动到0x00100000或0x00001000，对应于高装载或低装载。该函数的主要工作
+是解压内核。<br />
+	解压完的内核映像从arch/i386/kernel/head.S开始执行。该文件中包含另一个startup_32函数。改startup_32为Linux的第一个进程(pid=0)建立执行环境。<br />
+	@TO-DO startup_32()过程</p>
+<h3><a name="Linux启动过程-民国时代：startkernel()"></a>
+民国时代：start_kernel()</h3>
+<p>	startup_32函数最后回跳转执行start_kernel()，start_kernel完成内核初始化工作。start_kernel开始执行后会显示&quot;Linux version 2.6.11&#8230;&quot;<br />
+	该函数中最主要的一个步骤是调用kernel_thread()为进程1创建内核线程。这个线程回创建其它线程并执行/sbin/init程序。该程序会在控制台输出初始化信息，直至最后出现登录提示符，或X登录窗口。通知用户内核已启动，正在运行。</p>
+<h3><a name="Linux启动过程-新中国：启动脚本"></a>
+新中国：启动脚本</h3>
+<p>(该部分只适用Redhat系，如RHEL，CentOS，Fedora等，Debian/Ubuntu启动过程与此不同，后期会有分析)</p>
+<h5><a name="Linux启动过程-inittab"></a>
+inittab</h5>
+<p>	/sbin/init（进程1）会利用/etc/inittab获取运行级，并根据不同运行级的配置启动不同的服务项目。<br />
+	inittab配置文件格式</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">[设置项目]:[run level]:[init的操作行为]:[命令项目]<br />
+设置项目:最多4个字符，表示init的主要目的，就是一个名字<br />
+run level:该条目的运行级别<br />
+init操作行为:<br />
+	主要可选值如下：<br />
+		initdefault:表示默认的运行级别值<br />
+		sysinit:系统初始化操作项目<br />
+		ctrlaltdel:表示[ctrl+alt+del<br />
+		wait:表示必须等待后面的命令执行完才可以执行后续操作<br />
+		respawn:表示后面的操作会重新启动<br />
+命令项目:执行该项目的命令，通常为一个脚本命令</pre>
+</div>
+</div>
+<h5><a name="Linux启动过程-系统初始化(rc.sysinit)"></a>
+系统初始化(rc.sysinit)</h5>
+<p>	inittab中的有个条目是</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">si::sysinit:/etc/rc.d/rc.sysinit</pre>
+</div>
+</div>
+<p>按上述条目解释，系统初始化时会执行/etc/rc.d/rc.sysinit脚本，该脚本的主要功能如下:<br />
+1.获取网络环境与主机名<br />
+2.测试与载入内存设备/proc以及USB设备/sys<br />
+3.决定是否启动SELinux<br />
+4.检测接口设备与即插即用设备参数<br />
+5.用户自定义模块加载<br />
+6.加载核心的相关设置<br />
+7.设置系统时间<br />
+8.设置终端控制台字体<br />
+9.设置RAID与LVM等硬盘功能<br />
+10.fsck检查磁盘文件系统<br />
+11.进行磁盘配额quota的转换<br />
+12.重新怡可读取模式载入系统磁盘<br />
+13.启动quota功能<br />
+14.启动系统随机设备（产生随机数）<br />
+15.清除启动过程的临时文件<br />
+16.将启动相关信息加载到/var/log/dmesg文件中</p>
+<h5><a name="Linux启动过程-启动相关运行级服务"></a>
+启动相关运行级服务</h5>
+<p>	inittab中包含</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">id:3:initdefault:<br />
+<br />
+l3:3:wait:/etc/rc.d/rc 3</pre>
+</div>
+</div>
+<p>	第一行表示默认运行级为3，第二行表示第3级运行时以wait方式执行/etc/rc.d/rc 参数为3。<br />
+	rc脚本的主要功能是调用相应运行级X的配置脚本目录/etc/rcX.d/下的脚本。例如3级时对应的脚本目录是/etc/rc3.d/目录。<br />
+	脚本目录下的脚本名分为两类：一类是以K开头的，用于kill相应服务；另一类是以S开头的，用于开启相应服务。文件中还包含一个两位数字和服务名。rc脚本负责按照数字有小到大先kill所有服务然后开启所有服务的顺序执行。<br />
+	每个rcX.d的目录下的脚本都是链接到init.d目录下的脚本的软连接。并且均包含一个S99local-&gt;../rc.local，该脚本表示最后执行../rc.local脚本。<br />
+	rc.local即用户自定义的启动项配置脚本。可以在其中添加想开机启动的命令。比如想自动挂载一个windows下的分区，可以在rc.local中添加</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">mount -ntfs /dev/sda5 /media/disk5</pre>
+</div>
+</div>
+<h5><a name="Linux启动过程-启动终端"></a>
+启动终端</h5>
+<p>	根据inittab中的配置，需要等待/etc/rc 3 运行完成。rc.local时期最后一个脚本。在rc.local执行完之后，继续按照inittab执行</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java"># Run gettys in standard runlevels<br />
+1:2345:respawn:/sbin/mingetty tty1<br />
+2:2345:respawn:/sbin/mingetty tty2<br />
+3:2345:respawn:/sbin/mingetty tty3<br />
+4:2345:respawn:/sbin/mingetty tty4<br />
+5:2345:respawn:/sbin/mingetty tty5<br />
+6:2345:respawn:/sbin/mingetty tty6<br />
+<br />
+# Run xdm in runlevel 5<br />
+x:5:respawn:/etc/X11/prefdm -nodaemon</pre>
+</div>
+</div>
+<p>该段配置表示在2,3,4,5运行级下执行/sbin/mingetty开启终端，并且执行六次，由此可知为何会有6个纯文本终端。最后的x:5:respawn:/etc/X11/prefdm -nodaemon表示在运行级5时开启X Window。</p></div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-10-26T00:00:00+08:00" pubdate data-updated="true">Oct 26<span>th</span>, 2010</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2010/10/18/post/" title="Previous Post: 在Spring中使用Quartz">&laquo; 在Spring中使用Quartz</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2010/12/13/post/" title="Next Post: AWK学习笔记">AWK学习笔记 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
