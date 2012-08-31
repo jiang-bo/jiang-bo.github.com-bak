@@ -5,8 +5,8 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Jiang Bo</title>
-  <meta name="author" content="jiangbo">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
 
   
   <meta name="description" content="Rails中常见错误总结
@@ -28,18 +28,30 @@ NameError常见于引用了错误的变量，比如变量不存在等 &hellip;">
   <script src="/javascripts/modernizr-2.0.js"></script>
   <script src="/javascripts/ender.js"></script>
   <script src="/javascripts/octopress.js" type="text/javascript"></script>
-  <link href="/atom.xml" rel="alternate" title="Jiang Bo" type="application/atom+xml">
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
   <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
 <link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 <link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
 
   
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
 
 </head>
 
 <body   >
   <header role="banner"><hgroup>
-  <h1><a href="/">Jiang Bo</a></h1>
+  <h1><a href="/">非纯种程序猿</a></h1>
   
 </hgroup>
 
@@ -787,6 +799,35 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
   </ul>
 </section>
 
+<section>
+  <h1>Github Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on Github
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
 
 
 
@@ -797,7 +838,7 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
     </div>
   </div>
   <footer role="contentinfo"><p>
-  Copyright &copy; 2012 - jiangbo -
+  Copyright &copy; 2012 - jiang-bo -
   <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
 </p>
 
