@@ -9,8 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、概述
-Velocity模板引擎处理机制分为五个基本步骤： 引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。 获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream）， &hellip;">
+  <meta name="description" content="一、何为Introspection Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。
+Introspection is the self-observation and reporting of conscious inner &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +79,450 @@ Velocity模板引擎处理机制分为五个基本步骤： 引擎初始化，�
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/26/velocity_introspection/">Velocity源码分析（二）——渲染执行之Introspection</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-26T00:00:00+08:00" pubdate data-updated="true">Aug 26<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/08/26/velocity_introspection/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/velocity源码分析/'>Velocity源码分析</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><div><span style="font-size: large;"><strong>一、何为Introspection</strong></span></div>
+<div><span style="font-size: large;"><strong>
+</strong></span></div>
+<div>Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。</div>
+<div><em>Introspection is the self-observation and reporting of conscious inner thoughts, desires and sensations. It is a conscious and purposive process relying on thinking, reasoning, and examining one&#8217;s own thoughts, feelings, and, in more spiritual cases, one&#8217;s soul. </em></div>
+<div style="text-align: right;">——Wikipedia</div>
+<div>在计算机科学中，借用了哲学中的Introspeciton术语，表示一种能够识别一个事物它是什么，知道什么，能做什么的能力。典型的应用场景是面向对象语言中的类型自省（type introspeciton）。</div>
+<div><em>In computing, type introspection is a capability of some object-oriented programming languages to determine the type of an object at runtime.</em></div>
+<div style="text-align: right;">——Wikipedia</div>
+<div>以Java为例，Java提供了可以在运行时获取和检查JavaBean的接口API，实例如下：</div>
+<pre class="brush:java">import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.IntrospectionException;
+import java.beans.PropertyDescriptor;
+public class SimpleBean{
+    private final String name = "SimpleBean";
+    private int size;
+    public String getName(){
+        return this.name;
+    }
+    public int getSize(){
+            return this.size;
+    }
+    public void setSize( int size ) {
+        this.size = size;
+    }
+    public static void main( String[] args )            throws IntrospectionException   {
+        BeanInfo info = Introspector.getBeanInfo( SimpleBean.class );
+for ( PropertyDescriptor pd : info.getPropertyDescriptors() )             System.out.println( pd.getName() );
+}
+}</pre>
+<div>Introspector.getBeanInfo(SimpleBean.class)是Java提供的一个自省工具类，可以在运行时获取SimpleBean类的类型信息BeanInfo，包括属性名、方法名、Bean描述等等信息。</div>
+<div>查阅资料过程中发现有些人认为自省即反射（Reflection），反射即自省，因为Java中自省是通过反射实现的。我认为这两个概念还是有区别的，自省是一个目的或者说机制，是一个上层的接口封装，而反射是达到这个目的或者实现这个机制的方法，是底层的具体实现。</div>
+<div><span style="font-size: large;"><strong>二、Velocity中的渲染执行</strong></span></div>
+<div><span style="font-size: large;"><strong>
+</strong></span></div>
+<div><span style="font-size: medium;"><strong>2.1 velocity中Introspection概述</strong></span></div>
+<div><span style="font-size: medium;"><strong>
+</strong></span></div>
+<div>Velocity作为一种模板语言允许我们向Context中放置一些JavaBean实例，并在模板中通过变量方式引用。如下所示：</div>
+<div>Welcome! ${person.name} !</div>
+<div>该模板中有一个引用变量${person.name}，在执行渲染时必须要知道person是个什么东东，person.name又是个什么东东，这里就需要自省机制发挥作用。</div>
+<div>Veloctiy的的自省机制实现位于源码包org.apache.velocity.util.introspection中，其主要类图结构如下：</div>
+<div><a href="/images/uploads/2011/08/class-structure.png"><img class="aligncenter size-full wp-image-63" title="class-structure.png" src="/images/uploads/2011/08/class-structure.png" alt="" width="863" height="351" /></a></div>
+<div>Uberspect中定义了渲染执行时所需的主要接口。该接口主要提供四个方法：</div>
+<div>
+<ol>
+	<li>getIterator()：支持迭代#foreache</li>
+	<li>getMethod()：支持方法调用</li>
+	<li>getPropertyGet()：支持获取属性值</li>
+	<li>getPropertySet()：支持设置属性值</li>
+</ol>
+Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspector完成基本的自省功能。Introspector扩展自基类IntrospectorBase，增添异常日志功能。</div></p>
+
+<p>
+<div>IntrospectorBase内部维护了一个introspectCache，用于缓存已经完成自省的类和方法信息。</div>
+<div>IntrospectorCacheImpl内通过一个HashMap维护一个class与其对应的类型信息，类型信息用一个ClassMap表示。</div>
+<div>一个ClassMap内部维护了一个MethodCache，用于缓存该类已经解析出得方法信息。</div>
+<div>MethodMap表示一个方法信息。</div>
+<div><span style="font-size: medium;"><strong>2.2 渲染执行详细流程</strong></span></div>
+<div><span style="font-size: medium;"><strong>
+</strong></span></div>
+<div>下面一如下模板为例，解释velocity中introspection的实际执行：</div>
+<div>template.vm</div>
+<div>${person.sayHi()}! I&#8217;m ${person.name}</div>
+<div>该模板的作用表示分别调用context中名为person的对象的sayHi()方法和name属性。该模板经过语法解析生成的AST如下（关于AST解析请参考上一篇velocity源码分析）：</div>
+<div><a href="/images/uploads/2011/08/syntax-tree.png"><img class="aligncenter size-full wp-image-64" title="syntax-tree.png" src="/images/uploads/2011/08/syntax-tree.png" alt="" width="483" height="185" /></a></div>
+<div>图1.语法解析后的AST</div>
+<div>${person.say()}被解析为一个拥有AST子节点的ASTReference节点，”! I’m”为一个ASTText节点，$person.name被解析为一个拥有ASTIdentifier子节点的ASTReference节点，”。”被解析为一个ASTText节点。</div>
+<div>引擎从根节点开始执行渲染ASTprocess的render方法主要是遍历子节点，依次执行子节点的渲染方法。</div>
+<div>ASTReference.render()方法主要调用其内部的execute（）方法获取实际的引用值，execute代码如下：</div>
+<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
+        throws MethodInvocationException
+    {</pre></p>
+
+<p>        if (referenceType == RUNT)<br />
+            return null;<br />
+        Object result = getVariableValue(context, rootString);</p>
+
+<p>        if (result == null &amp;&amp; !strictRef)<br />
+        {<br />
+            return EventHandlerUtil.invalidGetMethod(rsvc, context,<br />
+                    &#8220;$&#8221; + rootString, null, null, uberInfo);<br />
+        }</p>
+
+<p>        try<br />
+        {<br />
+            Object previousResult = result;<br />
+            int failedChild = -1;<br />
+            for (int i = 0; i &lt; numChildren; i++)<br />
+            {<br />
+                if (strictRef &amp;&amp; result == null)<br />
+                {<br />
+                    String name = jjtGetChild(i).getFirstToken().image;<br />
+                    throw new VelocityException(&#8220;Attempted to access &#8216;&#8221;<br />
+                        + name + &#8220;&#8217; on a null value at &#8221;<br />
+                        + Log.formatFileString(uberInfo.getTemplateName(),<br />
+                        + jjtGetChild(i).getLine(), jjtGetChild(i).getColumn()));<br />
+                }<br />
+                previousResult = result;<br />
+                //遍历执行子节点的execute方法<br />
+                result = jjtGetChild(i).execute(result,context);<br />
+                if (result == null &amp;&amp; !strictRef)  // If strict and null then well catch this<br />
+                                                   // next time through the loop<br />
+                {<br />
+                    failedChild = i;<br />
+                    break;<br />
+                }<br />
+            }</p>
+
+<p>            /**<br />
+            &#8230;&#8230;<br />
+            */<br />
+    }
+<div>1.execute方法先根据对象的名字从context中获取对象实例。</div>
+<div>2.遍历所有子节点，执行子节点的execute方法。</div>
+<div><strong><span style="font-size: small;">2.2.1 ASTMethod节点渲染</span></strong></div>
+<div>ASTMethod的execute方法中关键代码如下：</div>
+<div>
+<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
+        throws MethodInvocationException
+    {
+        if (o instanceof NullInstance &amp;&amp; ((NullInstance) o).isNotNull()) {
+            return o;
+        }</pre></div></p>
+
+<p>        /*<br />
+         *  获取方法信息<br />
+         */</p>
+
+<p>        VelMethod method = null;</p>
+
+<p>        Object [] params = new Object[paramCount];</p>
+
+<p>        try<br />
+        {<br />
+            // 计算参数类型<br />
+            final Class[] paramClasses = paramCount &gt; 0 ? new Class[paramCount] : ArrayUtils.EMPTY_CLASS_ARRAY;</p>
+
+<p>            for (int j = 0; j &lt; paramCount; j++)<br />
+            {<br />
+                params[j] = jjtGetChild(j + 1).value(context);</p>
+
+<p>                if (params[j] != null)<br />
+                {<br />
+                    paramClasses[j] = params[j].getClass();<br />
+                }<br />
+            }</p>
+
+<p>             //从cache中获取Method信息<br />
+            MethodCacheKey mck = new MethodCacheKey(methodName, paramClasses);<br />
+            IntrospectionCacheData icd =  context.icacheGet( mck );</p>
+
+<p>            if ( icd != null &amp;&amp; (o != null &amp;&amp; icd.contextData == o.getClass()) )<br />
+            {<br />
+                method = (VelMethod) icd.thingy;<br />
+            }<br />
+            else<br />
+            {<br />
+                //缓存未命中，调用UberIntrospectImpl.getMethod()执行自省<br />
+                method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</p>
+
+<p>                if ((method != null) &amp;&amp; (o != null))<br />
+                {<br />
+                    icd = new IntrospectionCacheData();<br />
+                    icd.contextData = o.getClass();<br />
+                    icd.thingy = method;<br />
+                    //更新缓存<br />
+                    context.icachePut( mck, icd );<br />
+                }<br />
+            }</p>
+
+<p>            if (typeOptimum &amp;&amp; method instanceof VelMethodImpl) {<br />
+                this.recordedData = icd;<br />
+            }</p>
+
+<p>            /*<br />
+             *  &#8230;.<br />
+             */<br />
+    }
+
+<div>1.首先从IntrospectionCache中查找已经缓存的自省结果信息</div>
+<div>2.如果未找到，则使用uberspector进行自省，获取方法信息，并缓存自省结果。</div>
+<div>3.调用自省返回的VelMethod的invoke方法，获取执行结果。</div>
+<div>其中，获取方法信息的过程</div>
+<div>method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</div>
+<div>实际调用就是UberspectImpl.getMethod()方法，该方法执行流程如下：</div>
+<div>
+<pre class="brush:java">    public VelMethod getMethod(Object obj, String methodName, Object[] args, Info i)
+            throws Exception
+    {
+        if (obj == null)
+        {
+            return null;
+        }
+        //调用Inspector.getMethod()
+        Method m = introspector.getMethod(obj.getClass(), methodName, args);
+        if (m != null)
+        {</pre>
+<pre class="brush:java">            //封装VelMethodImpl
+            return new VelMethodImpl(m);
+        }</pre></div></p>
+
+<p>        Class cls = obj.getClass();<br />
+        // if it&#8217;s an array<br />
+        if (cls.isArray())<br />
+        {<br />
+            // check for support via our array-&gt;list wrapper<br />
+            m = introspector.getMethod(ArrayListWrapper.class, methodName, args);<br />
+            if (m != null)<br />
+            {<br />
+                // and create a method that knows to wrap the value<br />
+                // before invoking the method<br />
+                return new VelMethodImpl(m, true);<br />
+            }<br />
+        }<br />
+        // watch for classes, to allow calling their static methods (VELOCITY-102)<br />
+        else if (cls == Class.class)<br />
+        {<br />
+            m = introspector.getMethod((Class)obj, methodName, args);<br />
+            if (m != null)<br />
+            {<br />
+                return new VelMethodImpl(m);<br />
+            }<br />
+        }<br />
+        return null;<br />
+    }
+
+<div>该方式实际调用Introspector.getMethod()方法。</div>
+<div>
+<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
+        throws IllegalArgumentException
+    {
+        try
+        {
+            //调用父类IntrospectorBase.getMethod()方法
+            return super.getMethod(c, name, params);
+        }
+        catch(MethodMap.AmbiguousException ae)
+        {
+           /*异常处理*/
+        }</pre></div></p>
+
+<p>        return null;<br />
+    }
+
+<div>Introspector.getMethod()实际只是扩展了其父类的getMethod方法，增加了异常日志功能。</div>
+<div>IntrospectorBase.getMethod()代码如下：</div>
+<div>
+<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
+            throws IllegalArgumentException,MethodMap.AmbiguousException
+    {
+        if (c == null)
+        {
+            throw new IllegalArgumentException ("class object is null!");
+        }
+        
+        if (params == null)
+        {
+            throw new IllegalArgumentException("params object is null!");
+        }</pre></div></p>
+
+<p>        IntrospectorCache ic = getIntrospectorCache();</p>
+
+<p>        ClassMap classMap = ic.get(c);<br />
+        if (classMap == null)<br />
+        {<br />
+            classMap = ic.put(c);<br />
+        }</p>
+
+<p>        return classMap.findMethod(name, params);<br />
+    }
+
+<div>该方法首先获取从IntrospectorCache中获取表示类信息的classMap，如果没找到则在cache中put该类型信息。有意思的是这里没有常见的缓存未命中直接查询的过程，而是直接更新缓存，也就意味着put方法里有构造类型信息的过程。</div>
+<div>IntrospectorCache.put()代码如下</div>
+<div>
+<pre class="brush:java">    public ClassMap put(final Class c)
+    {
+        //构造ClassMap
+        final ClassMap classMap = new ClassMap(c, log);
+        synchronized (classMapCache)
+        {
+            classMapCache.put(c, classMap);
+            classNameCache.add(c.getName());
+        }
+        return classMap;
+    }</pre>
+</div>
+<div>put方法首先构造一个ClassMap，然后更新classMapCache。</div>
+<div>构造ClassMap的过程如下：</div>
+<div>
+<pre class="brush:java">    public ClassMap(final Class clazz, final Log log)
+    {
+        this.clazz = clazz;
+        this.log = log;</pre></div></p>
+
+<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
+        {<br />
+            log.debug(&#8220;=================================================================&#8221;);<br />
+            log.debug(&#8220;== Class: &#8221; + clazz);<br />
+        }</p>
+
+<p>        methodCache = createMethodCache();</p>
+
+<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
+        {<br />
+            log.debug(&#8220;=================================================================&#8221;);<br />
+        }<br />
+    }
+
+<div>关键是构造一个MethodCache，createMethodCache过程如下：</div>
+<div>
+<pre class="brush:java">    private MethodCache createMethodCache()
+    {
+        MethodCache methodCache = new MethodCache(log);
+        for (Class classToReflect = getCachedClass(); classToReflect != null ; classToReflect = classToReflect.getSuperclass())
+        {
+            if (Modifier.isPublic(classToReflect.getModifiers()))
+            {
+                populateMethodCacheWith(methodCache, classToReflect);
+            }
+            Class [] interfaces = classToReflect.getInterfaces();
+            for (int i = 0; i &lt; interfaces.length; i++)
+            {
+                populateMethodCacheWithInterface(methodCache, interfaces[i]);
+            }
+        }
+        // return the already initialized cache
+        return methodCache;
+    }</pre>
+</div>
+<div>createMethodCache()首先构造一个MethodCache实例，然后通过反射获得类型的public方法信息，并递归的获取其实现的接口方法信息。</div>
+<div>IntrospectorBase.getMethod()方法获取到该ClassMap后，通过classMap.getMethod()返回一个需要的method，由于多态的存在，一个类会有多个同名方法，所以getMethod()过程中有一个根据参数类型寻找最佳匹配的方法getBestMatch（）这里有个循环遍历所有方法，并且比较所有参数类型的过程，而且这个过程在每次模板渲染执行时都会进行，代价很高，因此尽量少在放入模板的类中写多态方法有助提高渲染执行性能。</div>
+<div>至此一个ClassMap构造完毕，即一个类的自省过程完成。UberinspectorImpl成功的拿到了需要的方法信息，然后将Method封装VelMethodImpl返回。</div>
+<div>ASTMethod节点执行渲染时调用invoke方法实际调用的就是Method.invoke()，获得方法执行结果写入输出流中，完成渲染。</div>
+<div><strong><span style="font-size: small;">2.2.2 ASTIdentifier节点渲染</span></strong></div>
+<div>ASTIdentifier的execute方法中关键代码如下</div>
+<div>（TODO：ASTIndentifier.execute()代码）</div>
+<div>1.从IntrospectionCache中查找已经缓存的信息。</div>
+<div>2.如果缓存未命中，使用uberspector进行自省，并缓存自省结果</div>
+<div>3.调用自省的返回的VelPropertyGet的invoke方法，反射执行起get方法。</div>
+<div>
+<div>UberspectImpl.getPropertyGet()方法关键代码如下：</div>
+<div>
+<pre class="brush:java">    public VelPropertyGet getPropertyGet(Object obj, String identifier, Info i)
+            throws Exception
+    {
+        if (obj == null)
+        {
+            return null;
+        }</pre></div></div></p>
+
+<p>        Class claz = obj.getClass();</p>
+
+<p>         // 构造get&#8221;属性名&#8221;()形式的Executor<br />
+        AbstractExecutor executor = new PropertyExecutor(log, introspector, claz, identifier);</p>
+
+<p>        //构造一个Map形式的Executor<br />
+        if (!executor.isAlive())<br />
+        {<br />
+            executor = new MapGetExecutor(log, claz, identifier);<br />
+        }</p>
+
+<p>        // 构造get(&#8220;属性名&#8221;)形式的Executor</p>
+
+<p>        if (!executor.isAlive())<br />
+        {<br />
+            executor = new GetExecutor(log, introspector, claz, identifier);<br />
+        }<br />
+        //构建is&#8221;属性名&#8221;形式的executor<br />
+        if (!executor.isAlive())<br />
+        {<br />
+            executor = new BooleanPropertyExecutor(log, introspector, claz,<br />
+                                                   identifier);<br />
+        }</p>
+
+<p>        return (executor.isAlive()) ? new VelGetterImpl(executor) : null;<br />
+    }
+
+<div>1.首先根据对象的class类型和属性名构造一个get”属性名”的方法的PropertyExecutor。</div>
+<div>2.如果未找到get”属性名”的方法，则尝试构造一个Map.key形式的MapGetExecutor。</div>
+<div>3.如果也不是Map.key形式，尝试构造一个get(“属性名”)的GetExecutor。</div>
+<div>4.如果还没找到，则尝试构造一is”属性名”形式的BooleanPropertyExecutor。</div>
+<div>5.最终返回一个封装了Executor的VelGetImpl，如果未找到则返回null。</div>
+<div>所有的Executor均扩展自AbstractExecutor，VelGetImpl通过内置一个executor执行方法调用。Executor类图关系如下</div>
+<div><a href="/images/uploads/2011/08/Excuter-class-structure.png"><img class="aligncenter size-full wp-image-76" title="Executor类图结构" src="/images/uploads/2011/08/Excuter-class-structure.png" alt="" width="682" height="380" /></a></div>
+<div>Executor实现中除MapGetExecutor外，其余的Executor均通过内置一个introspector实现方法的构建，过程与上述ASTMethod节点渲染过程中introspector.getMethod()一致，只是方法名做了封装，如GetExecutor的方法名为get， PropertyExecutor的方法名为get”属性名”， BooleanPropertyExecutor方法名为is”属性名”，具体构建流程不再赘述。</div>
+<div>最终，ASTIndentifier.execute()方法通过UberInspectImpl.getPropertyGet()获得VelGetImpl，并调用VelGetImpl.invoke()获取方法执行的结果，写入输出流，完成渲染。</div>
+<div>UberInspectImpl.getPropertySet()的执行过程于getPropertyGet()大体一致，区别在于获取的是VelSetImpl，内置了SetExecutor，SetExecutor有三个扩展对应为MapSetExecutor（Map.key=value形式），PutExecutor（put(key, value)形式），SetPropertyExecutor（set”属性名”(value)形式）。其内部同样使用introspector.getMethod()方法构建Method，通过反射执行设置属性值。</div>
+<div><strong><span style="font-size: large;">三、总结</span></strong></div>
+<div>总的来说，作为模板语言velocity提供了可用的自省机制完成模板中对象引用及方法执行的的渲染。并在自省过程中提供了有效的缓存机制用以提升自省效率。但每次依旧需要解析AST，反射执行引用节点的方法，效率方面似乎还有优化的余地。</div>
+<div><strong><span style="font-size: large;">参考文档</span></strong></div>
+<div>《Java Introspeciton》 http://download.oracle.com/javase/tutorial/javabeans/introspection/index.html</div>
+<div>《Type Introspection》 http://en.wikipedia.org/wiki/Type_introspection</div>
+<div>《Introspection》http://en.wikipedia.org/wiki/Introspection</div>
+</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -580,65 +1024,6 @@ $~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/03/mac-osx-install-memcached/">Mac OSX 安装memcached</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-08-03T00:00:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2011</time>
-        
-         | <a href="/blog/2011/08/03/mac-osx-install-memcached/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/未分类/'>未分类</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包<br />
-3.执行下载的脚本，
-<pre class="brush:shell">$ chmod +x install-memcached.sh
-$ sudo ./install-memchaced.sh</pre>
-4.在环境变量里添加EVENT_NOKQUEUE=1<br />
-5.验证是否成功， $memcached -h，应该产生帮助提示
-<a href="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png"><img class="aligncenter size-full wp-image-35" title="Screen shot 2011-08-03 at 11.12.50 AM" src="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png" alt="" width="607" height="423" /></a>
-6.启动memcached,
-<pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
-参考文档<br />
-http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/5/">&larr; Older</a>
@@ -654,6 +1039,10 @@ http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
@@ -689,10 +1078,6 @@ http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
     
       <li class="post">
         <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
       </li>
     
   </ul>

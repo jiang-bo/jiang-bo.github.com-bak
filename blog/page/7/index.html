@@ -9,11 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="经常会遇到需要批量重命名文件的情况，用鼠标太夸张了，简单总结两种比较简单的方法：
-问题：
-存在大量html文件，需要重命名为htm文件
-1.rename
-通常重命名的命令是mv，Larry Wall写的rename具有更强大的功能。能够用perl的正则语法结构进行文件重命名。NAME rename &hellip;">
+  <meta name="description" content="今天从网上用wget下了很多的电子书，不过文件名的编码都是GBK，系统默认为UTF-8，可以用convmv来转换文件名编码，例如将GBK编码的文件filename重命名为UTF-8：
+convmv -f gbk -t utf-8 filename --notest&nbsp; &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -82,6 +79,74 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/08/01/post/">Linux批量转换文件名编码</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-08-01T00:00:00+08:00" pubdate data-updated="true">Aug 1<span>st</span>, 2010</time>
+        
+         | <a href="/blog/2010/08/01/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天从网上用wget下了很多的电子书，不过文件名的编码都是GBK，系统默认为UTF-8，可以用convmv来转换文件名编码，例如将GBK编码的文件filename重命名为UTF-8：</p>
+<p><pre class="brush: ruby:nogutter">convmv -f gbk -t utf-8 filename --notest</pre>&nbsp;</p>
+<p>由于需要转换的文件比较多，写了个脚本来实现，主要就是一个文件目录的递归遍历：</p>
+<p><pre class="brush: python:nogutter">list_dir(){
+for file in $1/*
+do
+if [ -d $file ]; then
+echo "$file is dirctory"
+list_dir $file
+elif [ -f $file ]; then
+echo "convert $file..."
+convmv -f gbk -t utf-8 $file --notest
+fi
+done
+}
+if [ $# -gt 0 ]; then
+list_dir "$1"
+else
+list_dir "."
+fi
+</pre>&nbsp;</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -338,106 +403,6 @@ sudo apt-get install sendmail</pre>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/01/01/post/">Python简单CGI服务器os.execve(scriptfile,args,os.environ)权限错误</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-01-01T00:00:00+08:00" pubdate data-updated="true">Jan 1<span>st</span>, 2010</time>
-        
-         | <a href="/blog/2010/01/01/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/python/'>Python</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>这段时间在学Python，今天开始进入到CGI编程，示例中有个简单CGI Server的例子，代码如下：</p>
-<p>webserver.py:</p>
-<p><pre class="brush: python">webdir = &quot;.&quot;    #html files directory
-port = 8000    ＃server port
-import os, sys
-from BaseHTTPServer import HTTPServer
-from CGIHTTPServer import CGIHTTPRequestHandler
-if sys.platform[:3] == &quot;win&quot;:
-    CGIHTTPRequestHandler.have_popen2 = False
-    CGIHTTPRequestHandler.have_popen3 = False
-os.chdir(webdir)
-srvraddr = (&quot;&quot;, port)
-srvrobj = HTTPServer(srvraddr, CGIHTTPRequestHandler)
-srvrobj.serve_forever()&nbsp;</pre>
-</p>
-<p>页面CGI为cgi101.py:</p>
-<p><pre class="brush: python">#!/usr/bin/python
-import cgi
-form = cgi.FieldStorage()
-print &quot;Content-type: text/html/n&quot;
-print &quot;&lt;title&gt;Reply Page&lt;/title&gt;&quot;
-if not form.has_key(&quot;username&quot;):
-    print &quot;&lt;h1&gt;Who are you?&lt;/h1&gt;&quot;
-else:
-    print &quot;&lt;h1&gt;Hello &lt;i&gt;%s&lt;/i&gt;!&lt;/h1&gt;&quot; % cgi.escape(form['username'].value)
-</pre>
-</p>
-<p>HTML页面为：</p>
-<p><pre class="brush: xhtml">&lt;html&gt;
-    &lt;title&gt;Interactive Page&lt;/title&gt;
-    &lt;body&gt;
-        &lt;form method=&quot;post&quot; action=&quot;cgi-bin/cgi101.py&quot;&gt;
-            &lt;p&gt;&lt;b&gt;Enter your name:&lt;/b&gt;&lt;/p&gt;
-            &lt;p&gt;Username:&lt;input type=&quot;text&quot; name=&quot;username&quot;/&gt;&lt;/p&gt;
-            &lt;p&gt;Password:&lt;input type=&quot;password&quot; name=&quot;pwd&quot;/&gt;&lt;/p&gt;
-            &lt;input type=&quot;submit&quot; name=&quot;submit&quot; text=&quot;submit&quot;/&gt;
-        &lt;/form&gt;
-&lt;/html&gt;
-</pre>
-</p>
-<p>先运行webserver.py（我是在Ubuntu上，用sudo python webserver.py)启动了server，然后在Firefox中访问：http://localhost:8000/cgi101.html</p>
-<p>结果Firefox中弹出下载cgi101.py脚本的对话框，而不是运行cgi返回结果，server终端中显示：</p>
-<p><pre class="brush: python">localhost - - [01/Jan/2010 17:05:32] &quot;GET /cgi-bin/cgi101.py?username=Jone HTTP/1.1&quot; 200 -
-Traceback (most recent call last):
-  File &quot;/usr/lib/python2.6/CGIHTTPServer.py&quot;, line 255, in run_cgi
-    os.execve(scriptfile, args, os.environ)
-OSError: [Errno 13] Permission denied
-</pre>
-</p>
-<p>说明os.execve权限出问题了，解决方法如下，将cgi101.py的权限设为777，如果还是不行的话，要将整个cgi目录的权限设为777(例如，本例中使用命令chmod -R 777 cgi-bin)</p>
-<p>然后就可以了。</p>
-<p>Good Luck!</p>
-<p>PS: Happy New Year !</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/8/">&larr; Older</a>
@@ -453,6 +418,10 @@ OSError: [Errno 13] Permission denied
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
@@ -488,10 +457,6 @@ OSError: [Errno 13] Permission denied
     
       <li class="post">
         <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
       </li>
     
   </ul>

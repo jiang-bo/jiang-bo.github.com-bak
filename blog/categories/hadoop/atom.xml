@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Hadoop | 非纯种程序猿]]></title>
+  <link href="http://jiangbo.me/blog/categories/hadoop/atom.xml" rel="self"/>
+  <link href="http://jiangbo.me/"/>
+  <updated>2012-09-24T15:36:19+08:00</updated>
+  <id>http://jiangbo.me/</id>
+  <author>
+    <name><![CDATA[jiang-bo]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[本地编译Hadoop小记]]></title>
+    <link href="http://jiangbo.me/blog/2012/09/24/compile-hadoop/"/>
+    <updated>2012-09-24T15:28:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/09/24/compile-hadoop</id>
+    <content type="html"><![CDATA[<h2>Git源码</h2>
+
+<pre><code>git clone git://git.apache.org/hadoop-common.git
+</code></pre>
+
+<p>视网速不通，略慢</p>
+
+<h2>编译</h2>
+
+<pre><code>cd hadoop-common
+mvn install -DskipTests
+</code></pre>
+
+<p>抛异常：</p>
+
+<pre><code>[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127 -&gt; [Help 1]
+org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:217)
+    at... 
+    Caused by: /Users/Shared/Workspace/hadoop/hadoop-common/hadoop-common-project/hadoop-common/target/antrun/build-main.xml:23: exec returned: 127
+    at org.apache.tools.ant.taskdefs.ExecTask.runExecute(ExecTask.java:650)
+    at org.apache.tools.ant.taskdefs.ExecTask.runExec(ExecTask.java:676)
+    at org.apache.tools.ant.taskdefs.ExecTask.execute(ExecTask.java:502)
+    at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
+    at sun.reflect.GeneratedMethodAccessor16.invoke(Unknown Source)
+    ... 21 more
+</code></pre>
+
+<p>原因是缺少protocol buffer， 找不到protoc命令。</p>
+
+<h3>安装protocol buffer</h3>
+
+<pre><code>wget https://protobuf.googlecode.com/files/protobuf-2.4.1.tar.bz2
+tar -xvf protobuf-2.4.1.tar.bz2
+cd protobuf-2.4.1
+./configure &amp;&amp; make
+make install
+</code></pre>
+
+<h3>导入Eclipse</h3>
+
+<pre><code>mvn eclipse:eclipse -DdownloadSources=true -DdownloadJavadocs=true
+</code></pre>
+]]></content>
+  </entry>
+  
+</feed>

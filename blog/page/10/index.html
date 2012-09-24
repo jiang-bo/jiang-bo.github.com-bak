@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="在Linux中新安装了Oracle，占用了原来Tomcat的8080端口，修改了tomcat中conf目录下的server.xml文件：8080&#8221; protocol=&#8221;HTTP/1.1&#8221;                connectionTimeout=&# &hellip;">
+  <meta name="description" content="一、 目的： 将一个类的接口转换成客户希望的另一个接口。Adapter 模式使原本由于接口不兼容而不能一起工作的那些类可以一起工作。 ——GoF 《Design Pattern 》 二、 描述： 其实个人觉得Adapter模式在所有的模式当中算是比较简单的那种，也比较容易理解， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,191 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/08/28/adapter-pattern/">设计模式学习笔记（3）——适配器模式(Adapter Pattern)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-08-28T16:48:00+08:00" pubdate data-updated="true">Aug 28<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/08/28/adapter-pattern/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/design/'>Design</a>, <a class='category' href='/blog/categories/pattern/'>Pattern</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>一、 目的：</p>
+
+<p>将一个类的接口转换成客户希望的另一个接口。Adapter 模式使原本由于接口不兼容而不能一起工作的那些类可以一起工作。</p>
+
+<p>——GoF 《Design Pattern 》</p>
+
+<p>二、 描述：</p>
+
+<p>其实个人觉得Adapter模式在所有的模式当中算是比较简单的那种，也比较容易理解，就像我们日常生活中经常会使用USB转换器，将某种非USB接口的外设转换我们本本上提供的USB接口一样，在面向对象设计中，有时候我们不得不将将某个类的接口转换成另外一种我们需要的类型，最通常的情况可能是因为我们要想为现有的系统添加额外的一个现有的子系统，而两个系统提供的接口不同，因此，我们不得不讲其中一个转换成另一个，或者进行双向转换。</p>
+
+<p>说起来好像很容易理解，那么到底应该如何应用Adapter模式呢，还是举HeadFirst中的例子吧：</p>
+
+<p>假设现在我们有一个现有系统SimuDuck，提供一个鸭子的接口Duck，要求系统中的所有的类必须实现该Duck接口</p>
+
+<p><img src="/images/_clip_image002.gif" alt="" /></p>
+
+<p>（注：staruml中设置接口图形格式：右键图标->Format->seterotype->None,不过怎么把方法显示出来还么研究好）</p>
+
+<p>该接口提供两个方法，fly(),飞， quack(),叫。</p>
+
+<p>现在要向这个系统中天加一个由一些火鸡组成的子系统，火鸡实现的是火鸡接口Turkey：</p>
+
+<p><img src="/images/o_clip_image004_2_633891499875937500.gif" alt="" /></p>
+
+<p>该接口提供的方法功能包括,fly()飞，gobble()叫。</p>
+
+<p>现在要想将实现Turkey的具体火鸡类在现有的使用Duck接口的系统中使用，就必须将Turkey转换成Duck，实现起来很简单，类图如下：</p>
+
+<p><img src="/images/o_adapter_duck_turkey_4.jpg" alt="" /></p>
+
+<p>设计一个TurkeyAdapter，该适配器实现了Duck接口，并使用一个Turkey作为构造参数，在TurkeyAdapter中实现Duck接口的方法时，实际调用的是Turkey的方法，下面时代码实现：</p>
+
+<p>Duck接口：</p>
+
+<p>[java] view plaincopy
+public interface Duck {</p>
+
+<pre><code>public abstract void quack();  
+public abstract void fly();  
+</code></pre>
+
+<p>}<br/>
+MallardDuck具体鸭子类：</p>
+
+<p>[java] view plaincopy
+public class MallardDuck implements Duck {</p>
+
+<pre><code>public void quack(){  
+    System.out.println("MallardDuck quack");  
+}  
+public void fly(){  
+    System.out.println("MallardDuck fly");  
+}  
+</code></pre>
+
+<p>}<br/>
+注意，这里的实现quack()和fly()方法时使用简单的直接实现，实际中应该采用Strategey（策略）模式，以后再说该模式。</p>
+
+<p>Turkey接口：</p>
+
+<p>[java] view plaincopy
+public interface Turkey {</p>
+
+<pre><code>public void fly();  
+public void gobble();  
+</code></pre>
+
+<p>}<br/>
+实现Turkey的具体WildTurkey：</p>
+
+<p>[c-sharp] view plaincopy
+public class WildTurkey implements Turkey {</p>
+
+<pre><code>public void fly(){  
+    System.out.println("WildTurkey fly");  
+}  
+public void gobble(){  
+    System.out.println("WildTurkey gobble");  
+}  
+</code></pre>
+
+<p>}<br/>
+最关键的TurkeyAdapter：</p>
+
+<p>[java] view plaincopy
+public class TurkeyAdapter implements Duck {</p>
+
+<pre><code>Turkey turkey;  
+public TurkeyAdapter(Turkey turkey){  
+    this.turkey = turkey;  
+}  
+public void quack(){  
+    turkey.gobble();  
+}  
+public void fly(){  
+    turkey.fly();  
+}  
+</code></pre>
+
+<p>}<br/>
+该类拥有一个Turkey的实例变量，一个以Turkey作为参数构造方法，也就是说在构造时将要转换的Turkey对象作为构造参数传递给该适配器，当调用适配器的Duck接口的方法时，实际调用的是turkey对象的方法。</p>
+
+<p>在这里，由于示例比较简单，没有什么问题，在实践中，可能会出现被转换的类不具备目标对象的某种功能，例如，如果Duck中有一个swim()方法，很明显，Turkey不能游泳，也就没有可以调用的方法，通常的做法是抛出一个异常CanNotFindMethodException。</p>
+
+<p>最后是测试程序：</p>
+
+<p>[java] view plaincopy
+public class Client {</p>
+
+<pre><code>public static void main(String[] args){  
+    MallardDuck duck = new MallardDuck();  
+
+    WildTurkey wildTurkey = new WildTurkey();  
+    Duck turkeyAdapter = new TurkeyAdapter(wildTurkey);  
+
+    System.out.println("Duck...");  
+    testDuck(duck);  
+
+    System.out.println("TurkeyAdapter...");  
+    testDuck(turkeyAdapter);  
+}  
+static void testDuck(Duck duck){  
+    duck.fly();  
+    duck.quack();  
+}  
+</code></pre>
+
+<p>}<br/>
+该测试程序的输出结果为：</p>
+
+<p>[java] view plaincopy
+Duck&#8230;<br/>
+MallardDuck fly<br/>
+MallardDuck quack<br/>
+TurkeyAdapter&#8230;<br/>
+WildTurkey fly<br/>
+WildTurkey gobble</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -277,83 +462,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/08/19/post/">[转]Alexandru Popescu谈InfoQ.com网站架构</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/08/19/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>大家好，我是Ryan Slobojan，坐在我旁边的是InfoQ.com的首席架构师Alexandru Popescu。Alexandru，能否告诉我们InfoQ网站的一些架构信息&mdash;它是什么样子的？又是如何构建的？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>你可以从两种不同角度审视InfoQ的架构：从我们读者的角度看，InfoQ就像是一个普通的网站；但是对于我们的编辑和在后台工作的人员来说，它则是一个地地道道的CMS（内容管理系统）。因此，你所看到的InfoQ建立在一个自制的CMS的基础之上，它把内容与用户账号、跟踪系统、广告机制等等集成。我们可以从一个更易于理解的角度来描述 InfoQ网站&mdash;它是一个Web应用，即使是CMS，你也可以看作是一个Web应用，它有通常的分层结构：表现层、服务层和持久化层。   <br />两年半之前，当我启动这个项目的时候，面临着很多有趣的选择。例如，持久化方面不但基于关系型数据库，而且使用JCR API存储内容。同时，我们不得不在基于组件的Web框架和基于动作的框架中二者选其一，并最终选择了后者。我们认为它更贴近我们解决方案的设计，即使我们可能需要一些基于portlet的东西&hellip;&hellip;我想说那时侯portlet规范非常差，希望以后我不会让大家太失望。你可以想象作为一个三层结构是多么的简单，你应该能够猜到：一点Spring、一点WebWork、一点Hibernate和JCR API。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 能否给我们描述一下，当你作为一个用户和一个作者发出请求时，内部会发生什么变化？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>当然，希望我没有记错一些细节。让我们从浏览器开始。通常有两种方式访问我们的应用，要么是通过浏览器正常访问，要么是通过AJAX请求，如 XMLHTTPRequest，然后请求进入WebWork或者DWR。如果是普通请求，则它会经过WebWork处理。如果是AJAX请求，则进入 DWR，然后分派到服务层，这层的全部家当只不过是Spring和一些采用AspectJ的AOP，目的是增强我们的模型。然后，请求会进入持久化层，我刚才已经提到这层被分割为Hibernate和JCR。   <br />因此，最后我们拥有两种不同的存储。此时你可能会问为什么我们选择了两种解决方案来存储信息，这些信息本可以采用同一种存储方式。问题是，当我们设计 InfoQ的时候，我们并不确定模型会是什么样子的，也不确定我们的内容随着时间会如何变化。同时，在关系型模式下处理这些变化非常困难，在不同版本之间迁移和维护数据等等是非常复杂的。而JCR API明确支持非结构的内容和很多其他特性，比如版本化、全文索引，我们充分利用了这些功能。    <br />同时，对于编辑工具，它与你看到的InfoQ.com几乎完全一样，除了不太花哨。因为我们设计的是同一个应用，所以使用相同的栈、几乎相同的API，在构建时我们把API分为两部分，对外开放的部分使用只读API，而对于编辑工具，我们使用可读/写存取API，不过本质上它们都是基于同一份源代码。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你刚才提到使用WebWork和DWR处理前端。请问它们能够无缝集成吗，或者存在哪些挑战吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>起初我们像往常一样启动了这个工程。我是说我们过去有一个处理DWR和WebWork应用的模型。但是最终我意识到，如果存在一个通用的方式访问和判断我们是应该通过DWR还是WebWork处理请求的话，对我和开发人员都省力。于是，我建立一个模型把这两个框架集成在一起。同时，通过这种方式我也对 DWR贡献了代码，所以现在大家都可以使用它，它非常通用，你可以立刻把它应用到Struts 2或类似的技术。如今，我们在编写代码处理HTTP时，终于能够延迟决定如何处理请求：是通过普通的请求/响应周期还是通过AJAX方式。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 如果你有机会从头重新设计InfoQ.com，你会保留哪些，改变哪些？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>很多人提过这个问题，这可能是对我最具挑战性的问题。你能够想象，在同一个项目上工作两年半之后，你会有很多不同的想法来改变和提高一些东西。现在，我可能会说我不打算改变任何事情。我可能会尝试不同的方法来看一看它们的效果，但是到目前为止，我们在项目开始时选择的解决方案都工作的非常好。   <br />我可能会研究一下如何标准化访问存储的API，在Hibernate和JCR之上创建一个通用的API，这样开发人员不再费心思考真正的数据到底存储到何处。这可能会涉及到内部API，不会变化很大。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 能否提供一些关键的数据，比如InfoQ每天处理多少用户请求？其可扩展性呢？<a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>目前我能够对外公布的数据就是每月的独立访问用户量。你可以通过网站的左上角看到这个信息。目前我们每月的独立访问用户数大约是25万。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> Hibernate真的可以扩展吗？这种扩展性有用吗？它是一个适合扩展的框架吗还是&hellip;&hellip;还有一个问题是你对数据库分区吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我们一个问题一个问题的看。到目前为止，我还没有在Hinernate的层面上发现任何问题。我是说我们甚至都没有优化查询。我们使用的就是 Hibernate自动生成的东西，性能也非常非常好。其次，由于性能不错目前我们还没有对数据分区，即使我们需要在后台处理海量的数据。我们一直在关注网站的性能，但是现在还不需要做些什么。另外一件关于架构的趣事是，唯一可能的瓶颈是我们使用的关系型数据库，因为其他存储内容的数据库位于外部服务器上，所以在内容存储方面可以线性扩展。如果我们遇到与关系型数据库相关的性能问题，我们可以很容易的创建一个MySQL数据库集群。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn3.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你们在使用MySQL是吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>是的，我们创建了几个只读访问的实例和一个可写的实例。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 当数据量变得太大，你遇到过拷贝问题吗？比如从master拷贝到slaves？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>目前我还没有注意到。是会有一点延迟，但不明显。通常我们采用逻辑划分数据。而不是物理划分。这样我们不需要针对每一个请求都访问数据库。我们能够在真正需要处理一个请求的时候缓存大量信息。访问数据库的通常都是跟踪信息或者处理广告。即使在集群上发布数据的时候存在一些延迟，也影响不到前端的性能。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你们使用了多少缓存？在何处缓存数据，只有一个吗？使用分布式缓存吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我们使用本地缓存，单节点，对象缓存。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 那么是在Hibernate之上还是之下？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>在Hibernate之上。事实上，如果你说我们存在两个缓存也是正确的，因为我们使用了Hibernate缓存，但是我们把Hibernate对象混合到了我们的对象中，因为它们太复杂了。我们采用合理的缓存并通过自己的API访问这些定制的对象。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 最近视频流系统重新做了设计。你能详细介绍一下吗，比如新的架构是什么样子的？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>最初我们使用了基于流的解决方案并由第三方实现。不幸的是，在方案设计完并开始动工之后不久，我们就发现第三方提供的服务要求我们和客户开放特定端口来访问Flash流。这对我们的大客户来说是一个很大的问题，例如像IBM这样的大公司，完全处在防火墙后面，他们绝不会为你打开特定的端口，而只是为了收看 InfoQ上的视频，哪怕这些视频很有价值。因此，我们开始考虑替代方案。   <br />那时，我们注意到YouTube和其他视频服务提供商正在迁移到基于下载的视频方案上。与此同时，Amazon启动了目前很有名的服务，如S3和EC2。我们考虑使用这些开放服务（希望它们真的可靠）建立一个解决方案，新的架构就是基于Amazon S3和EC2服务。部署非常简单&mdash;你只需要一个web服务器让你能够访问被索引的视频，和一些存储，仅此而已。如果你开始考虑这样一个解决方案，你可能几天之内就能创建。现在就是这么简单。确信Amazon服务可靠对我们非常重要，它们为S3服务提供的SLA让我们决定采用S3。现在我们正在等待EC2的相同服务。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 当你获得视频的时候：InfoQ不做其他工作吗，所有的视频都是适合Flash播放的编码格式吗？有时你是否需要使用第三方或者内部、外部的编码转换机制？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>简单地说，这个视频处理是一个工作流。首先是获取原始视频，交给视频编辑专家来索引和创建元数据，然后我们拥有&mdash;个或者说我们正试图拥有一个更加自动化的管理工作流的方法。所以，就你的问题而言，所有的一切都是在公司内部完成的。目前不是全自动化的，我们会在几个月之后争取实现，以方便编辑的工作，这些小步骤现在都是手工的，但它是一个内部流程。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你提到你把视频存储到Amazon服务上。你得到的是一个放了一些数据的容器，不管它多大、是什么，你只是把数据放进去，他们负责传递。有没有一个URL可以提供给客户或者用户，在他的浏览器上使用？从内部键值到URL的映射关系存在何处？你如何知道你把视频存在哪里了？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我们有S3存储还有EC2服务器。为了能够提供视频服务，我们需要从S3上获取视频。因此，我们在S3容器和本地存储之间建立了一个同步机制，然后一切都通过此处访问。现在，解释一下如何获取资源。我们的内容数据库会提供资源的名字，因此所有我们存储在JCR中的元数据和与内容相关的信息都存在该数据库中。然后，我们提供一个ID，数据库里给出获取该视频的映射关系。即使是S3或者VitalStream第三方支持，都是一样的。说到底，就是基于ID的资源查找。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你刚才说把Hibernate对象映射到其它对象上，为什么要这样做？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>抱歉让你误会了。我刚才想说的是，我们的模型要比只从Hibernate得到的更丰富。因此我们把不同的对象组合到一起建立一个代表一个页面或者类似事物的对象。这是一个聚合过程，而不是从模型到DTO的迁移。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn3.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你是否使用了Hibernate提供的关联机制？例如，我创建了一个用户。一个用户可以有多种角色（你可以配置Hibernate来获取用户和全部角色）。Hibernate提供了这种功能。你说在更高一层作了聚合，这是否意味着你只能在更高的层次上获取单实体或者实体集合？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我提到过我们采用了不同的存储。我需要从所有存储中获取数据并组合成一个页面。我们使用了Hibernate的全部特性，比如延迟取、快速取、联合取等一切特性。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 所以聚合意味着你不得不组合来自不同存储的数据。 <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>完全正确。如果你看一看网页，你会努力把它描述成一个模型，页面有内容组成、广告元素、图片和其他类似数据&mdash;所有这些代表了我们模型的一部分。为了表示整个页面，我们需要聚合所有这些小部件，比如广告元素、内容，聚合的方式很有趣，因为首先使用内容，然后在与内容相关的元数据的基础上，我们努力推断出适合发布何种广告。简单的说，我们有一个核心模型、带有元数据的内容，然后利用其他的数据来修饰这个核心模型。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> InfoQ未来有什么规划吗？如何进行开发的？是围绕一个需求清单吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>考虑到我们公司非常虚拟化，我是说全球的工作人员，分布在不同的地点和时区，我们围绕着需求清单建立了一个定制过程，清单上按照优先级列举了未来几年内我们需要实现的事情，然后推动几个迭代过程，我们会讨论细节。针对你的问题，我的需求清单有七页之长。这些新功能迟早都会实现。我们还有一些新的想法没有写在清单上，但是我想给大家一个惊喜，我们现在有很多竞争者，所以我们将保守秘密。上一次，视频系统的重新实现，我们做了初稿并邀请用户浏览和评论，给我们反馈，以后主要的功能我们都会采用相同的流程。如果你在InfoQ上注册，就有机会帮助我们在未来实现新特性。欢迎注册。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你如何实现网站搜索？采用了哪些技术？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我在采访开始的时候曾提到过JCR API提供了全文索引。因此，我们具备这项功能。但是目前我们使用Google搜索，因为我们发现这样性能会稍微好一点，运行的也非常好。我们正在考虑将来把这两项技术结合在一起提供高级搜索，能够使用特定的查询语言来搜索网站，你知道，我们对内容加了标签等，正好可以支持这种搜索。</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/11/">&larr; Older</a>
@@ -369,6 +477,10 @@
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
@@ -404,10 +516,6 @@
     
       <li class="post">
         <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
       </li>
     
   </ul>

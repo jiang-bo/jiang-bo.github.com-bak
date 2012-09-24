@@ -4,7 +4,7 @@
   <title><![CDATA[非纯种程序猿]]></title>
   <link href="http://jiangbo.me/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-08-31T23:56:35+08:00</updated>
+  <updated>2012-09-24T15:30:13+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -12,6 +12,57 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[本地编译Hadoop小记]]></title>
+    <link href="http://jiangbo.me/blog/2012/09/24/compile-hadoop/"/>
+    <updated>2012-09-24T15:28:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/09/24/compile-hadoop</id>
+    <content type="html"><![CDATA[<h2>Git源码</h2>
+
+<pre><code>git clone git://git.apache.org/hadoop-common.git
+</code></pre>
+
+<p>视网速不通，略慢</p>
+
+<h2>编译</h2>
+
+<pre><code>cd hadoop-common
+mvn install -DskipTests
+</code></pre>
+
+<p>抛异常：</p>
+
+<pre><code>[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127 -&gt; [Help 1]
+org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:217)
+    at... 
+    Caused by: /Users/Shared/Workspace/hadoop/hadoop-common/hadoop-common-project/hadoop-common/target/antrun/build-main.xml:23: exec returned: 127
+    at org.apache.tools.ant.taskdefs.ExecTask.runExecute(ExecTask.java:650)
+    at org.apache.tools.ant.taskdefs.ExecTask.runExec(ExecTask.java:676)
+    at org.apache.tools.ant.taskdefs.ExecTask.execute(ExecTask.java:502)
+    at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
+    at sun.reflect.GeneratedMethodAccessor16.invoke(Unknown Source)
+    ... 21 more
+</code></pre>
+
+<p>原因是缺少protocol buffer， 找不到protoc命令。</p>
+
+<h3>安装protocol buffer</h3>
+
+<pre><code>wget https://protobuf.googlecode.com/files/protobuf-2.4.1.tar.bz2
+tar -xvf protobuf-2.4.1.tar.bz2
+cd protobuf-2.4.1
+./configure &amp;&amp; make
+make install
+</code></pre>
+
+<h3>导入Eclipse</h3>
+
+<pre><code>mvn eclipse:eclipse -DdownloadSources=true -DdownloadJavadocs=true
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[关于Memcache内存管理模型的理解]]></title>
@@ -2154,25 +2205,6 @@ $~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
 <p>&nbsp;</p>
 
 <p>&nbsp;</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mac OSX 安装memcached]]></title>
-    <link href="http://jiangbo.me/blog/2011/08/03/mac-osx-install-memcached/"/>
-    <updated>2011-08-03T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/08/03/mac-osx-install-memcached</id>
-    <content type="html"><![CDATA[<p>1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包<br />
-3.执行下载的脚本，
-<pre class="brush:shell">$ chmod +x install-memcached.sh
-$ sudo ./install-memchaced.sh</pre>
-4.在环境变量里添加EVENT_NOKQUEUE=1<br />
-5.验证是否成功， $memcached -h，应该产生帮助提示
-<a href="http://jiangbo.me/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png"><img class="aligncenter size-full wp-image-35" title="Screen shot 2011-08-03 at 11.12.50 AM" src="http://jiangbo.me/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png" alt="" width="607" height="423" /></a>
-6.启动memcached,
-<pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
-参考文档<br />
-http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
 ]]></content>
   </entry>
   

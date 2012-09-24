@@ -9,8 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="JVM运行时环境
-">
+  <meta name="description" content="Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
+下面是用ruby写的一个解决方法： source@github require 'zip/zip'
+require 'iconv' # To unzip &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +80,92 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-13T16:53:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ruby/'>Ruby</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
+下面是用ruby写的一个解决方法：</p>
+
+<p><a href="https://github.com/jiang-bo/codingforfun/blob/master/ruby/utils/unzipFromWinToMac.rb">source@github</a></p>
+
+<pre><code>require 'zip/zip'
+require 'iconv'
+
+# To unzip zipfile which zip in GBK to UTF-8.
+#
+# When you zip a file on Windows, it will encode in GBK default.
+# Then you unzip it on Mac OSX which use unicode default, it will be wrong.
+# This code is used to fix this problem:)
+#
+# @Author: jiang-bo
+Zip::ZipInputStream::open(zipFile){
+  |io|
+  while(entry = io.get_next_entry)
+    name=Iconv.iconv("UTF-8","GBK", entry.name)[0]
+
+    puts "Extracting #{name}"
+    if name.end_with?('/')
+      Dir.mkdir(name.to_s)
+    else
+      entry.extract(name.to_s)
+    end
+  end
+}
+</code></pre>
+
+<p>主要依赖rubyzip和iconv两个包：</p>
+
+<pre><code>gem install rubyzip
+gem install iconv
+</code></pre>
+
+<p>使用ruby zip中ZipInputStream打开压缩包，然后使用Iconv.iconv将其中的文件名由&#8217;GBK&#8217;转码为&#8217;UTF-8&#8217;。
+然后解压压缩包。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -574,62 +661,6 @@ sleep 1
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails New时bundle Install速度</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-12-17T00:00:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/ruby/'>ruby</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>最近痴迷ruby和ror，但是每次rails new xxx时总会在bundle install 停留很久，学习了下，发现rails new时会进行bundle install，自动到rubygems.org上检查是否有更新。如果确定不需要更新，事实上是可以跳过这个步骤的，方法很简单：
-<code>
-rails new my_app --skip-bundle
-</code>
-另外在单独执行bundle install时默认也会自动检查所有更新，解决方法时
-<code>
-bundle insall --local
-</code></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/3/">&larr; Older</a>
@@ -645,6 +676,10 @@ bundle insall --local
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
@@ -680,10 +715,6 @@ bundle insall --local
     
       <li class="post">
         <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
       </li>
     
   </ul>

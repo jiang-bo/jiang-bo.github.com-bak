@@ -9,8 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="说在前面 本文不包含为什么使用memcache，以及如何使用memcache等基础知识。相关知识请查阅各类手册。
-另，为便于理解，最好手头准备一份memcache的源码，本文使用的是目前最新的1.4.4版本源码，可自行到github上clone。 Item、Chunk、Page、Slab &hellip;">
+  <meta name="description" content="Git源码 git clone git://git.apache.org/hadoop-common.git 视网速不通，略慢 编译 cd hadoop-common
+mvn install -DskipTests 抛异常： [ERROR] Failed to execute goal org. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +79,97 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-09-24T15:28:00+08:00" pubdate data-updated="true">Sep 24<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/09/24/compile-hadoop/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hadoop/'>Hadoop</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>Git源码</h2>
+
+<pre><code>git clone git://git.apache.org/hadoop-common.git
+</code></pre>
+
+<p>视网速不通，略慢</p>
+
+<h2>编译</h2>
+
+<pre><code>cd hadoop-common
+mvn install -DskipTests
+</code></pre>
+
+<p>抛异常：</p>
+
+<pre><code>[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127 -&gt; [Help 1]
+org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:217)
+    at... 
+    Caused by: /Users/Shared/Workspace/hadoop/hadoop-common/hadoop-common-project/hadoop-common/target/antrun/build-main.xml:23: exec returned: 127
+    at org.apache.tools.ant.taskdefs.ExecTask.runExecute(ExecTask.java:650)
+    at org.apache.tools.ant.taskdefs.ExecTask.runExec(ExecTask.java:676)
+    at org.apache.tools.ant.taskdefs.ExecTask.execute(ExecTask.java:502)
+    at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
+    at sun.reflect.GeneratedMethodAccessor16.invoke(Unknown Source)
+    ... 21 more
+</code></pre>
+
+<p>原因是缺少protocol buffer， 找不到protoc命令。</p>
+
+<h3>安装protocol buffer</h3>
+
+<pre><code>wget https://protobuf.googlecode.com/files/protobuf-2.4.1.tar.bz2
+tar -xvf protobuf-2.4.1.tar.bz2
+cd protobuf-2.4.1
+./configure &amp;&amp; make
+make install
+</code></pre>
+
+<h3>导入Eclipse</h3>
+
+<pre><code>mvn eclipse:eclipse -DdownloadSources=true -DdownloadJavadocs=true
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1115,92 +1206,6 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-02-13T16:53:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/ruby/'>Ruby</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
-下面是用ruby写的一个解决方法：</p>
-
-<p><a href="https://github.com/jiang-bo/codingforfun/blob/master/ruby/utils/unzipFromWinToMac.rb">source@github</a></p>
-
-<pre><code>require 'zip/zip'
-require 'iconv'
-
-# To unzip zipfile which zip in GBK to UTF-8.
-#
-# When you zip a file on Windows, it will encode in GBK default.
-# Then you unzip it on Mac OSX which use unicode default, it will be wrong.
-# This code is used to fix this problem:)
-#
-# @Author: jiang-bo
-Zip::ZipInputStream::open(zipFile){
-  |io|
-  while(entry = io.get_next_entry)
-    name=Iconv.iconv("UTF-8","GBK", entry.name)[0]
-
-    puts "Extracting #{name}"
-    if name.end_with?('/')
-      Dir.mkdir(name.to_s)
-    else
-      entry.extract(name.to_s)
-    end
-  end
-}
-</code></pre>
-
-<p>主要依赖rubyzip和iconv两个包：</p>
-
-<pre><code>gem install rubyzip
-gem install iconv
-</code></pre>
-
-<p>使用ruby zip中ZipInputStream打开压缩包，然后使用Iconv.iconv将其中的文件名由&#8217;GBK&#8217;转码为&#8217;UTF-8&#8217;。
-然后解压压缩包。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -1214,6 +1219,10 @@ gem install iconv
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
@@ -1249,10 +1258,6 @@ gem install iconv
     
       <li class="post">
         <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails new时bundle install速度</a>
       </li>
     
   </ul>

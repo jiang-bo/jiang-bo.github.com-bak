@@ -5,14 +5,12 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar - 非纯种程序猿</title>
+  <title>本地编译Hadoop小记 - 非纯种程序猿</title>
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /
--DartifactId=simple /
--DpackageName=org.sonatype.mavenbook
-结果报错Build &hellip;">
+  <meta name="description" content="Git源码 git clone git://git.apache.org/hadoop-common.git 视网速不通，略慢 编译 cd hadoop-common
+mvn install -DskipTests 抛异常： [ERROR] Failed to execute goal org. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,7 +19,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://jiangbo.me/blog/2010/04/24/post">
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/09/24/compile-hadoop">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -84,7 +82,7 @@
   
   <header>
     
-      <h1 class="entry-title">maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</h1>
+      <h1 class="entry-title">本地编译Hadoop小记</h1>
     
     
       <p class="meta">
@@ -100,7 +98,7 @@
   
 
 
-<time datetime="2010-04-24T00:00:00+08:00" pubdate data-updated="true">Apr 24<span>th</span>, 2010</time>
+<time datetime="2012-09-24T15:28:00+08:00" pubdate data-updated="true">Sep 24<span>th</span>, 2012</time>
         
          | <a href="#disqus_thread">Comments</a>
         
@@ -110,13 +108,50 @@
   </header>
 
 
-<div class="entry-content"><p>今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /</p>
-<p>-DartifactId=simple /</p>
-<p>-DpackageName=org.sonatype.mavenbook</p>
-<p>结果报错Build Error：</p>
-<p>Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</p>
-<p>查了半天也不知道为什么，明明存在archetypes插件，却说找不到，最后决定把本地库全部都删除，然后重新创建项目，没问题了&hellip;&hellip;</p>
-<p>神奇~</p></div>
+<div class="entry-content"><h2>Git源码</h2>
+
+<pre><code>git clone git://git.apache.org/hadoop-common.git
+</code></pre>
+
+<p>视网速不通，略慢</p>
+
+<h2>编译</h2>
+
+<pre><code>cd hadoop-common
+mvn install -DskipTests
+</code></pre>
+
+<p>抛异常：</p>
+
+<pre><code>[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127 -&gt; [Help 1]
+org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:217)
+    at... 
+    Caused by: /Users/Shared/Workspace/hadoop/hadoop-common/hadoop-common-project/hadoop-common/target/antrun/build-main.xml:23: exec returned: 127
+    at org.apache.tools.ant.taskdefs.ExecTask.runExecute(ExecTask.java:650)
+    at org.apache.tools.ant.taskdefs.ExecTask.runExec(ExecTask.java:676)
+    at org.apache.tools.ant.taskdefs.ExecTask.execute(ExecTask.java:502)
+    at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
+    at sun.reflect.GeneratedMethodAccessor16.invoke(Unknown Source)
+    ... 21 more
+</code></pre>
+
+<p>原因是缺少protocol buffer， 找不到protoc命令。</p>
+
+<h3>安装protocol buffer</h3>
+
+<pre><code>wget https://protobuf.googlecode.com/files/protobuf-2.4.1.tar.bz2
+tar -xvf protobuf-2.4.1.tar.bz2
+cd protobuf-2.4.1
+./configure &amp;&amp; make
+make install
+</code></pre>
+
+<h3>导入Eclipse</h3>
+
+<pre><code>mvn eclipse:eclipse -DdownloadSources=true -DdownloadJavadocs=true
+</code></pre>
+</div>
 
 
   <footer>
@@ -138,12 +173,12 @@
   
 
 
-<time datetime="2010-04-24T00:00:00+08:00" pubdate data-updated="true">Apr 24<span>th</span>, 2010</time>
+<time datetime="2012-09-24T15:28:00+08:00" pubdate data-updated="true">Sep 24<span>th</span>, 2012</time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
+    <a class='category' href='/blog/categories/hadoop/'>Hadoop</a>
   
 </span>
 
@@ -159,14 +194,18 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2010/04/07/post/" title="Previous Post: Error: no &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;">&laquo; Error: no &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;</a>
+        <a class="basic-alignment left" href="/blog/2012/08/31/something-about-memcache-internal/" title="Previous Post: 关于Memcache内存管理模型的理解">&laquo; 关于Memcache内存管理模型的理解</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2010/06/21/post/" title="Next Post: 查询外网IP并发送邮件的脚本">查询外网IP并发送邮件的脚本 &raquo;</a>
       
     </p>
   </footer>
 </article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
 
 </div>
 
@@ -270,7 +309,10 @@
       var disqus_shortname = 'jiangbo';
       
         
-        var disqus_script = 'count.js';
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/09/24/compile-hadoop/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/09/24/compile-hadoop/';
+        var disqus_script = 'embed.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
