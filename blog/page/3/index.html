@@ -9,7 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="最近痴迷ruby和ror，但是每次rails new xxx时总会在bundle install 停留很久，学习了下，发现rails new时会进行bundle install，自动到rubygems.org上检查是否有更新。如果确定不需要更新，事实上是可以跳过这个步骤的，方法很简单： rails &hellip;">
+  <meta name="description" content="什么是Instrumentation？ java Instrumentation指的是可以用独立于应用程序之外的代理（agent）程序来监测和协助运行在JVM上的应用程序。这种监测和协助包括但不限于获取JVM运行时状态，替换和修改类定义等。
+Java SE5中使用JVM TI替代了JVM &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -84,7 +85,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails New时bundle Install速度</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a></h1>
     
     
       <p class="meta">
@@ -100,16 +101,16 @@
   
 
 
-<time datetime="2011-12-17T00:00:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2011</time>
+<time datetime="2012-02-21T17:13:00+08:00" pubdate data-updated="true">Feb 21<span>st</span>, 2012</time>
         
-         | <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/02/21/java-lang-instrument/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/ruby/'>ruby</a>
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>
   
 </span>
 
@@ -120,14 +121,305 @@
   </header>
 
 
-  <div class="entry-content"><p>最近痴迷ruby和ror，但是每次rails new xxx时总会在bundle install 停留很久，学习了下，发现rails new时会进行bundle install，自动到rubygems.org上检查是否有更新。如果确定不需要更新，事实上是可以跳过这个步骤的，方法很简单：
-<code>
-rails new my_app --skip-bundle
-</code>
-另外在单独执行bundle install时默认也会自动检查所有更新，解决方法时
-<code>
-bundle insall --local
-</code></p>
+  <div class="entry-content"><h2>什么是Instrumentation？</h2>
+
+<p>java Instrumentation指的是可以用独立于应用程序之外的代理（agent）程序来监测和协助运行在JVM上的应用程序。这种监测和协助包括但不限于获取JVM运行时状态，替换和修改类定义等。
+Java SE5中使用JVM TI替代了JVM PI和JVM DI。提供一套代理机制，支持独立于JVM应用程序之外的程序以代理的方式连接和访问JVM。java.lang.instrument是在JVM TI的基础上提供的Java版本的实现。
+Instrumentation提供的主要功能是修改jvm中类的行为。
+Java SE6中由两种应用Instrumentation的方式，premain（命令行）和agentmain（运行时）</p>
+
+<h2>premain方式</h2>
+
+<p>在Java SE5时代，Instrument只提供了premain一种方式，即在真正的应用程序（包含main方法的程序）main方法启动前启动一个代理程序。例如使用如下命令：</p>
+
+<pre><code>java -javaagent:agent_jar_path[=options] java_app_name
+</code></pre>
+
+<p>可以在启动名为java_app_name的应用之前启动一个agent_jar_path指定位置的agent jar。
+实现这样一个agent jar包，必须满足两个条件：</p>
+
+<ol>
+<li>在这个jar包的manifest文件中包含Premain-Class属性，并且改属性的值为代理类全路径名。</li>
+<li>代理类必须提供一个public static void premain(String args, Instrumentation inst)或 public static void premain(String args) 方法。</li>
+</ol>
+
+
+<p>当在命令行启动该代理jar时，VM会根据manifest中指定的代理类，使用于main类相同的系统类加载器（即ClassLoader.getSystemClassLoader()获得的加载器）加载代理类。在执行main方法前执行premain()方法。如果premain(String args, Instrumentation inst)和premain(String args)同时存在时，优先使用前者。其中方法参数args即命令中的options，类型为String（注意不是String[]），因此如果需要多个参数，需要在方法中自己处理（比如用&#8221;;&#8221;分割多个参数之类）；inst是运行时由VM自动传入的Instrumentation实例，可以用于获取VM信息。</p>
+
+<h2>premain实例-打印所有的方法调用</h2>
+
+<p>下面实现一个打印程序执行过程中所有方法调用的功能，这个功能可以通过AOP其他方式实现，这里只是尝试使用Instrumentation进行ClassFile的字节码转换实现：</p>
+
+<h3>构造agent类</h3>
+
+<p>premain方式的agent类必须提供premain方法，代码如下：</p>
+
+<pre><code>package test;
+
+import java.lang.instrument.Instrumentation;
+
+public class Agent {
+
+    public static void premain(String args, Instrumentation inst){
+        System.out.println("Hi, I'm agent!");
+        inst.addTransformer(new TestTransformer());
+    }
+}
+</code></pre>
+
+<p>premain有两个参数，args为自定义传入的代理类参数，inst为VM自动传入的Instrumentation实例。 premain方法的内容很简单，除了标准输出外，只有</p>
+
+<pre><code>inst.addTransformer(new TestTransformer());
+</code></pre>
+
+<p>这行代码的意思是向inst中添加一个类的转换器。用于转换类的行为。</p>
+
+<h3>构造Transformer</h3>
+
+<p>下面来实现上述过程中的TestTransformer来完成打印调用方法的类定义转换。</p>
+
+<pre><code>package test;
+
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.ProtectionDomain;
+
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+
+public class TestTransformer implements ClassFileTransformer {
+
+    @Override
+    public byte[] transform(ClassLoader arg0, String arg1, Class&lt;?&gt; arg2,
+            ProtectionDomain arg3, byte[] arg4)
+            throws IllegalClassFormatException {
+        ClassReader cr = new ClassReader(arg4);
+        ClassNode cn = new ClassNode();
+        cr.accept(cn, 0);
+        for (Object obj : cn.methods) {
+            MethodNode md = (MethodNode) obj;
+            if ("&lt;init&gt;".endsWith(md.name) || "&lt;clinit&gt;".equals(md.name)) {
+                continue;
+            }
+            InsnList insns = md.instructions;
+            InsnList il = new InsnList();
+            il.add(new FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System",
+                    "out", "Ljava/io/PrintStream;"));
+            il.add(new LdcInsnNode("Enter method-&gt; " + cn.name+"."+md.name));
+            il.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
+                    "java/io/PrintStream", "println", "(Ljava/lang/String;)V"));
+            insns.insert(il);
+            md.maxStack += 3;
+
+        }
+        ClassWriter cw = new ClassWriter(0);
+        cn.accept(cw);
+        return cw.toByteArray();
+    }
+
+}
+</code></pre>
+
+<p>TestTransformer实现了ClassFileTransformer接口，该接口只有一个transform方法，参数传入包括该类的类加载器，类名，原字节码字节流等，返回被转换后的字节码字节流。
+TestTransformer主要使用ASM实现在所有的类定义的方法中，在方法开始出添加了一段打印该类名和方法名的字节码。在转换完成后返回新的字节码字节流。详细的ASM使用请参考ASM手册。</p>
+
+<h3>设置MANIFEST.MF</h3>
+
+<p>设置MANIFEST.MF文件中的属性，文件内容如下：</p>
+
+<pre><code>Manifest-Version: 1.0
+Premain-Class: test.Agent
+Created-By: 1.6.0_29
+</code></pre>
+
+<h3>测试</h3>
+
+<p>代码编写完成后将代码编译打成agent.jar。
+编写测试代码：</p>
+
+<pre><code>public class TestAgent {
+
+    public static void main(String[] args) {
+        TestAgent ta = new TestAgent();
+        ta.test();
+    }
+
+    public void test() {
+        System.out.println("I'm TestAgent");
+    }
+
+}
+</code></pre>
+
+<p>从命令行执行该类，并设置agent.jar</p>
+
+<pre><code>java -javaagent:agent.jar TestAgent
+</code></pre>
+
+<p>将打印出程序运行过程中实际执行过的所有方法名：</p>
+
+<pre><code>Hi, I'm agent!
+Enter method-&gt; test/TestAgent.main
+Enter method-&gt; test/TestAgent.test
+I'm TestAgent
+Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
+Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
+Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
+Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
+Enter method-&gt; com/apple/java/Usage$3.run
+。。。
+</code></pre>
+
+<p>从输出中可以看出，程序首先执行的是代理类中的premain方法（不过代理类自身不会被自己转换，所以不能打印出代理类的方法名），然后是应用程序中的main方法。</p>
+
+<h2>agentmain方式</h2>
+
+<p>premain时Java SE5开始就提供的代理方式，给了开发者诸多惊喜，不过也有些须不变，由于其必须在命令行指定代理jar，并且代理类必须在main方法前启动。因此，要求开发者在应用前就必须确认代理的处理逻辑和参数内容等等，在有些场合下，这是比较苦难的。比如正常的生产环境下，一般不会开启代理功能，但是在发生问题时，我们不希望停止应用就能够动态的去修改一些类的行为，以帮助排查问题，这在应用启动前是无法确定的。
+为解决运行时启动代理类的问题，Java SE6开始，提供了在应用程序的VM启动后在动态添加代理的方式，即agentmain方式。
+与Permain类似，agent方式同样需要提供一个agent jar，并且这个jar需要满足：</p>
+
+<ol>
+<li>在manifest中指定Agent-Class属性，值为代理类全路径</li>
+<li>代理类需要提供public static void agentmain(String args, Instrumentation inst)或public static void agentmain(String args)方法。并且再二者同时存在时以前者优先。args和inst和premain中的一致。</li>
+</ol>
+
+
+<p>不过如此设计的再运行时进行代理有个问题——如何在应用程序启动之后再开启代理程序呢？
+JDK6中提供了Java Tools API，其中Attach API可以满足这个需求。</p>
+
+<p>Attach API中的VirtualMachine代表一个运行中的VM。其提供了loadAgent()方法，可以在运行时动态加载一个代理jar。具体需要参考<a href="">《Attach API》</a></p>
+
+<h2>agentmain实例-打印当前已加载的类</h2>
+
+<h3>构造agent类</h3>
+
+<p>agentmain方式的代理类必须提供agentmain方法：</p>
+
+<pre><code>package loaded;
+
+import java.lang.instrument.Instrumentation;
+
+public class LoadedAgent {
+    @SuppressWarnings("rawtypes")
+    public static void agentmain(String args, Instrumentation inst){
+        Class[] classes = inst.getAllLoadedClasses();
+        for(Class cls :classes){
+            System.out.println(cls.getName());
+        }
+    }
+}
+</code></pre>
+
+<p>agentmain方法通过传入的Instrumentation实例获取当前系统中已加载的类。</p>
+
+<h3>设置MANNIFEST.MF</h3>
+
+<p>设置MANIFEST.MF文件，指定Agent-Class:</p>
+
+<pre><code>Manifest-Version: 1.0
+Agent-Class: loaded.LoadedAgent
+Created-By: 1.6.0_29
+</code></pre>
+
+<h3>绑定到目标VM</h3>
+
+<p>将agent类和MANIFEST.MF文件编译打成loadagent.jar后，由于agent main方式无法向pre main方式那样在命令行指定代理jar，因此需要借助Attach Tools API。</p>
+
+<pre><code>package attach;
+
+import java.io.IOException;
+
+import com.sun.tools.attach.AgentInitializationException;
+import com.sun.tools.attach.AgentLoadException;
+import com.sun.tools.attach.AttachNotSupportedException;
+import com.sun.tools.attach.VirtualMachine;
+
+public class Test {
+    public static void main(String[] args) throws AttachNotSupportedException,
+            IOException, AgentLoadException, AgentInitializationException {
+        VirtualMachine vm = VirtualMachine.attach(args[0]);
+        vm.loadAgent("/Users/jiangbo/Workspace/code/java/javaagent/loadagent.jar");
+
+    }
+
+}
+</code></pre>
+
+<p>该程序接受一个参数为目标应用程序的进程id，通过Attach Tools API的VirtualMachine.attach方法绑定到目标VM，并向其中加载代理jar。</p>
+
+<h3>构造目标测试程序</h3>
+
+<p>构造一个测试用的目标应用程序：</p>
+
+<pre><code>package attach;
+
+public class TargetVM {
+    public static void main(String[] args) throws InterruptedException{
+        while(true){
+            Thread.sleep(1000);
+        }
+    }
+}
+</code></pre>
+
+<p>这个测试程序什么都不做，只是不停的sleep。:)
+运行该程序，获得进程ID=33902。
+运行上面绑定到VM的Test程序，将进程id作为参数传入：</p>
+
+<pre><code>java attach.Test 33902
+</code></pre>
+
+<p>观察输出，会打印出系统当前所有已经加载类名</p>
+
+<pre><code>java.lang.NoClassDefFoundError
+java.lang.StrictMath
+java.security.SignatureSpi
+java.lang.Runtime
+java.util.Hashtable$EmptyEnumerator
+sun.security.pkcs.PKCS7
+java.lang.InterruptedException
+java.io.FileDescriptor$1
+java.nio.HeapByteBuffer
+java.lang.ThreadGroup
+[Ljava.lang.ThreadGroup;
+java.io.FileSystem
+。。。
+</code></pre>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="http://docs.oracle.com/javase/6/docs/api/java/lang/instrument/package-summary.html">java.lang.instrument API docs</a></li>
+<li><a href="https://blogs.oracle.com/CoreJavaTechTips/entry/the_attach_api">The Attach API</a></li>
+<li><a href="http://www.ibm.com/developerworks/cn/java/j-lo-jse61/index.html">Java SE6新特性：Instrumentation新功能</a></li>
+</ul>
+
+
+<h2>附：agent jar中manifest的属性</h2>
+
+<ul>
+<li>Premain-Class: 当在VM启动时，在命令行中指定代理jar时，必须在manifest中设置Premain-Class属性，值为代理类全类名，并且该代理类必须提供premain方法。否则JVM会异常终止。</li>
+<li>Agent-Class: 当在VM启动之后，动态添加代理jar包时，代理jar包中manifest必须设置Agent-Class属性，值为代理类全类名，并且该代理类必须提供agentmain方法，否则无法启动该代理。</li>
+<li>Boot-Class-Path: Bootstrap class loader加载类时的搜索路径，可选。</li>
+<li>Can-Redefine-Classes: true/false；标示代理类是否能够重定义类。可选。</li>
+<li>Can-Retransform-Classes: true/false；标示代理类是否能够转换类定义。可选。</li>
+<li>Can-Set-Native-Prefix::true/false；标示代理类是否需要本地方法前缀，可选。</li>
+</ul>
+
+
+<p><strong> 当一个代理jar包中的manifest文件中既有Premain-Class又有Agent-Class时，如果以命令行方式在VM启动前指定代理jar，则使用Premain-Class；反之如果在VM启动后，动态添加代理jar，则使用Agent-Class </strong></p>
 </div>
   
   
@@ -140,7 +432,7 @@ bundle insall --local
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/12/17/rails-common-error/">Rails中常见的错误</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a></h1>
     
     
       <p class="meta">
@@ -156,16 +448,16 @@ bundle insall --local
   
 
 
-<time datetime="2011-12-17T00:00:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2011</time>
+<time datetime="2012-02-14T00:26:00+08:00" pubdate data-updated="true">Feb 14<span>th</span>, 2012</time>
         
-         | <a href="/blog/2011/12/17/rails-common-error/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/02/14/jetty-classloader/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/ruby/'>ruby</a>
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>
   
 </span>
 
@@ -176,17 +468,204 @@ bundle insall --local
   </header>
 
 
-  <div class="entry-content"><p><h1>Rails中常见错误总结</h1>
-<h3>NoMothedError</h3>
-NoMethodError通常表示引用了错误的方法，比如link_to写成了lunk_to。根据页面上的错误提示很容易能够定位到错误代码位于哪一行。
-<h3>NameError</h3>
-NameError常见于引用了错误的变量，比如变量不存在等
-<h3>SyntaxError: unexpected $end</h3>
-SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少了end关键字。def和do必须要有对应的end。不过通常错误提示无法定位具体哪一行缺少了end，需要自己审查代码逻辑。
-<h3>invalid multibyte char(US-ASCII)</h3>
-如果使用的是Ruby1.9，出现:invalid multibyte char(US-ASCII)的时候，通常表示代码源文件中有UTF-8字符，比如中文，根据Ruby1.9规范，必须在源文件的头部加上编码注解<br />
-#encoding: utf-8<br />
-并且代码的源文件格式必须时utf-8的。</p>
+  <div class="entry-content"><h2>什么是类加载器？</h2>
+
+<p>类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。</p>
+
+<h2>类加载器分类</h2>
+
+<p>类加载器主要分为：</p>
+
+<ul>
+<li>启动类加载器(Bootstrap ClassLoader)：主要负责加载<JAVA_HOME>\lib目录中或者-Xbootclasspath中指定的，并且被虚拟机识别的类库加载到VM中。这个加载器是JVM自身的一部分，用本地代码实现的(openjdk中源码位于hotspot/src/share/vm/classfile/classLoader.cpp中)，无法直接被java代码引用。</li>
+<li>扩展类加载器(Extension ClassLoader)：主要负责加载jdk扩展类库<JAVA_HOME>\lib\ext或者java.ext.dirs系统属性指定的目录中jar文件，由sun.misc.Launcher$ExtClassLoader实现</li>
+<li>系统类加载器(System ClassLoader)：用于加载CLASSPATH中指定的类，由sun.misc.Launcher$AppClassLoader实现。该类即ClassLoader.getSystemLoader()的返回值，是应用程序默认的类加载器。</li>
+<li>自定义加载器(User ClassLoader)：用户可以自定义自己的类加载器</li>
+</ul>
+
+
+<h2>双亲委托模型</h2>
+
+<p>JDK中要求所有的自定义ClassLoader 必须扩展自抽象类java.lang.ClassLoader。该类的文档说名中有一个段关于delegate model的描述：</p>
+
+<blockquote><p>The ClassLoader class uses a <code>delegation model</code> to search for classes and resources. Each instance of ClassLoader has an associated parent class loader. When requested to find a class or resource, a ClassLoader instance will delegate the search for the class or resource to its parent class loader before attempting to find the class or resource itself. The virtual machine&#8217;s built-in class loader, called the &#8220;bootstrap class loader&#8221;, does not itself have a parent but may serve as the parent of a ClassLoader instance.</p></blockquote>
+
+<p>简单来说这个delegate model要求除了Bootstrap ClassLoader之外，其余ClassLoader都需要关联一个parent ClassLoader（这种关联方式采用的时组合而非继承），在执行加载class时，首先委托给parent ClassLoader加载，只有当parent ClassLoader无法加载时，再由自身加载。各加载器的关联关系如下：</p>
+
+<pre><code>        Bootstrap ClassLoader
+                 |
+        Extension ClassLoader
+                 |
+        System ClassLoader
+            /           \
+    User1 ClassLoader   User2 ClassLoader
+</code></pre>
+
+<p>Bootstrap ClassLoader是最根层的加载器，用户自定义加载器建议使用系统类加载器作为parent。
+这种委托模型的好处显而易见，它维护了类加载器之间的层次优先级关系。使所有的类加载优先由parent加载，这保证了java基础类库中的加载只会有一份。以java.lang.Object为例，委托模式保证了这个类最终只会由BootstrapClassLoader来加载，以此来保证所有环境中只有同一个类。否则由各加载器自由发挥，当用户自己定义各同名的java.lang.Object类时，系统会出现多分Objec类，最根基的行为出现混乱。（当然，你还是可以自定义出一个同名的java.lang.Object，并且顺利通过编译，但是它正常情况下永远不会被加载）。</p>
+
+<p><strong><em>这个委托模型并非jvm的强制规范，只是jdk中建议的一种模式，有时会发现不遵守这种模式的行为却能产生奇妙的效果，如热部署，OSGI等。</em></strong></p>
+
+<h2>Jetty中的ClassLoader</h2>
+
+<p>jetty，tomcat等web容器通常都会对classloader做扩展，因为一个正常的容器至少要保证其内部运行的多个webapp之间：私有的类库不受影响，并且公有的类库可以共享。这正好发挥classloader的层级划分优势。
+jetty中有一个org.mortbay.jetty.webapp.WebAppClassLoader，负责加载一个webapp context中的应用类，WebAppClassLoader以系统类加载器作为parent，用于加载系统类。不过servlet规范使得web容器的classloader比正常的classloader委托模型稍稍复杂，servlet规范要求：</p>
+
+<ol>
+<li>WEB-INF/lib 和 WEB-INF/classes优先于父容器中的类加载，比如WEB-INF/classes下有个XYZ类，CLASSPATH下也有个XYZ类，jetty中优先加载的是WEB-INF/classes下的，这与正常的父加载器优先相反。</li>
+<li>系统类比如java.lang.String不遵循第一条， WEB-INF/classes或WEB-INF/lib下的类不能替换系统类。不过规范中没有明确规定哪些是系统类，jetty中的实现是按照类的全路径名判断。</li>
+<li>Server的实现类不被应用中的类引用，即Server的实现类不能被人和应用类加载器加载。不过，同样的，规范里没有明确规定哪些是Server的实现类，jetty中同样是按照类的全路径名判断。</li>
+</ol>
+
+
+<p>为了处理上述三个问题，jetty的应用类加载器(org.mortbay.jetty.webapp.WebAppClassLoader)做了些特殊处理。</p>
+
+<h3>WebAppClassLoader的实现</h3>
+
+<p>首先看WebAppClassLoader的实现，WebAppClassLoader的构造器中有如下代码：</p>
+
+<pre><code>super(new URL[]{},parent!=null?parent
+            :(Thread.currentThread().getContextClassLoader()!=null?Thread.currentThread().getContextClassLoader()
+                    :(WebAppClassLoader.class.getClassLoader()!=null?WebAppClassLoader.class.getClassLoader()
+                            :ClassLoader.getSystemClassLoader())));
+</code></pre>
+
+<p>表明WebAppClassLoader还是按照正常的范式设置parent classloader
+然后看重要的loadclass方法实现：</p>
+
+<pre><code>@Override
+protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException
+{
+    Class&lt;?&gt; c= findLoadedClass(name);
+    ClassNotFoundException ex= null;
+    boolean tried_parent= false;
+
+    boolean system_class=_context.isSystemClass(name);
+    boolean server_class=_context.isServerClass(name);
+
+    if (system_class &amp;&amp; server_class)
+    {
+        return null;
+    }
+
+    if (c == null &amp;&amp; _parent!=null &amp;&amp; (_context.isParentLoaderPriority() || system_class) &amp;&amp; !server_class)
+    {
+        tried_parent= true;
+        try
+        {
+            c= _parent.loadClass(name);
+            if (LOG.isDebugEnabled())
+                LOG.debug("loaded " + c);
+        }
+        catch (ClassNotFoundException e)
+        {
+            ex= e;
+        }
+    }
+
+    if (c == null)
+    {
+        try
+        {
+            c= this.findClass(name);
+        }
+        catch (ClassNotFoundException e)
+        {
+            ex= e;
+        }
+    }
+
+    if (c == null &amp;&amp; _parent!=null &amp;&amp; !tried_parent &amp;&amp; !server_class )
+        c= _parent.loadClass(name);
+
+    if (c == null)
+        throw ex;
+
+    if (resolve)
+        resolveClass(c);
+
+    if (LOG.isDebugEnabled())
+        LOG.debug("loaded " + c+ " from "+c.getClassLoader());
+
+    return c;
+}
+</code></pre>
+
+<p>loadclass按照：</p>
+
+<ol>
+<li>findLoadedClass(name)-检查类是否已经加载</li>
+<li>判断该类是否为系统类或server类</li>
+<li>如果该类未加载且父加载器不为空且设置了父加载器优先或类类为系统类，且该类不是server类，则尝试使用父加载器加载该类</li>
+<li>如果不是父加载器优先或者父加载器未加载到该类，使用WebAppClassLoader加载该类</li>
+<li>如果是不是父加载器优先，并且WebAppClassLoader未加载到该类，尝试使用父加载器加载该类</li>
+<li>找到则返回，否则抛出ClassNotFoundException</li>
+</ol>
+
+
+<h3>ClassLoader Priority</h3>
+
+<p>上述过程涉及一个加载器优先级的概念，这也是针对前述第一条规范中WEB-INF/lib和WEB-INF/classes类优先的处理。jetty中父加载器优先的配置项可以通过环境变量</p>
+
+<pre><code>org.eclipse.jetty.server.webapp.parentLoaderPriority=false(默认)/true来设置
+</code></pre>
+
+<p>也可以通过</p>
+
+<pre><code>org.eclipse.jetty.webapp.WebAppContext.setParentLoaderPriority(boolean)方法来设置
+</code></pre>
+
+<p>优于该配置默认是false，因此在load class过程中优先使用WebAppClassLoader加载WEB-INF/lib和WEB-INF/classes中的类。
+当将该配置项设为true时需要确认类加载顺序没有问题。</p>
+
+<h3>设置系统类</h3>
+
+<p>规范2中约定系统类不能被应用类覆盖，但是没有明确规定哪些时系统类，jetty中以类的package路径名来区分，当类的package路径名位包含于</p>
+
+<pre><code>  public final static String[] __dftSystemClasses =
+    {
+        "java.",                            
+        "javax.",                           
+        "org.xml.",                         
+        "org.w3c.",                         
+        "org.apache.commons.logging.",      
+        "org.eclipse.jetty.continuation.",  
+        "org.eclipse.jetty.jndi.",          
+        "org.eclipse.jetty.plus.jaas.",     
+        "org.eclipse.jetty.websocket.WebSocket", 
+        "org.eclipse.jetty.websocket.WebSocketFactory", 
+        "org.eclipse.jetty.servlet.DefaultServlet" 
+    } ;
+</code></pre>
+
+<p>时，会被认为是系统类。（该定义位于<a href="https://github.com/eclipse/jetty.project/blob/master/jetty-webapp/src/main/java/org/eclipse/jetty/webapp/WebAppContext.java">WebAppContext@github</a>中）</p>
+
+<p>因此，我们可以通过 org.eclipse.jetty.webapp.WebAppContext.setSystemClasses(String Array)或者org.eclipse.jetty.webapp.WebAppContext.addSystemClass(String)来设置系统类。
+再次提醒，系统类是对多有应用都可见。</p>
+
+<h3>设置Server类</h3>
+
+<p>规范3中约定Server类不对任何应用可见。jetty同样是用package路径名来区分哪些是Server类。Server类包括：</p>
+
+<pre><code>public final static String[] __dftServerClasses =
+{
+    "-org.eclipse.jetty.continuation.", 
+    "-org.eclipse.jetty.jndi.",         
+    "-org.eclipse.jetty.plus.jaas.",    
+    "-org.eclipse.jetty.websocket.WebSocket", 
+    "-org.eclipse.jetty.websocket.WebSocketFactory", 
+    "-org.eclipse.jetty.servlet.DefaultServlet", 
+    "-org.eclipse.jetty.servlet.listener.", 
+    "org.eclipse.jetty."                
+} ;
+</code></pre>
+
+<p>我们可以通过， org.eclipse.jetty.webapp.WebAppContext.setServerClasses(String Array) 或org.eclipse.jetty.webapp.WebAppContext.addServerClass(String)方法设置Server类。
+注意，Server类是对所有应用都不可见的，但是WEB-INF/lib下的类可以替换Server类。</p>
+
+<h3>自定义WebApp ClassLoader</h3>
+
+<p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
 </div>
   
   
@@ -199,7 +678,7 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/12/07/clean-dns-cache-on-chrome/">Chrome中清除dns缓存</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a></h1>
     
     
       <p class="meta">
@@ -215,16 +694,16 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
   
 
 
-<time datetime="2011-12-07T00:00:00+08:00" pubdate data-updated="true">Dec 7<span>th</span>, 2011</time>
+<time datetime="2012-02-13T16:53:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
         
-         | <a href="/blog/2011/12/07/clean-dns-cache-on-chrome/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/未分类/'>未分类</a>
+    <a class='category' href='/blog/categories/ruby/'>Ruby</a>
   
 </span>
 
@@ -235,10 +714,44 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
   </header>
 
 
-  <div class="entry-content"><p>web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：<br />
-1、用chrome打开：chrome://net-internals/#dns<br />
-2、点击上面的“clean host cache”<br />
-为了方便使用，可以加个bookmark:)</p>
+  <div class="entry-content"><p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
+下面是用ruby写的一个解决方法：</p>
+
+<p><a href="https://github.com/jiang-bo/codingforfun/blob/master/ruby/utils/unzipFromWinToMac.rb">source@github</a></p>
+
+<pre><code>require 'zip/zip'
+require 'iconv'
+
+# To unzip zipfile which zip in GBK to UTF-8.
+#
+# When you zip a file on Windows, it will encode in GBK default.
+# Then you unzip it on Mac OSX which use unicode default, it will be wrong.
+# This code is used to fix this problem:)
+#
+# @Author: jiang-bo
+Zip::ZipInputStream::open(zipFile){
+  |io|
+  while(entry = io.get_next_entry)
+    name=Iconv.iconv("UTF-8","GBK", entry.name)[0]
+
+    puts "Extracting #{name}"
+    if name.end_with?('/')
+      Dir.mkdir(name.to_s)
+    else
+      entry.extract(name.to_s)
+    end
+  end
+}
+</code></pre>
+
+<p>主要依赖rubyzip和iconv两个包：</p>
+
+<pre><code>gem install rubyzip
+gem install iconv
+</code></pre>
+
+<p>使用ruby zip中ZipInputStream打开压缩包，然后使用Iconv.iconv将其中的文件名由&#8217;GBK&#8217;转码为&#8217;UTF-8&#8217;。
+然后解压压缩包。</p>
 </div>
   
   
@@ -251,7 +764,7 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/">Mac上制作Ubuntu USB启动盘</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a></h1>
     
     
       <p class="meta">
@@ -267,18 +780,12 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
   
 
 
-<time datetime="2011-11-09T00:00:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2011</time>
+<time datetime="2012-02-10T23:51:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
         
-         | <a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/02/10/jvm-luncher-lifecycle/#disqus_thread">Comments</a>
         
         
           | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/技术生活/'>技术生活</a>
-  
-</span>
 
 
         
@@ -287,59 +794,7 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
   </header>
 
 
-  <div class="entry-content"><p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
-
-<p><strong>一、下载ubuntu iso镜像</strong></p>
-
-<p><strong>二、将iso转换为img文件</strong></p>
-
-<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
-
-<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
-
-<p><strong>三、查看USB的盘符</strong></p>
-
-<p>$ diskutil list</p>
-
-<p>/dev/disk0</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
-
-<p>1:                        EFI                         209.7 MB   disk0s1</p>
-
-<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
-
-<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
-
-<p>/dev/disk1</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
-
-<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
-
-<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
-
-<p><strong>四、卸载USB磁盘</strong></p>
-
-<p>$ diskutil unmountDisk /dev/disk1</p>
-
-<p>Unmount of all volumes on disk1 was successful</p>
-
-<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
-
-<p><strong>五、将镜像写入USB</strong></p>
-
-<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
-
-<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
-
-<p><strong>六、弹出USB</strong></p>
-
-<p>$ diskutil eject /dev/disk1</p>
+  <div class="entry-content"><h1>JVM运行时环境</h1>
 </div>
   
   
@@ -352,7 +807,7 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/09/08/vim_gbk/">vim支持GBK编码</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a></h1>
     
     
       <p class="meta">
@@ -368,16 +823,16 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
   
 
 
-<time datetime="2011-09-08T00:00:00+08:00" pubdate data-updated="true">Sep 8<span>th</span>, 2011</time>
+<time datetime="2012-02-10T14:39:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
         
-         | <a href="/blog/2011/09/08/vim_gbk/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/linux/'>Linux</a>
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>
   
 </span>
 
@@ -388,17 +843,169 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
   </header>
 
 
-  <div class="entry-content"><p><h2><strong>一、让ubuntu支持GBK编码</strong></h2>
-Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。</p>
+  <div class="entry-content"><h2>一.环境准备</h2>
 
-<p>首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件，在文件中添加如下内容：<br />
-zh_CN.UTF- 8 UTF- 8<br />
-en_US.UTF- 8 UTF- 8<br />
-zh_CN.GBK GBK<br />
-zh_CN.GB2312 GB2312<br />
-接着用sudo dpkg-reconfigure &#8211;force locales强制更新设置
-<h2><strong>二、设置Vimrc支持GBK</strong></h2>
-set fileencodings=utf-8,gbk,gb2312</p>
+<h3>1.jdk</h3>
+
+<p>在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:)</p>
+
+<h3>2.alsa包</h3>
+
+<p>linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装，CentOS可以通过如下命令检查：</p>
+
+<pre><code> rpm -qa |grep alsa
+</code></pre>
+
+<p>alsa-lib和alsa-lib-devel均需要。CentOS缺少alsa-lib-devel，通过如下命令安装：</p>
+
+<pre><code> yum install alsa-lib-devel
+</code></pre>
+
+<h3>3.cups-devel</h3>
+
+<pre><code>yum install cups-devel
+</code></pre>
+
+<h3>4.libXi-devel</h3>
+
+<pre><code>yum install libXi-devel
+</code></pre>
+
+<h3>5.freetype2.3</h3>
+
+<pre><code>wget http://download.savannah.gnu.org/releases/freetype/freetype-2.3.12.tar.gz
+tar -xvf freetype-2.3.12.tar.gz
+cd freetype-2.3.12
+./configure &amp;&amp; make &amp;&amp; make install
+</code></pre>
+
+<h3>6. ant</h3>
+
+<pre><code>wget http://mirror.bit.edu.cn/apache//ant/binaries/apache-ant-1.8.2-bin.zip
+unzip apache-ant-1.8.2-bin.zip
+</code></pre>
+
+<h3>7.g++</h3>
+
+<pre><code>yum install gcc gcc-c++
+</code></pre>
+
+<h2>二、设置环境变量</h2>
+
+<p>jdk编译过程中有一些环境变量需要设置，详细的请参考README-builds.html，下面写的只是一些必须设置的环境变量：</p>
+
+<pre><code>export ALT_BOOTDIR=/usr/opt/jdk # 预装的jdk7目录
+export ANT_HOME=ant安装目录
+export ALT_FREETYPE_HEADERS_PATH=/usr/local/include/freetype2 #freetype2头文件安装目录
+export ALT_FREETYPE_LIB_PATH=/usr/local/lib #freetype2 lib目录
+</code></pre>
+
+<h2>三、编译</h2>
+
+<h3>1.健全检查</h3>
+
+<p>可以通过如下命令检查环境配置是否准备好：</p>
+
+<pre><code>make sanity ARCH_DATA_MODEL=64
+</code></pre>
+
+<p>如果最终输出：</p>
+
+<pre><code>Sanity check passed.
+</code></pre>
+
+<p>则表示环境检查通过，否则需要根据提示信息排查问题。</p>
+
+<h3>2.执行编译</h3>
+
+<p>通过如下命令开始编译：</p>
+
+<pre><code>make ARCH_DATA_MODEL=64
+</code></pre>
+
+<h3>3.问题排查：</h3>
+
+<p>编译过程中出现一些问题：</p>
+
+<h3>1)缺少jaxp和jaxws</h3>
+
+<p>错误信息</p>
+
+<pre><code>ERROR: Cannot find source for project jaxp
+</code></pre>
+
+<p>原因是现在jaxp源码分支和jdk源码分支分开了，但是jaxws是jdk中的一部分，所以完全编译需要jaxp源码，针对该问题的描述可以查看README-build.html中TroubleShooting部分。
+解决方式有两种：
+一种是先下载好源码包，以drops的方式安装，具体参考README-build.html
+另外一种是使用在线安装，在编译时加入允许下载源码的配置:</p>
+
+<pre><code>make ARCH_DATA_MODEL=64 ALLOW_DOWNLOADS=true
+</code></pre>
+
+<h3>2)缺少X＊库</h3>
+
+<p>编译过程中多次出现如下缺少X*, awt之类的错误，基本上都是因为缺乏图形相关的库</p>
+
+<pre><code>../../../src/solaris/native/sun/awt/img_util_md.h:32: ??:expected specifier-qualifier-list before 'XID'
+make[5]: *** [/home/jiangbo/Workspace/jdk/openjdk/build/linux-amd64/tmp/sun/sun.awt/awt/obj64/BufImgSurfaceData.o] Error 1
+make[5]: *** Waiting for unfinished jobs....
+make[5]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
+make[4]: *** [library_parallel_compile] Error 2
+make[4]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
+make[3]: *** [all] Error 1
+make[3]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun'
+make[2]: *** [all] Error 1
+make[2]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make'
+make[1]: *** [jdk-build] Error 2
+make[1]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk'
+make: *** [build_product_image] Error 2
+</code></pre>
+
+<p>解决方式时安装X相关的库</p>
+
+<pre><code>yum install libX*
+</code></pre>
+
+<p>这个有些暴力，不过比较有效:)</p>
+
+<h2>四、测试编译结果</h2>
+
+<p>漫长的编译之后直至出现如下类似内容时，表示编译完成了：</p>
+
+<pre><code>-- Build times ----------
+Target all_product_build
+Start 2012-02-09 10:38:39
+End   2012-02-09 11:14:37
+00:01:41 corba
+00:06:19 hotspot
+00:15:49 jaxp
+00:01:30 jaxws
+00:10:03 jdk
+00:00:36 langtools
+00:35:58 TOTAL
+</code></pre>
+
+<p>编译完成后，编译结果维语build/linux-amd64目录下，可以写个简单的Java程序测试编译结果</p>
+
+<p>Test.java</p>
+
+<pre><code>public class Test{
+        public static void main(String[] args){
+                System.out.println("Hello");
+        }
+}
+</code></pre>
+
+<p>编译</p>
+
+<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test.java
+</code></pre>
+
+<p>执行</p>
+
+<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test
+Hello
+</code></pre>
 </div>
   
   
@@ -423,6 +1030,34 @@ set fileencodings=utf-8,gbk,gb2312</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
       </li>
     
@@ -432,34 +1067,6 @@ set fileencodings=utf-8,gbk,gb2312</p>
     
       <li class="post">
         <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
       </li>
     
   </ul>

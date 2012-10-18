@@ -1,0 +1,469 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS源码学习（1）——NameNode主要数据结构 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="FSNameSystem FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系： fsname->block列表的映射
+所有有效blocks集合
+block与其所属的datanodes之间的映射（该映射是通过block &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-datastructure">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS源码学习（1）——NameNode主要数据结构</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>FSNameSystem</h2>
+
+<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
+
+<ol>
+<li>fsname->block列表的映射</li>
+<li>所有有效blocks集合</li>
+<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
+<li>每个datanode与其上的blocklist的映射</li>
+<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
+</ol>
+
+
+<h3>FSDirectory</h3>
+
+<p>FSDirectory用于维护当前系统中的文件树。</p>
+
+<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
+
+<h4>INode</h4>
+
+<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
+
+<p><img src="/images/hdfs/INode.png" alt="INode" /></p>
+
+<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
+
+<h3>BlocksMap</h3>
+
+<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
+<img src="/images/hdfs/BlocksMap.png" alt="BlocksMap" />
+BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
+
+<h4>Block</h4>
+
+<p>Block是HDFS中的基本读写单元，主要包括：</p>
+
+<ol>
+<li>blockId: 一个long类型的块id</li>
+<li>numBytes: 块大小</li>
+<li>generationStamp: 块更新的时间戳</li>
+</ol>
+
+
+<h4>BlockInfo</h4>
+
+<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
+
+<p><img src="/images/hdfs/triplets.png" alt="triplets" /></p>
+
+<ol>
+<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
+<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
+<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
+</ol>
+
+
+<p>DN2,DN3的prev-blk和next-blk类似。
+HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
+
+<h4>FSImage</h4>
+
+<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
+HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
+FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
+
+<p><img src="/images/hdfs/FSImage.png" alt="FSImage" /></p>
+
+<h5>FSImage头部信息</h5>
+
+<ol>
+<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
+<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
+<li>numberItemOfTree(long): 系统中的文件总数</li>
+<li>generationTimeStamp: 生成image的时间戳</li>
+</ol>
+
+
+<h5>INode信息</h5>
+
+<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
+
+<p><strong>INode头</strong></p>
+
+<ol>
+<li>nameLen(short): 文件名长度</li>
+<li>filename(String): 文件名</li>
+<li>replication(short): 备份数量</li>
+<li>modificationTime(long): 最近修改时间</li>
+<li>accessTime(long): 最近访问时间</li>
+<li>preferedBlockSize(long): 块大小（目录为0）</li>
+<li>block num(int): 块数量（目录为-1）</li>
+</ol>
+
+
+<p><strong>Blocks区</strong></p>
+
+<ol>
+<li>blockId(long)</li>
+<li>numBytes(long,block大小)</li>
+<li>generationTimeStamp(long, 更新时间戳）</li>
+</ol>
+
+
+<p><strong>文件权限</strong></p>
+
+<ol>
+<li>username(String): 文件用户名</li>
+<li>group(String): 所属组</li>
+<li>fileperm(short): 文件权限</li>
+</ol>
+
+
+<h5>underconstructionFile区</h5>
+
+<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
+
+<p><strong>client信息</strong></p>
+
+<ol>
+<li>clientName：client明</li>
+<li>clientMachine： client机器名</li>
+</ol>
+
+
+<p><strong>已分配的datanode信息</strong></p>
+
+<ol>
+<li>ipcport： 服务端口</li>
+<li>capacity: 容量</li>
+<li>dfsuse： 已使用的空间</li>
+<li>remaining： 剩余空间</li>
+<li>lastupdate： 最新更新时间</li>
+<li>xceiverCount</li>
+<li>location： datanode位置</li>
+<li>hostName：主机名</li>
+<li>state： admin管理状态</li>
+</ol>
+
+
+<h2>其他结构</h2>
+
+<h3>CorruptReplicasMap</h3>
+
+<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
+
+<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
+
+<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
+
+<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
+
+<p>datanodeMap用于维护datanode->block的映射</p>
+
+<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
+
+<p>维护多有当前活着的节点</p>
+
+<h3>UnderReplicatedBlocks neededReplications</h3>
+
+<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
+
+<h3>PendingReplicationBlocks pendingReplications;</h3>
+
+<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
+<img src="/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
+
+<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
+
+<p>当前需要检查是否备份过多的block集合</p>
+
+<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
+
+<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/09/24/compile-hadoop/" title="Previous Post: 本地编译Hadoop小记">&laquo; 本地编译Hadoop小记</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/10/18/hdfs-namenode-startup/" title="Next Post: HDFS源码学习(2)——NameNode初始化">HDFS源码学习(2)——NameNode初始化 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/18/hdfs-namenode-datastructure/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/18/hdfs-namenode-datastructure/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

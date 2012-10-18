@@ -251,6 +251,34 @@
         <lastmod>2012-09-24T15:29:53+08:00</lastmod>
     </url>
     <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-datastructure/</loc>
+        <lastmod>2012-10-18T11:17:46+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-startup/</loc>
+        <lastmod>2012-10-18T21:37:13+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-thread/</loc>
+        <lastmod>2012-10-18T21:38:22+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-heartbeat/</loc>
+        <lastmod>2012-10-18T21:42:49+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-replica-management/</loc>
+        <lastmod>2012-10-18T21:44:00+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-lease-management/</loc>
+        <lastmod>2012-10-18T21:47:21+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-block-management/</loc>
+        <lastmod>2012-10-18T21:47:11+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://jiangbo.me/404.html</loc>
         <lastmod>2012-08-31T19:50:15+08:00</lastmod>
     </url>
@@ -260,10 +288,10 @@
     </url>
     <url>
         <loc>http://jiangbo.me/blog/archives/</loc>
-        <lastmod>2012-09-24T15:29:53+08:00</lastmod>
+        <lastmod>2012-10-18T21:47:21+08:00</lastmod>
     </url>
     <url>
         <loc>http://jiangbo.me/</loc>
-        <lastmod>2012-09-24T15:29:53+08:00</lastmod>
+        <lastmod>2012-10-18T21:47:21+08:00</lastmod>
     </url>
 </urlset>

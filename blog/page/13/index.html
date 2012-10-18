@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="很久没有写Java程序了，最近课程设计，要做个搜索引擎，用Eclipse开发java，结果抓来的网页数据在Eclipse 中全是乱码，另外，程序中如果有中文，编译不能通过，提示cp1252编码错误，晕，头一次听说这个编码，在网上搜了搜，得到了简单的解决方案：（其实是基本常识，哈哈~）1. &hellip;">
+  <meta name="description" content="用虚拟光驱加载Ubuntu9.04镜像，双击wubi.exe的时候没有任何反应，在网上查了查，说是因为9.04对中文的支持有问题，安装时盘符终不能有中文，可是我检查了一下，所有的盘符都是英文啊，最后发现，光驱中插了一张名为&#8221;我的光盘&#8221;的光盘，退出来之后再运行wubi. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -84,7 +84,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2008/07/12/post/">Eclipse 中中文乱码的问题</a></h1>
+      <h1 class="entry-title"><a href="/blog/2009/06/21/post/">关于Ubuntu9.04中wubi.exe无法运行</a></h1>
     
     
       <p class="meta">
@@ -100,12 +100,18 @@
   
 
 
-<time datetime="2008-07-12T00:00:00+08:00" pubdate data-updated="true">Jul 12<span>th</span>, 2008</time>
+<time datetime="2009-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2009</time>
         
-         | <a href="/blog/2008/07/12/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2009/06/21/post/#disqus_thread">Comments</a>
         
         
           | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
 
 
         
@@ -114,7 +120,7 @@
   </header>
 
 
-  <div class="entry-content"><p>很久没有写Java程序了，最近课程设计，要做个搜索引擎，用Eclipse开发java，结果抓来的网页数据在Eclipse 中全是乱码，另外，程序中如果有中文，编译不能通过，提示cp1252编码错误，晕，头一次听说这个编码，在网上搜了搜，得到了简单的解决方案：（其实是基本常识，哈哈~）</p><p>1. 点击Run，选择Open run Dialog</p><p>2. 选择common面板</p><p>3. 修改编码方式，默认为那个所谓的cp1252,修改为UTF-8就OK啦</p></div>
+  <div class="entry-content"><p>用虚拟光驱加载Ubuntu9.04镜像，双击wubi.exe的时候没有任何反应，在网上查了查，说是因为9.04对中文的支持有问题，安装时盘符终不能有中文，可是我检查了一下，所有的盘符都是英文啊，最后发现，光驱中插了一张名为&#8221;我的光盘&#8221;的光盘，退出来之后再运行wubi.exe就没什么问题了&hellip;&hellip;狂汗&amp;</p></div>
   
   
 
@@ -126,7 +132,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2008/06/23/post/">Cygwin 和 Ns-2的安装</a></h1>
+      <h1 class="entry-title"><a href="/blog/2009/06/19/post/">Ubuntu在机房上网</a></h1>
     
     
       <p class="meta">
@@ -142,12 +148,18 @@
   
 
 
-<time datetime="2008-06-23T00:00:00+08:00" pubdate data-updated="true">Jun 23<span>rd</span>, 2008</time>
+<time datetime="2009-06-19T00:00:00+08:00" pubdate data-updated="true">Jun 19<span>th</span>, 2009</time>
         
-         | <a href="/blog/2008/06/23/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2009/06/19/post/#disqus_thread">Comments</a>
         
         
           | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
 
 
         
@@ -156,31 +168,298 @@
   </header>
 
 
-  <div class="entry-content"><p>由于这段时间要和老师一起做一个无限传感器网络的研究课题，所以要用到开源的网络模拟软件ns-2,这个东东虽好，可是安装起来继承了linux/unix软件的安装的特点，超级麻烦~ </p>
-<p>由于课题的大部分开发还是要在windows下开发，所以不得不选择使用cygwin（如果不知道这个是什么，那就不用学了~）</p>
-<p><strong>安装cygwin</strong> </p>
-<p>1.连到cygwin的网站上，http://www.cygwin.com，点击Install or Update now这个按钮，会下载一个网络安装的程序。 </p>
-<p>2.点击安装程序，按照步骤一步一步往下做，主要是在遇到Select Package这一个步骤的时候，要安装ns2需要的组件。（还有一点，就是选择下载的源，我用的是http://mirrors.kernel.org,感觉速度还可以,如果网速太慢，可以联系我，我这又全部所需的）点击View这个按钮使得Category变成full，可以看到所有的软件包，包括安装的和没安装的，点击下列软&nbsp;&nbsp; 件的New这一栏的Skip状态，使之变成日期（即最新版本）。 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFree86-base、XFree86-bin、XFree86-prog、XFree86-lib、XFree86-etc、make、patch、perl、gcc、gcc-&nbsp;&nbsp;&nbsp;g++、gawk、gnuplot、tar和gzip，还有X-startup-scripts、xorg-x11-base、xorg-x11-bin、xorg-x11-devel、xorg-x11-bin-dlls、xorg-x11-bin-lndir、xorg-x11-etc、xorg-x11-fenc、xorg-x11-fnts、xorg-x11-libs-data、xorg-x11-xwin，最好把vi 也安装上，会有用的。然后一路next就行了下面是关键的 </p>
-<p><strong>安装ns-2</strong> </p>
-<p>1.到http://nsnam.isi.edu/nsnam/index.php/Main_Page&nbsp; 下载ns-2.31 </p>
-<p>2.将ns-allinone-2.31.tar.gz解压到C:/cygwin/home下，如果没有就自己建一个 </p>
-<p>3.在cygwin中运行如下命令： &nbsp;&nbsp; cd /home/ns-allinone-2.31 &nbsp;&nbsp; /.install &nbsp;&nbsp; 然后就等着安装完成就行了（要安装很长时间，我装了一个多小时） </p>
-<p>4.看到install sucessfully的时候，恭喜了，你顺利地装完了，不过别高兴，关键的配置PATH才刚开始 &nbsp;&nbsp; 如果你能在 /home/你的用户名 的文件夹下找到后缀名为.bashrc的文件（反正我是没找到，以下都是老师教的，我没试过），注意，不是.bashrc.bak,用UltraEdit把它打开，（最好用UltraEdit，不要用记事本，应为该文件是unix文件，用记事本会出现意想不到的错误，当然如果你会用vi，肯定也没什么问题），在文件后加上 </p>
-<p>export NS_HOME=/home/<strong>Benson/</strong>ns-allinone-<strong>2.31</strong> 　</p>
-<p>export PATH=$NS_HOME/t<strong>cl8.4.14/</strong>unix:$NS_HOME<strong>/tk8.4.14</strong>/unix:$NS_HOME/bin:$PATH </p>
-<p>export LD_LIBRARY_PATH=$NS_HOME/<strong>tcl8.4.14</strong>/unix:$NS_HOME/<strong>tcl8.4.14/</strong>unix:$NS_HOME/otcl-<strong>1.13</strong>:$NS_HOME/lib:$LD_LIBRARY_PATH </p>
-<p>export TCL_LIBRARY=$NS_HOME/<strong>tcl8.4.14</strong>/librar</p>
-<p>注意修改你的相应的路径名和版本号（黑体的部分）</p>
-<p>##如果你找不到在/home/你的用户名 的目录下找不到那个文件，那么就去/etc 下 找到bash.bashrc文件，用UltraEdit打开，按上面的方式添加到文件末尾，点击保存，不过这时候，修改还是没有生效，必须在cygwin下运行</p>
-<p>cd /etc</p>
-<p>source bash.bashrc</p>
-<p>从而使修改生效</p>
-<p>至此，如果一切顺利的话你的ns-2就安装好了</p>
-<p>可以使用如下命令检测是否成功安装：</p>
-<p>startxwin.bat</p>
-<p>cd /home/ns-allinone-2.31/ns-2.31/tcl/ex(路径名可能和你安装的不一样，注意修改)</p>
-<p>ns wireless-flooding.tcl</p>
-<p>你将会看到一个ns-2的模拟事例</p></div>
+  <div class="entry-content"><p>最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。</p>
+<p>Ubuntu默认安装的是DHCP<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+先要取消DHCP<br />
+编辑/etc/network/interfaces
+<br />
+$sudo vim /etc/network/interfaces<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+#iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+设置IP地址和网关地址<br />
+# The primary network interface
+<br />
+iface eth0 inet static
+<br />
+address 192.168.4.148
+<br />
+netmask 255.255.255.0
+<br />
+gateway 192.168.4.254</p>
+<p>设置DNS服务器地址,编辑文件/etc/resolv.conf<br />
+$sudo vim /etc/resolv.conf
+<br />
+nameserver 202.118.224.101
+<br />
+nameserver 202.106.0.20
+<br />
+&nbsp;<br />
+重启eth0<br />
+$sudo ifdown eth0
+<br />
+$sudo ifup eth0</p>
+<p>机房有时会限制MAC地址，修改MAC地址命令如下<br />
+$sudo ifconfig eth0 up
+<br />
+$sudo ifconfig eth0 hw ether 00:10:5C:E1:63:E1
+<br />
+$sudo ifconfig eth0 down</p>
+<p>
+不过每次重启后都会失效<br />
+&nbsp;自己写了一个脚本</p>
+<p>#!/bin/sh<br />
+echo &quot; **************************************************************&quot;<br />
+echo &quot; *&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Configure IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; * Copyright by Jiang Bo &lt;jiang_eis@hotmail.com&gt; 2009.6.10&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; **************************************************************&quot;<br />
+<br />
+echo &quot; shut down eth0&#8230;&quot;<br />
+ifconfig eth0 down<br />
+<br />
+echo &quot; configure MAC&#8230;&quot;<br />
+ifconfig eth0 hw ether 00:10:5C:E1:63:E1<br />
+<br />
+echo &quot; configure ip address&#8230;&quot;<br />
+ifconfig eth0 192.168.4.148 netmask 255.255.255.0<br />
+<br />
+echo &quot; configure gateway address&#8230;&quot;<br />
+route add default gw 192.168.4.254<br />
+<br />
+echo &quot; set up eth0&#8230;&quot;<br />
+ifconfig eth0 up</p>
+<p>&nbsp;</p>
+<p>每次重启后直接执行这个脚本就行了^^</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/15/post/">关于进程间通信</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-15T00:00:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/15/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>简要记录一下今天遇到的问题和解决方法<br />
+主函数需要创建一个监听网络端口的守护进程，并将监听到的数据传递给主函数，用于显示。其中，主函数有Qt实现，因此需要采用多线程来维护显示界面，即用一个线程维护显示界面，另一个线程负责向界面上添加数据。（坦白说，我觉得肯定有很简单的方法就能够实现显示数据，不过，由于图形界面不是我负责，自己又不会Qt，没办法了～～研究中）<br />
+现在的问题是，守护进程如何将监听到的数据传递给父进程中负责显示的线程？很显然，不能采用函数返回值，守护进程要是能返回，也就不叫守护进程了，也不能用全局变量，因为父子进程不共享全局变量。翻了半天书，发现可以用IPC，尝试了最简单的管道，找到一种很笨的方法。<br />
+下面是一个简单的例子<br />
+#include &lt;unistd.h&gt;<br />
+#include &lt;stdio.h&gt;<br />
+#include &lt;pthread.h&gt;<br />
+#define MAXLINE&nbsp;&nbsp;&nbsp; 1024<br />
+int fd[2];<br />
+pthread_t pthid;<br />
+void* getMsg(void* arg)//父进程中负责显示的线程函数<br />
+{<br />
+&nbsp;&nbsp;&nbsp; char buff[MAXLINE];<br />
+&nbsp;&nbsp;&nbsp; int n;<br />
+&nbsp;&nbsp;&nbsp; close(fd[1]); //关闭写管道<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; n=read(fd[0],buff,MAXLINE);//从管道中读取数据<br />
+&nbsp;&nbsp;&nbsp; buff[n]=&#8217;/0&#8217;;<br />
+&nbsp;&nbsp;&nbsp; printf(&quot;%s/n&quot;,buff);//实际应用中要用Qt实现~<br />
+&nbsp;&nbsp;&nbsp; }<br />
+<br />
+}<br />
+int main(void)<br />
+{<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; n;<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; err;<br />
+&nbsp;&nbsp;&nbsp; pid_t&nbsp;&nbsp;&nbsp; pid;<br />
+&nbsp;&nbsp;&nbsp; char&nbsp;&nbsp;&nbsp; line[MAXLINE];<br />
+<br />
+&nbsp;&nbsp;&nbsp; if(pipe(fd)&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr, &quot;pipe error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; if((pid=fork())&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;fork error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else if(pid＝0)//子进程<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; close(fd[0]);//关闭读管道<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; write(fd[1],&quot;hello/n&quot;,sizeof(&quot;hello/n&quot;));//向管道中写数据<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; err=pthread_create(&amp;pthid,NULL,getMsg,NULL);//创建线程<br />
+&nbsp;&nbsp;&nbsp; if(err!=0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;can&#8217;t create thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; exit(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; printf(&quot;this is main thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; return 0;<br />
+}<br />
+<br />
+感觉这个办法非常笨？但又找不到更好的～发愁中&hellip;&hellip;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/05/25/post/">关于ARM的内存重映射</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-25T00:00:00+08:00" pubdate data-updated="true">May 25<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/05/25/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/嵌入式开发/'>嵌入式开发</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>先说说存储器映射：<br />所谓存储器映射，是指将开发板上不同的存储器映射到开发人员可见的4GB地址空间上，例如，假设开发板上有一个32KB的片内FLASH，16KB的片内SRAM（纯属虚构，如有雷同，纯属巧合），那么，将32KBFLASH映射到地址空间的0x00000000~0x0x00008FFF上，将16KB的SRAM映射到x40000000~0x40004fff上，这样开发者在读写0x00000000~0x00008fff内的地址时，访问的就是片内FLASH，不同开发板的映射规则是开发板厂商事先设定好的。</p>
+<p><br />下面说说什么是重映射：<br />重映射分为中断向量的重映射和boot的重映射<br />首先说说中断向量重映射<br />ARM中中断向量的地址位于0x00000000~0x0000003c(每个向量占4字节，但是为了能够实现4GB范围内的任意跳转，通常在中断向量表后附加一个跳转地址空间，跳转空间占4字节，因此，总的中断向量表大小为64B,不熟悉的自己查查ARM的中断向量吧，不多说了)。注意，这里所说的0x0000000~0x0000003C指的是用户可见的4GB地址空间（也就是上面所说的存储器映射后的地址空间），真正的中断向量位于哪块存贮器的哪个地址上可不一定(不过通常都是为与片内FLASH的底部)，因此，需要将不同存储器的中断向量表映射到0x00000000~0x0000003c的地址上。另外，还有一次中断向量的映射，在用户RAM的映射模式（稍后说映射模式）下，需要将中断向量映射到静态RAM的底部(很明显，这样能够提高访问速度)。<br />下面是boot的重映射<br />这里所说的boot不是bootloader，而是厂商实现内嵌到板子中的一段代码，用于执行对FLASH的读写，擦除等任务，通常位于片内存储器上，但是不同的板子上存储器的大小不同，为了程序的兼容，通常需要将boottblock重映射到存储空间的顶端。</p>
+<p>最后说一下映射模式：<br />ARM中支持4中映射模式，由存储器控制寄存器控制<br />四种模式为：<br />1.boot装载程序模式：在任何复位操作后都会执行Boot装载程序。Bootblock中中断向量映射到存储器的底端以允许处理异常，并在Boot装载过程中使用中断。<br />2.用户FLASH模式：当在存储器中识别了一个有效的用户程序标识并且Boot装载操作未被执行时，由Boot装载程序启动。中断向量没有重新映射，位于Flash的存储器底部<br />3.用户Flash：中断向量被映射到静态RAM的底部<br />4.用户外部模式：中断向量有外部存储器映射到存储空间底部。</p>
+<p>大概就这些，该上课去了，全是个人揣摩，有错请轻拍:)</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/05/12/post/">S3c2410开发日志——关于yaffs无法解压</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-12T00:00:00+08:00" pubdate data-updated="true">May 12<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/05/12/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/嵌入式开发/'>嵌入式开发</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天终于把yaffs挂载上去了~不容易啊~~记录一下。<br />原来出现的问题：<br />mount: Mounting /dev/mtdblock/1 on /mnt/yaffs failed: No such file or directory<br />然后能够进入根文件系统cramfs中，终端输出如下：<br />BusyBox v1.00 (2005.01.20-11:59+0000) Built-in shell (ash)<br />Enter &#8216;help&#8217; for a list of built-in commands.</p>
+<p>runing /etc/profile ok<br />[/mnt/yaffs]<br />然后按照指导书上的方法将yaffs.tar.bz2通过ftp上传到目标板中，解压，出现错误如下：<br />[~/tmp]tar -jvxf yaffs.tar.bz2 -C /mnt/yaffs<br />./ad<br />./ad/s3c2410-adc.o<br />tar: Cannot create directory `./ad&#8217;: Operation not permitted<br />tar: ./ad/s3c2410-adc.o: No such file or directory<br />无法在/mnt/yaffs目录下进行任何操作。</p>
+<p>原因分析：<br />vivi中有两种分区格式，bon和mtd，<br />bon分区用bon part命令来分区，内核在启动的是后在bon分区里查找内核，和根文件系统，但是如果想挂载</p>
+<p>yaffs系统，就必须在bon分区中指定一个mtd分区，方法是在该分区后加一个:m，例如<br />bon part 0 128K 192K 1216K 6336K:m<br />这个命令就是将最后一个分区指定为mtd分区。<br />还有一点就是，part分区的时候为每个分区指定了名字，使用vivi下载的时候需要这个名字，因此，part分区中</p>
+<p>kernel，root，的起止地址要相同，否则会出现根文件系统无法下载。</p>
+<p>关于bon分区和mtd分区的具体区别还不清楚，目前只知道这样可以解决困扰了三天的问题。<br />2.6内核还是移植不上来，分区也已经改了，但是还是不行，网上的一个人说可能是内核的问题，下了一个</p>
+<p>2.6.22，还没来的及试。<br />基本上就这样吧</p></div>
   
   
 
@@ -188,6 +467,8 @@
     </article>
   
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/14/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -202,6 +483,34 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
       </li>
     
@@ -211,34 +520,6 @@
     
       <li class="post">
         <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
       </li>
     
   </ul>

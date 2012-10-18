@@ -1,0 +1,646 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS源码学习(4)——DataNode心跳检测（HeartBeat） - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下： class HeartbeatMonitor implements Runnable { /** */ public void run() { while (fsRunning &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/18/hdfs-heartbeat">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:38:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下：</p>
+
+<pre><code>  class HeartbeatMonitor implements Runnable {
+    /**
+     */
+    public void run() {
+      while (fsRunning) {
+        try {
+          heartbeatCheck();
+        } catch (Exception e) {
+          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
+        }
+        try {
+          Thread.sleep(heartbeatRecheckInterval);
+        } catch (InterruptedException ie) {
+        }
+      }
+    }
+  }
+</code></pre>
+
+<p>代码很简单，心跳检测线程周期性调用heartbeatCheck()。</p>
+
+<h2>一、心跳检查——heartbeatCheck()</h2>
+
+<p>该方法主要用于检测是否有过期的心跳检测，如有，检测其上的block是否已经进行过重新备份。该线程每次只处理一个datanode。</p>
+
+<pre><code>  void heartbeatCheck() {
+    if (isInSafeMode()) {
+      // 安全模式下不做心跳检测
+      return;
+    }
+    boolean allAlive = false;
+    while (!allAlive) {
+      boolean foundDead = false;
+      DatanodeID nodeID = null;
+
+      // 获取第一个dead datanode
+      synchronized(heartbeats) {
+        for (Iterator&lt;DatanodeDescriptor&gt; it = heartbeats.iterator();
+             it.hasNext();) {
+          DatanodeDescriptor nodeInfo = it.next();
+          if (isDatanodeDead(nodeInfo)) {
+            foundDead = true;
+            nodeID = nodeInfo;
+            break;
+          }
+        }
+      }
+
+      // 申请fsnamesystem锁，删除dead datanode
+      if (foundDead) {
+        writeLock();
+        try {
+          synchronized(heartbeats) {
+            synchronized (datanodeMap) {
+              DatanodeDescriptor nodeInfo = null;
+              try {
+                nodeInfo = getDatanode(nodeID);
+              } catch (IOException e) {
+                nodeInfo = null;
+              }
+              if (nodeInfo != null &amp;&amp; isDatanodeDead(nodeInfo)) {
+                NameNode.stateChangeLog.info("BLOCK* NameSystem.heartbeatCheck: "
+                                             + "lost heartbeat from " + nodeInfo.getName());
+                removeDatanode(nodeInfo);
+              }
+            }
+          }
+        } finally {
+          writeUnlock();
+        }
+      }
+      allAlive = !foundDead;
+    }
+  }
+</code></pre>
+
+<h3>1.1 判断是否已死 —— isDatanodeDead（）</h3>
+
+<p>判断一个datanode是否已经dead的标准很简单，当前距该节点最后的更新时间差是否已经超过心跳检测的过期时间限制</p>
+
+<pre><code>private boolean isDatanodeDead(DatanodeDescriptor node) {
+    return (node.getLastUpdate() &lt;
+            (now() - heartbeatExpireInterval));
+  }
+</code></pre>
+
+<h3>1.2 删除datanode —— removeDatanode（）</h3>
+
+<pre><code>  private void removeDatanode(DatanodeDescriptor nodeInfo) {
+    synchronized (heartbeats) {
+      if (nodeInfo.isAlive) {
+        updateStats(nodeInfo, false);
+        //从heartbeats中移除
+        heartbeats.remove(nodeInfo);
+        //更新datanode状态
+        nodeInfo.isAlive = false;
+      }
+    }
+
+    nodeInfo.hasInitialBlockReport = false;
+    for (Iterator&lt;Block&gt; it = nodeInfo.getBlockIterator(); it.hasNext();) {
+      //移除该节点上的block
+      removeStoredBlock(it.next(), nodeInfo);
+    }
+    unprotectedRemoveDatanode(nodeInfo);
+    clusterMap.remove(nodeInfo);
+  }
+</code></pre>
+
+<h4>1.2.1 removeStoredBlock（）</h4>
+
+<p>该方法更新block->datanode的映射(blocksMap)，如果block还有效，有可能导致block备份发生</p>
+
+<pre><code>  void removeStoredBlock(Block block, DatanodeDescriptor node) {
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                    +block + " from "+node.getName());
+    }
+    assert (hasWriteLock());
+    if (!blocksMap.removeNode(block, node)) {
+      if (NameNode.stateChangeLog.isDebugEnabled()) {
+        NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                      +block+" has already been removed from node "+node);
+      }
+      return;
+    }
+
+    //
+    //检查是否需要备份删除的block
+    INode fileINode = blocksMap.getINode(block);
+    if (fileINode != null) {
+      //减小当前系统中安全block（备份数满足最小值的block）数量
+      decrementSafeBlockCount(block);
+      //更新需要备份的block数量
+      updateNeededReplications(block, -1, 0);
+    }
+
+    //
+    // 从excessblocks中删除改block，并从excessReplicateMap删除改datanode
+    Collection&lt;Block&gt; excessBlocks = excessReplicateMap.get(node.getStorageID());
+    if (excessBlocks != null) {
+      if (excessBlocks.remove(block)) {
+        excessBlocksCount--;
+        if (NameNode.stateChangeLog.isDebugEnabled()) {
+          NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+              +block+" is removed from excessBlocks");
+        }
+        if (excessBlocks.size() == 0) {
+          excessReplicateMap.remove(node.getStorageID());
+        }
+      }
+    }
+
+    // 从corruptReplicas中移除该block
+    corruptReplicas.removeFromCorruptReplicasMap(block, node);
+  }
+</code></pre>
+
+<h5>1.2.1.1  BlocksMap.removeNode（）</h5>
+
+<p>其中BlocksMap.removeNode()方法如下：</p>
+
+<pre><code>  boolean removeNode(Block b, DatanodeDescriptor node) {
+    BlockInfo info = blocks.get(b);
+    if (info == null)
+      return false;
+
+    // 从datanode 的blocklist中移除block，并从block的datalist中移除datanode
+    boolean removed = node.removeBlock(info);
+
+    if (info.getDatanode(0) == null     // no datanodes left
+              &amp;&amp; info.inode == null) {  // does not belong to a file
+      //从blocksmap中移除该block
+      blocks.remove(b);  // remove block from the map
+    }
+    return removed;
+  }
+</code></pre>
+
+<h5>1.2.1.2 减小当前安全的block数 —— decrementSafeBlockCount()</h5>
+
+<p>减小当前副本数安全的的block数，此举有可能触发系统进入安全模式（safemode）</p>
+
+<pre><code>  void decrementSafeBlockCount(Block b) {
+    if (safeMode == null) // mostly true
+      return;
+
+    safeMode.decrementSafeBlockCount((short)countNodes(b).liveReplicas());
+  }
+</code></pre>
+
+<p>其中safeMode.decrementSafeBlockCount()代码如下：</p>
+
+<pre><code>synchronized void decrementSafeBlockCount(short replication) {
+
+  if (replication == safeReplication-1) {
+    //安全的block数减一
+    this.blockSafe--;
+    //检查是否需要进入到safemode
+    checkMode();
+  }
+}
+</code></pre>
+
+<p>SafeModeInfo.checkMode()代码如下：</p>
+
+<pre><code>    private void checkMode() {
+      //当安全的block数比例降至安全值以下，进入安全模式
+      if (needEnter()) {
+        enter();
+        // check if we are ready to initialize replication queues
+        if (canInitializeReplQueues() &amp;&amp; !isPopulatingReplQueues()) {
+          //初始化副本队列
+          initializeReplQueues();
+        }
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 如果安全模式已经关闭或者门槛小于0，则跳出安全模式
+      if (!isOn() ||                           // safe mode is off
+          extension &lt;= 0 || threshold &lt;= 0) {  // don't need to wait
+        this.leave(true); // leave safe mode
+        return;
+      }
+
+      //之前已经进入安全模式，直接返回
+      if (reached &gt; 0) {  // threshold has already been reached before
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 启动SafeModeMonitor线程
+      reached = now();
+      smmthread = new Daemon(new SafeModeMonitor());
+      smmthread.start();
+      reportStatus("STATE* Safe mode extension entered.", true);
+    }
+</code></pre>
+
+<h5>1.2.1.3 更新需要备份的列表 —— updateNeededReplications（）</h5>
+
+<pre><code>  /* updates a block in under replication queue */
+  void updateNeededReplications(Block block,
+                        int curReplicasDelta, int expectedReplicasDelta) {
+    writeLock();
+    try {
+    //计算当前副本数
+    NumberReplicas repl = countNodes(block);
+    //期望的副本数
+    int curExpectedReplicas = getReplication(block);
+    //将该block更新到需要备份的列表中（neededReplications）
+    neededReplications.update(block, 
+                              repl.liveReplicas(), 
+                              repl.decommissionedReplicas(),
+                              curExpectedReplicas,
+                              curReplicasDelta, expectedReplicasDelta);
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h4>1.2.2 移除datanode —— unprotectedRemoveDatanode</h4>
+
+<pre><code>  void unprotectedRemoveDatanode(DatanodeDescriptor nodeDescr) {
+    //重置清空datanode中block信息
+    nodeDescr.resetBlocks();
+    //从invlidateSet中移除datanode
+    removeFromInvalidates(nodeDescr.getStorageID());
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug(
+                                    "BLOCK* NameSystem.unprotectedRemoveDatanode: "
+                                    + nodeDescr.getName() + " is out of service now.");
+    }
+  }
+</code></pre>
+
+<h5>1.2.2.1 removeFromInvalidates()</h5>
+
+<pre><code>  private void removeFromInvalidates(String storageID) {
+    //从recentInvalidateSet中移除该datanode
+    Collection&lt;Block&gt; blocks = recentInvalidateSets.remove(storageID);
+    if (blocks != null) {
+      //从正在删除的block总数中减去当前节点上的block总数
+      pendingDeletionBlocksCount -= blocks.size();
+    }
+  }
+</code></pre>
+
+<h2>二、 处理心跳检测请求 —— handleHeartbeat()</h2>
+
+<p>NameNode只负责创建一个HeartbeatMonitor来通过每个datanode的最新更新时间周期性检查是否有过期的datanode，而每个datanode是否的最新更新时间是由datanode主动向namenode报告的，namenode通过handleHeartbeat()处理心跳请求。</p>
+
+<pre><code>  DatanodeCommand[] handleHeartbeat(DatanodeRegistration nodeReg,
+      long capacity, long dfsUsed, long remaining,
+      int xceiverCount, int xmitsInProgress) throws IOException {
+    DatanodeCommand cmd = null;
+    synchronized (heartbeats) {
+      synchronized (datanodeMap) {
+        DatanodeDescriptor nodeinfo = null;
+        try {
+          nodeinfo = getDatanode(nodeReg);
+        } catch(UnregisteredDatanodeException e) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        // 检查该datanode是否需要被关闭，可以通过设置datanode的adminState为DECOMMISSIONED来关闭一个datanode
+        if (nodeinfo != null &amp;&amp; shouldNodeShutdown(nodeinfo)) {
+          setDatanodeDead(nodeinfo);
+          throw new DisallowedDatanodeException(nodeinfo);
+        }
+
+        if (nodeinfo == null || !nodeinfo.isAlive) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        updateStats(nodeinfo, false);
+        nodeinfo.updateHeartbeat(capacity, dfsUsed, remaining, xceiverCount);
+        updateStats(nodeinfo, true);
+
+        //检查租约恢复状态
+        cmd = nodeinfo.getLeaseRecoveryCommand(Integer.MAX_VALUE);
+        if (cmd != null) {
+          return new DatanodeCommand[] {cmd};
+        }
+
+        ArrayList&lt;DatanodeCommand&gt; cmds = new ArrayList&lt;DatanodeCommand&gt;(2);
+        //检查正在备份中的副本
+        cmd = nodeinfo.getReplicationCommand(
+              maxReplicationStreams - xmitsInProgress);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        //检查无效的block
+        cmd = nodeinfo.getInvalidateBlocks(blockInvalidateLimit);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        if (!cmds.isEmpty()) {
+          return cmds.toArray(new DatanodeCommand[cmds.size()]);
+        }
+      }
+    }
+
+    //检查是否需要升级系统
+    cmd = getDistributedUpgradeCommand();
+    if (cmd != null) {
+      return new DatanodeCommand[] {cmd};
+    }
+    return null;
+  }
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:38:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/10/18/hdfs-namenode-thread/" title="Previous Post: HDFS源码学习（3）——NameNode中的线程">&laquo; HDFS源码学习（3）——NameNode中的线程</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/10/18/hdfs-namenode-replica-management/" title="Next Post: HDFS源码学习（5）——副本管理（Replica Management)">HDFS源码学习（5）——副本管理（Replica Management) &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/18/hdfs-heartbeat/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/18/hdfs-heartbeat/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

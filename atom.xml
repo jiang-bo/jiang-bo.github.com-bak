@@ -4,7 +4,7 @@
   <title><![CDATA[非纯种程序猿]]></title>
   <link href="http://jiangbo.me/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-09-24T15:30:13+08:00</updated>
+  <updated>2012-10-18T21:48:31+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -12,6 +12,1654 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（7）——Block管理]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-block-management/"/>
+    <updated>2012-10-18T21:46:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-block-management</id>
+    <content type="html"><![CDATA[<p>HDFS通过一个BlockManager管理集群中所有的block信息</p>
+
+<h2>主要数据结构</h2>
+
+<h3>Block</h3>
+
+<p>Block是HDFS读写的基本单元，集群中每个block通过一个long id来唯一标示。</p>
+
+<h3>BlockInfo</h3>
+
+<p>维护一个block的元信息，主要通过</p>
+
+<h3>BlockMap</h3>
+
+<p>通过一个GSet&lt;Block, BlockInfo>维护一个block与其元数据信息的映射关系，元信息包括其所属的BlockCollection和存储该block的datanode节点，每个BlockMap有个初始容量capacity</p>
+
+<h3>BlockCollection</h3>
+
+<h2>Block和副本管理</h2>
+
+<h3>Block和副本状态</h3>
+
+<p>Block有如下状态：</p>
+
+<ol>
+<li>committed：所有的副本已经被创建且更新至最新</li>
+<li>Under construction: 需要创建一个或多个副本</li>
+<li>To be deleted: 所有副本需要被删除。发生在文件被删除或者block被重写</li>
+<li>Over-replicated: 过多的副本存在。此时副本中的一个需要设置为无效并删除。</li>
+</ol>
+
+
+<p>副本有如下状态：</p>
+
+<ol>
+<li>Current: 正常状态，该副本正确反应block内容</li>
+<li>Conrrupt: 某个副本损坏。副本损坏是由client报告给namenode的。client通过checksum检查副本是否损坏，如果损坏了，通过BlockManager.invalidateBlock()处理</li>
+<li>On a faild DataNode: DataNode Heartbeat发现有DataNode失效时，即将在改datanode上创建的副本将被删除</li>
+<li>Out of Date: 当Datanode失效，且副本所属的block发生更新后，Datanode恢复正常。过期的block将通过blockreport报告给namenode，并将其删除</li>
+<li>Under construction: 副本尚未被写入并在Datanode上被验证。在NameNode看来，只有当收到blockReport并且报告中timestamp正确时，猜人物副本写入正常。</li>
+</ol>
+
+
+<h2>Block分配</h2>
+
+<h2>Block查询</h2>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（6）——租约管理（lease management)]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-lease-management/"/>
+    <updated>2012-10-18T21:44:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-lease-management</id>
+    <content type="html"><![CDATA[<p>LeaseManagement是HDFS中的一个同步机制，用于保证同一时刻只有一个client对一个文件进行写或创建操作。如当新建一个文件f时，client向NameNode发起一个create请求，那么leaseManager会想该client分配一个f文件的lease。client凭借该lease完成文件的创建操作。此时其他client无法获得f的当client长时间（默认为超过1min）不进行操作时，发放的lease将被收回。</p>
+
+<p>LeaseManager主要完成两部分工作：</p>
+
+<ol>
+<li>文件create，write，complete操作时，创建lease、更新时间戳、回收lease</li>
+<li>一个后台线程定期检查是否有过期的lease</li>
+</ol>
+
+
+<p>LeaseManager的代码结构如下</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/LeaseManager.png" alt="LeaseManager" /></p>
+
+<p>其中Lease表示一个租约，包括一个client(holder)所拥有的所有文件锁(paths)。</p>
+
+<p>Monitor是检查是否有过期租约的线程。</p>
+
+<p>LeaseManager中有几个主要数据结构：</p>
+
+<ol>
+<li>leases（TreeMap&lt;String, Lease>）：维护holder -> leased的映射集合</li>
+<li>sortedLeases (TreeSet<Lease>): lease集合</li>
+<li>sortedLeaseByPath(TreeMap&lt;String, Lease>): 维护paths->lease的映射集合</li>
+</ol>
+
+
+<h2>一、创建lease</h2>
+
+<p>当client向NameNode发起create操作时，NameNode.create()调用FSNameSystem.startFile()->FSNameSystem.startFileInternal()，该方法最终会调用leaseManager.addLease(cons.clientName, src)来创建lease。</p>
+
+<p>LeaseManager.addLease()方法如下：</p>
+
+<pre><code>  synchronized Lease addLease(String holder, String src
+      ) throws IOException {
+    Lease lease = getLease(holder);
+    if (lease == null) {
+      lease = new Lease(holder);
+      leases.put(holder, lease);
+      sortedLeases.add(lease);
+    } else {
+      renewLease(lease);
+    }
+    sortedLeasesByPath.put(src, lease);
+    lease.paths.add(src);
+    return lease;
+  }
+</code></pre>
+
+<p>代码结构简单：判断该client是否有lease，没有则新建一个lease，并将起加到leases集合中。否则更新lease。更新sortedLeasesByPath，将filepath加入到该lease的paths集合中</p>
+
+<h2>二、更新时间戳</h2>
+
+<p>针对已经存在的lease，通过LeasemManager.renewLease()来更新该lease的时间戳。代码如下：</p>
+
+<pre><code>  synchronized void renewLease(Lease lease) {
+    if (lease != null) {
+      sortedLeases.remove(lease);
+      lease.renew();
+      sortedLeases.add(lease);
+    }
+  }
+</code></pre>
+
+<p>lease.renew()代码如下：</p>
+
+<pre><code>/** Only LeaseManager object can renew a lease */
+private void renew() {
+  this.lastUpdate = FSNamesystem.now();
+}
+</code></pre>
+
+<h2>三、compelete时回收lease</h2>
+
+<p>当client调用NameNode.complete()方法时，最终会调用FSNameSystem.completeFileInternal()方法。其中执行finalizeINodeFileUnderConstruction()是调用leaseManager.removeLease()释放lease。</p>
+
+<p>代码结构如下：</p>
+
+<pre><code>  synchronized void removeLease(String holder, String src) {
+    Lease lease = getLease(holder);
+    if (lease != null) {
+      removeLease(lease, src);
+    }
+  }
+</code></pre>
+
+<p> removeLease(lease, src);代码如下：</p>
+
+<pre><code>  /**
+   * Remove the specified lease and src.
+   */
+  synchronized void removeLease(Lease lease, String src) {
+    sortedLeasesByPath.remove(src);
+    if (!lease.removePath(src)) {
+      LOG.error(src + " not found in lease.paths (=" + lease.paths + ")");
+    }
+
+    if (!lease.hasPath()) {
+      leases.remove(lease.holder);
+      if (!sortedLeases.remove(lease)) {
+        LOG.error(lease + " not found in sortedLeases");
+      }
+    }
+  }
+</code></pre>
+
+<h2>四、后台线程回收过期lease</h2>
+
+<p>Monitor回收lease线程代码结构如下：</p>
+
+<pre><code> class Monitor implements Runnable {
+    final String name = getClass().getSimpleName();
+
+    /** Check leases periodically. */
+    public void run() {
+      for(; fsnamesystem.isRunning(); ) {
+        fsnamesystem.writeLock();
+        try {
+          checkLeases();
+        } finally {
+          fsnamesystem.writeUnlock();
+        }
+
+        try {
+          Thread.sleep(2000);
+        } catch(InterruptedException ie) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug(name + " is interrupted", ie);
+          }
+        }
+      }
+    }
+  }
+</code></pre>
+
+<p>代码结构简单，每个2s周期性执行checkLeases()。</p>
+
+<h3>4.1 checkLeases()</h3>
+
+<pre><code>  /** Check the leases beginning from the oldest. */
+  synchronized void checkLeases() {
+    for(; sortedLeases.size() &gt; 0; ) {
+      final Lease oldest = sortedLeases.first();
+      if (!oldest.expiredHardLimit()) {
+        return;
+      }
+
+      LOG.info("Lease " + oldest + " has expired hard limit");
+
+      final List&lt;String&gt; removing = new ArrayList&lt;String&gt;();
+      // need to create a copy of the oldest lease paths, becuase 
+      // internalReleaseLease() removes paths corresponding to empty files,
+      // i.e. it needs to modify the collection being iterated over
+      // causing ConcurrentModificationException
+      String[] leasePaths = new String[oldest.getPaths().size()];
+      oldest.getPaths().toArray(leasePaths);
+      for(String p : leasePaths) {
+        try {
+          fsnamesystem.internalReleaseLeaseOne(oldest, p);
+        } catch (IOException e) {
+          LOG.error("Cannot release the path "+p+" in the lease "+oldest, e);
+          removing.add(p);
+        }
+      }
+
+      for(String p : removing) {
+        removeLease(oldest, p);
+      }
+    }
+  }
+</code></pre>
+
+<h2>Lease Recovery ——租约回收</h2>
+
+<h3>lease recovery时机</h3>
+
+<p>lease发放之后，在不用时会被回收，回收的产经除上述Monitor线程检测lease过期是回收外，还有：</p>
+
+<ol>
+<li>NameNode收到DataNode的Sync block command时</li>
+<li>DFSClient主动关闭一个流时</li>
+<li>创建文件时，如果该DFSClient的lease超过soft limit时</li>
+</ol>
+
+
+<h3>lease recovery 算法</h3>
+
+<p>1) NameNode查找lease信息</p>
+
+<p>2) 对于lease中的每个文件f，令b为f的最后一个block，作如下操作：</p>
+
+<p>2.1) 获取b所在的datanode列表</p>
+
+<p>2.2) 令其中一个datanode作为primary datanode p</p>
+
+<p>2.3) p 从NameNode获取最新的时间戳</p>
+
+<p>2.4) p 从每个DataNode获取block信息</p>
+
+<p>2.5) p 计算最小的block长度</p>
+
+<p>2.6) p 用最小的block长度和最新的时间戳来更新具有有效时间戳的datanode</p>
+
+<p>2.7) p 通知NameNode更新结果</p>
+
+<p>2.8) NameNode更新BlockInfo</p>
+
+<p>2.9) NameNode从lease中删除f，如果此时该lease中所有文件都已被删除，将删除该lease</p>
+
+<p>2.10) Name提交修改的EditLog</p>
+
+<h2>Client续约 —— DFSClient.LeaseChecker</h2>
+
+<p>在NameNode上的LeaseManager.Monitor线程负责检查过期的lease，那么client为了防止尚在使用的lease过期，需要定期想NameNode发起续约请求。该任务有DFSClient中的LeaseChecker完成。</p>
+
+<p>LeaseChecker结构如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/LeaseChecker.png" alt="LeaseChecker" /></p>
+
+<p>其中pendingCreates是一个TreeMap&lt;String, OutputStream>用来维护src->当前正在写入的文件的DFSOutputStream的映射。</p>
+
+<p>其核心是周期性（每个1s）调用run()方法来对租约过半的lease进行续约</p>
+
+<pre><code>public void run() {
+  long lastRenewed = 0;
+  while (clientRunning &amp;&amp; !Thread.interrupted()) {
+    //当租约周期过半时需要进行续约
+    if (System.currentTimeMillis() - lastRenewed &gt; (LEASE_SOFTLIMIT_PERIOD / 2)) {
+      try {
+        renew();
+        lastRenewed = System.currentTimeMillis();
+      } catch (IOException ie) {
+        LOG.warn("Problem renewing lease for " + clientName, ie);
+      }
+    }
+
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException ie) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(this + " is interrupted.", ie);
+      }
+      return;
+    }
+  }
+}
+</code></pre>
+
+<p>其中renew()方法如下：</p>
+
+<pre><code>    private void renew() throws IOException {
+      synchronized(this) {
+        //如果当前创建中的文件列表为空，则不需要续约
+        if (pendingCreates.isEmpty()) {
+          return;
+        }
+      }
+      //向NameNode发起续约请求
+      namenode.renewLease(clientName);
+    }
+</code></pre>
+
+<p>NameNode接收到renewLease请求后，调用FSNameSystem.renewLease()并最终调用LeaseManager.renewLease()完成续约。</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（5）——副本管理（Replica Management)]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-replica-management/"/>
+    <updated>2012-10-18T21:43:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-replica-management</id>
+    <content type="html"><![CDATA[<p>HDFS中的副本管理通过FSNameSystem.java中的ReplicationMonitor线程来完成。该线程代码结构较为简单。</p>
+
+<pre><code>  class ReplicationMonitor implements Runnable {
+    static final int INVALIDATE_WORK_PCT_PER_ITERATION = 32;
+    static final float REPLICATION_WORK_MULTIPLIER_PER_ITERATION = 2;
+    public void run() {
+      while (fsRunning) {
+        try {
+          computeDatanodeWork();
+          processPendingReplications();
+          Thread.sleep(replicationRecheckInterval);
+        } catch (InterruptedException ie) {
+          LOG.warn("ReplicationMonitor thread received InterruptedException.", ie);
+          break;
+        } catch (IOException ie) {
+          LOG.warn("ReplicationMonitor thread received exception. " + ie +  " " +
+              StringUtils.stringifyException(ie));
+        } catch (Throwable t) {
+          LOG.fatal("ReplicationMonitor thread received Runtime exception. " + t + " " +
+              StringUtils.stringifyException(t));
+          Runtime.getRuntime().exit(-1);
+        }
+      }
+    }
+  }
+</code></pre>
+
+<p>该线程只是周期性调用computeDatanodeWork()和processPendingReplications()。</p>
+
+<h2>一、computeDatanodeWork()</h2>
+
+<pre><code>  public int computeDatanodeWork() throws IOException {
+    int workFound = 0;
+    int blocksToProcess = 0;
+    int nodesToProcess = 0;
+    // blocks should not be replicated or removed if safe mode is on
+    if (isInSafeMode())
+      return workFound;
+    //计算需要备份的block数和节点数
+    synchronized(heartbeats) {
+      blocksToProcess = (int)(heartbeats.size() 
+          * ReplicationMonitor.REPLICATION_WORK_MULTIPLIER_PER_ITERATION);
+      nodesToProcess = (int)Math.ceil((double)heartbeats.size() 
+          * ReplicationMonitor.INVALIDATE_WORK_PCT_PER_ITERATION / 100);
+    }
+    //执行备份
+    workFound = computeReplicationWork(blocksToProcess); 
+
+    // Update FSNamesystemMetrics counters
+    pendingReplicationBlocksCount = pendingReplications.size();
+    underReplicatedBlocksCount = neededReplications.size();
+    scheduledReplicationBlocksCount = workFound;
+    corruptReplicaBlocksCount = corruptReplicas.size();
+
+    //HADOOP-5549 : Fix bug of schedule both replication and deletion work in one iteration
+    workFound += computeInvalidateWork(nodesToProcess);
+    return workFound;
+  }
+</code></pre>
+
+<h3>1.1. computeReplicationWork()</h3>
+
+<pre><code>  private int computeReplicationWork(
+                                  int blocksToProcess) throws IOException {
+    // stall only useful for unit tests (see TestFileAppend4.java)
+    if (stallReplicationWork)  {
+      return 0;
+    }
+
+    // 选取需要备份的block
+    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
+      chooseUnderReplicatedBlocks(blocksToProcess);
+
+    // 执行备份
+    return computeReplicationWorkForBlocks(blocksToReplicate);
+  }
+</code></pre>
+
+<h3>1.1.1 选取需要备份的block —— chooseUnderReplicatedBlocks()</h3>
+
+<pre><code>  List&lt;List&lt;Block&gt;&gt; chooseUnderReplicatedBlocks(int blocksToProcess) {
+    // 初始化返回值数据结构，返回值是一个二维优先级列表
+    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
+      new ArrayList&lt;List&lt;Block&gt;&gt;(UnderReplicatedBlocks.LEVEL);
+    for (int i = 0; i &lt; UnderReplicatedBlocks.LEVEL; i++) {
+      blocksToReplicate.add(new ArrayList&lt;Block&gt;());
+    }
+
+    writeLock();
+    try {
+      synchronized (neededReplications) {
+        if (neededReplications.size() == 0) {
+          return blocksToReplicate;
+        }
+
+        for (int priority = 0; priority&lt;UnderReplicatedBlocks.LEVEL; priority++) {
+        //遍历所有需要备份的block列表（UnderReplicatedBlocks结构）
+        BlockIterator neededReplicationsIterator = neededReplications.iterator(priority);
+        int numBlocks = neededReplications.size(priority);
+        //检查该优先级列表中是否已经开始备份（relIndex数组中保存的是当前每个优先级列表中已备份的block索引）
+        if (replIndex[priority] &gt; numBlocks) {
+          replIndex[priority] = 0;
+        }
+        // skip to the first unprocessed block, which is at replIndex
+        for (int i = 0; i &lt; replIndex[priority] &amp;&amp; neededReplicationsIterator.hasNext(); i++) {
+          neededReplicationsIterator.next();
+        }
+        // 计算该优先级下需要备份的block数，低优先级的block备份数不超过总配额的20%
+        int blocksToProcessIter = getQuotaForThisPriority(blocksToProcess,
+            numBlocks, neededReplications.getSize(priority+1));
+        blocksToProcess -= blocksToProcessIter;
+
+        //便利改优先级列表将该优先级下的block添加到返回值中
+        for (int blkCnt = 0; blkCnt &lt; blocksToProcessIter; blkCnt++, replIndex[priority]++) {
+          if (!neededReplicationsIterator.hasNext()) {
+            // start from the beginning
+            replIndex[priority] = 0;
+            neededReplicationsIterator = neededReplications.iterator(priority);
+            assert neededReplicationsIterator.hasNext() :
+              "neededReplications should not be empty.";
+          }
+
+          Block block = neededReplicationsIterator.next();
+          blocksToReplicate.get(priority).add(block);
+        } // end for
+        }
+      } // end try
+      return blocksToReplicate;
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h3>1.1.2. 备份blocks —— computeReplicationWorkForBlocks（）</h3>
+
+<pre><code>  int computeReplicationWorkForBlocks(List&lt;List&lt;Block&gt;&gt; blocksToReplicate) {
+    int requiredReplication, numEffectiveReplicas, priority;
+    List&lt;DatanodeDescriptor&gt; containingNodes;
+    DatanodeDescriptor srcNode;
+    INodeFile fileINode = null;
+
+    int scheduledWork = 0;
+    List&lt;ReplicationWork&gt; work = new LinkedList&lt;ReplicationWork&gt;();
+
+    writeLock();
+    try {
+      synchronized (neededReplications) {
+        for (priority = 0; priority &lt; blocksToReplicate.size(); priority++) {
+          for (Block block : blocksToReplicate.get(priority)) {
+            // block should belong to a file
+            //获取该block所属的INode
+            fileINode = blocksMap.getINode(block);
+            // abandoned block not belong to a file
+            if (fileINode == null ) {
+              neededReplications.remove(block, priority); // remove from neededReplications
+              replIndex[priority]--;
+              continue;
+            }
+            //获取该文件需要的副本数
+            requiredReplication = fileINode.getReplication();
+
+            // 获取一个源datanode节点
+            containingNodes = new ArrayList&lt;DatanodeDescriptor&gt;();
+            NumberReplicas numReplicas = new NumberReplicas();
+            srcNode = chooseSourceDatanode(block, containingNodes, numReplicas);
+            if (srcNode == null) // block can not be replicated from any node
+            {
+              continue;
+            }
+
+          // 检查正在备份中的副本数是否满足备份需要，满足则不需要再备份
+            numEffectiveReplicas = numReplicas.liveReplicas() +
+              pendingReplications.getNumReplicas(block);
+            if (numEffectiveReplicas &gt;= requiredReplication) {
+              neededReplications.remove(block, priority); // remove from neededReplications
+              replIndex[priority]--;
+              continue;
+            }
+            //添加到待备份列表中
+            work.add(new ReplicationWork(block, fileINode, requiredReplication
+                - numEffectiveReplicas, srcNode, containingNodes, priority));
+          }
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+
+    // 选取一个备份目标datanode
+    for(ReplicationWork rw : work){
+      DatanodeDescriptor targets[] = chooseTarget(rw);
+      rw.targets = targets;
+    }
+
+    writeLock();
+    try {
+      for(ReplicationWork rw : work){
+        DatanodeDescriptor[] targets = rw.targets;
+        if(targets == null || targets.length == 0){
+          rw.targets = null;
+          continue;
+        }
+        synchronized (neededReplications) {
+          Block block = rw.block;
+          priority = rw.priority;
+          // 重新检查INode和备份数，因为全局锁已经释放
+          // block should belong to a file
+          fileINode = blocksMap.getINode(block);
+          // abandoned block not belong to a file
+          if (fileINode == null ) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            rw.targets = null;
+            replIndex[priority]--;
+            continue;
+          }
+          requiredReplication = fileINode.getReplication();
+
+
+          NumberReplicas numReplicas = countNodes(block);
+          numEffectiveReplicas = numReplicas.liveReplicas() +
+            pendingReplications.getNumReplicas(block);
+          if (numEffectiveReplicas &gt;= requiredReplication) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            replIndex[priority]--;
+            rw.targets = null;
+            continue;
+          }
+
+          // 将block添加到datanode的需要备份的block列表中
+          rw.srcNode.addBlockToBeReplicated(block, targets);
+
+          scheduledWork++;
+
+          //设置namenode的block调度计数器
+          for (DatanodeDescriptor dn : targets) {
+            dn.incBlocksScheduled();
+          }
+
+          // Move the block-replication into a "pending" state.
+          // The reason we use 'pending' is so we can retry
+          // replications that fail after an appropriate amount of time.
+          //将该block移至pendingReplications（PendingReplicationBlocks）中，表示该block的状态为'pending'(正在备份中)。'pending'表示如果失败了还可以重试
+          pendingReplications.add(block, targets.length);
+          NameNode.stateChangeLog.debug(
+            "BLOCK* block " + block
+              + " is moved from neededReplications to pendingReplications");
+
+          // remove from neededReplications
+          //从 neededReplication列表中移除该block
+          if (numEffectiveReplicas + targets.length &gt;= requiredReplication) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            replIndex[priority]--;
+          }
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+
+    // 更新 metrics
+    updateReplicationMetrics(work);
+
+    // 打印debug信息
+    if(NameNode.stateChangeLog.isInfoEnabled()){
+      // log which blocks have been scheduled for replication
+      for(ReplicationWork rw : work){
+        // report scheduled blocks
+        DatanodeDescriptor[] targets = rw.targets;
+        if (targets != null &amp;&amp; targets.length != 0) {
+          StringBuffer targetList = new StringBuffer("datanode(s)");
+          for (int k = 0; k &lt; targets.length; k++) {
+            targetList.append(' ');
+            targetList.append(targets[k].getName());
+          }
+          NameNode.stateChangeLog.info(
+            "BLOCK* ask "
+              + rw.srcNode.getName() + " to replicate "
+              + rw.block + " to " + targetList);
+        }
+      }
+    }
+
+    // 记录一次备份操作
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug("BLOCK* neededReplications = "
+          + neededReplications.size() + " pendingReplications = "
+          + pendingReplications.size());
+    }
+    return scheduledWork;
+  }
+</code></pre>
+
+<h4>1.1.2.1. 选取源datanode —— chooseSourceDatanode（）</h4>
+
+<p>获取一个源datanode节点</p>
+
+<pre><code>  private DatanodeDescriptor chooseSourceDatanode(
+                                    Block block,
+                                    List&lt;DatanodeDescriptor&gt; containingNodes,
+                                    NumberReplicas numReplicas) {
+    containingNodes.clear();
+    DatanodeDescriptor srcNode = null;
+    int live = 0;
+    int decommissioned = 0;
+    int corrupt = 0;
+    int excess = 0;
+    Iterator&lt;DatanodeDescriptor&gt; it = blocksMap.nodeIterator(block);
+    Collection&lt;DatanodeDescriptor&gt; nodesCorrupt = corruptReplicas.getNodes(block);
+    while(it.hasNext()) {
+      DatanodeDescriptor node = it.next();
+      Collection&lt;Block&gt; excessBlocks = 
+        excessReplicateMap.get(node.getStorageID());
+      if ((nodesCorrupt != null) &amp;&amp; (nodesCorrupt.contains(node)))
+        corrupt++;
+      else if (node.isDecommissionInProgress() || node.isDecommissioned())
+        decommissioned++;
+      else if (excessBlocks != null &amp;&amp; excessBlocks.contains(block)) {
+        excess++;
+      } else {
+        live++;
+      }
+      containingNodes.add(node);
+      // Check if this replica is corrupt
+      // If so, do not select the node as src node
+      if ((nodesCorrupt != null) &amp;&amp; nodesCorrupt.contains(node))
+        continue;
+      if(node.getNumberOfBlocksToBeReplicated() &gt;= maxReplicationStreams)
+        continue; // already reached replication limit
+      // the block must not be scheduled for removal on srcNode
+      if(excessBlocks != null &amp;&amp; excessBlocks.contains(block))
+        continue;
+      // never use already decommissioned nodes
+      if(node.isDecommissioned())
+        continue;
+      // we prefer nodes that are in DECOMMISSION_INPROGRESS state
+      if(node.isDecommissionInProgress() || srcNode == null) {
+        srcNode = node;
+        continue;
+      }
+      if(srcNode.isDecommissionInProgress())
+        continue;
+      // switch to a different node randomly
+      // this to prevent from deterministically selecting the same node even
+      // if the node failed to replicate the block on previous iterations
+      if(r.nextBoolean())
+        srcNode = node;
+    }
+    if(numReplicas != null)
+      numReplicas.initialize(live, decommissioned, corrupt, excess);
+    return srcNode;
+  }
+</code></pre>
+
+<h4>1.1.2.2. 选取目标datanode —— chooseTarget(rw);</h4>
+
+<pre><code>  private DatanodeDescriptor[] chooseTarget(ReplicationWork work) {
+    if (!neededReplications.contains(work.block)) {
+      return null;
+    }
+    if (work.blockSize == BlockCommand.NO_ACK) {
+      LOG.warn("Block " + work.block.getBlockId() + 
+          " of the file " + work.fileINode.getFullPathName() + 
+          " is invalidated and cannot be replicated.");
+      return null;
+    }
+    if (work.blockSize == DFSUtil.DELETED) {
+      LOG.warn("Block " + work.block.getBlockId() + 
+          " of the file " + work.fileINode.getFullPathName() + 
+          " is a deleted block and cannot be replicated.");
+      return null;
+    }
+    //实际调用replicator(BlockPlacementPolicy)的chooseTarget方法选取target
+    return replicator.chooseTarget(work.fileINode,
+        work.numOfReplicas, work.srcNode,
+        work.containingNodes, null, work.blockSize);
+  }
+</code></pre>
+
+<h2>副本存放策略</h2>
+
+<p><img src="img/BlockAllocation.png" alt="BlockAllocation" /></p>
+
+<p>如图所示，HDFS默认的副本存放策略为：</p>
+
+<ol>
+<li>第一个副本存放在当前datanode的本地</li>
+<li>第二个副本存放在与第一个副本所在datanode不在同一机架上的一个datanode上</li>
+<li>第三个副本存放在与第二个副本同一机架但不同datanode上</li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习(4)——DataNode心跳检测（HeartBeat）]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-heartbeat/"/>
+    <updated>2012-10-18T21:38:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-heartbeat</id>
+    <content type="html"><![CDATA[<p>HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下：</p>
+
+<pre><code>  class HeartbeatMonitor implements Runnable {
+    /**
+     */
+    public void run() {
+      while (fsRunning) {
+        try {
+          heartbeatCheck();
+        } catch (Exception e) {
+          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
+        }
+        try {
+          Thread.sleep(heartbeatRecheckInterval);
+        } catch (InterruptedException ie) {
+        }
+      }
+    }
+  }
+</code></pre>
+
+<p>代码很简单，心跳检测线程周期性调用heartbeatCheck()。</p>
+
+<h2>一、心跳检查——heartbeatCheck()</h2>
+
+<p>该方法主要用于检测是否有过期的心跳检测，如有，检测其上的block是否已经进行过重新备份。该线程每次只处理一个datanode。</p>
+
+<pre><code>  void heartbeatCheck() {
+    if (isInSafeMode()) {
+      // 安全模式下不做心跳检测
+      return;
+    }
+    boolean allAlive = false;
+    while (!allAlive) {
+      boolean foundDead = false;
+      DatanodeID nodeID = null;
+
+      // 获取第一个dead datanode
+      synchronized(heartbeats) {
+        for (Iterator&lt;DatanodeDescriptor&gt; it = heartbeats.iterator();
+             it.hasNext();) {
+          DatanodeDescriptor nodeInfo = it.next();
+          if (isDatanodeDead(nodeInfo)) {
+            foundDead = true;
+            nodeID = nodeInfo;
+            break;
+          }
+        }
+      }
+
+      // 申请fsnamesystem锁，删除dead datanode
+      if (foundDead) {
+        writeLock();
+        try {
+          synchronized(heartbeats) {
+            synchronized (datanodeMap) {
+              DatanodeDescriptor nodeInfo = null;
+              try {
+                nodeInfo = getDatanode(nodeID);
+              } catch (IOException e) {
+                nodeInfo = null;
+              }
+              if (nodeInfo != null &amp;&amp; isDatanodeDead(nodeInfo)) {
+                NameNode.stateChangeLog.info("BLOCK* NameSystem.heartbeatCheck: "
+                                             + "lost heartbeat from " + nodeInfo.getName());
+                removeDatanode(nodeInfo);
+              }
+            }
+          }
+        } finally {
+          writeUnlock();
+        }
+      }
+      allAlive = !foundDead;
+    }
+  }
+</code></pre>
+
+<h3>1.1 判断是否已死 —— isDatanodeDead（）</h3>
+
+<p>判断一个datanode是否已经dead的标准很简单，当前距该节点最后的更新时间差是否已经超过心跳检测的过期时间限制</p>
+
+<pre><code>private boolean isDatanodeDead(DatanodeDescriptor node) {
+    return (node.getLastUpdate() &lt;
+            (now() - heartbeatExpireInterval));
+  }
+</code></pre>
+
+<h3>1.2 删除datanode —— removeDatanode（）</h3>
+
+<pre><code>  private void removeDatanode(DatanodeDescriptor nodeInfo) {
+    synchronized (heartbeats) {
+      if (nodeInfo.isAlive) {
+        updateStats(nodeInfo, false);
+        //从heartbeats中移除
+        heartbeats.remove(nodeInfo);
+        //更新datanode状态
+        nodeInfo.isAlive = false;
+      }
+    }
+
+    nodeInfo.hasInitialBlockReport = false;
+    for (Iterator&lt;Block&gt; it = nodeInfo.getBlockIterator(); it.hasNext();) {
+      //移除该节点上的block
+      removeStoredBlock(it.next(), nodeInfo);
+    }
+    unprotectedRemoveDatanode(nodeInfo);
+    clusterMap.remove(nodeInfo);
+  }
+</code></pre>
+
+<h4>1.2.1 removeStoredBlock（）</h4>
+
+<p>该方法更新block->datanode的映射(blocksMap)，如果block还有效，有可能导致block备份发生</p>
+
+<pre><code>  void removeStoredBlock(Block block, DatanodeDescriptor node) {
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                    +block + " from "+node.getName());
+    }
+    assert (hasWriteLock());
+    if (!blocksMap.removeNode(block, node)) {
+      if (NameNode.stateChangeLog.isDebugEnabled()) {
+        NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                      +block+" has already been removed from node "+node);
+      }
+      return;
+    }
+
+    //
+    //检查是否需要备份删除的block
+    INode fileINode = blocksMap.getINode(block);
+    if (fileINode != null) {
+      //减小当前系统中安全block（备份数满足最小值的block）数量
+      decrementSafeBlockCount(block);
+      //更新需要备份的block数量
+      updateNeededReplications(block, -1, 0);
+    }
+
+    //
+    // 从excessblocks中删除改block，并从excessReplicateMap删除改datanode
+    Collection&lt;Block&gt; excessBlocks = excessReplicateMap.get(node.getStorageID());
+    if (excessBlocks != null) {
+      if (excessBlocks.remove(block)) {
+        excessBlocksCount--;
+        if (NameNode.stateChangeLog.isDebugEnabled()) {
+          NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+              +block+" is removed from excessBlocks");
+        }
+        if (excessBlocks.size() == 0) {
+          excessReplicateMap.remove(node.getStorageID());
+        }
+      }
+    }
+
+    // 从corruptReplicas中移除该block
+    corruptReplicas.removeFromCorruptReplicasMap(block, node);
+  }
+</code></pre>
+
+<h5>1.2.1.1  BlocksMap.removeNode（）</h5>
+
+<p>其中BlocksMap.removeNode()方法如下：</p>
+
+<pre><code>  boolean removeNode(Block b, DatanodeDescriptor node) {
+    BlockInfo info = blocks.get(b);
+    if (info == null)
+      return false;
+
+    // 从datanode 的blocklist中移除block，并从block的datalist中移除datanode
+    boolean removed = node.removeBlock(info);
+
+    if (info.getDatanode(0) == null     // no datanodes left
+              &amp;&amp; info.inode == null) {  // does not belong to a file
+      //从blocksmap中移除该block
+      blocks.remove(b);  // remove block from the map
+    }
+    return removed;
+  }
+</code></pre>
+
+<h5>1.2.1.2 减小当前安全的block数 —— decrementSafeBlockCount()</h5>
+
+<p>减小当前副本数安全的的block数，此举有可能触发系统进入安全模式（safemode）</p>
+
+<pre><code>  void decrementSafeBlockCount(Block b) {
+    if (safeMode == null) // mostly true
+      return;
+
+    safeMode.decrementSafeBlockCount((short)countNodes(b).liveReplicas());
+  }
+</code></pre>
+
+<p>其中safeMode.decrementSafeBlockCount()代码如下：</p>
+
+<pre><code>synchronized void decrementSafeBlockCount(short replication) {
+
+  if (replication == safeReplication-1) {
+    //安全的block数减一
+    this.blockSafe--;
+    //检查是否需要进入到safemode
+    checkMode();
+  }
+}
+</code></pre>
+
+<p>SafeModeInfo.checkMode()代码如下：</p>
+
+<pre><code>    private void checkMode() {
+      //当安全的block数比例降至安全值以下，进入安全模式
+      if (needEnter()) {
+        enter();
+        // check if we are ready to initialize replication queues
+        if (canInitializeReplQueues() &amp;&amp; !isPopulatingReplQueues()) {
+          //初始化副本队列
+          initializeReplQueues();
+        }
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 如果安全模式已经关闭或者门槛小于0，则跳出安全模式
+      if (!isOn() ||                           // safe mode is off
+          extension &lt;= 0 || threshold &lt;= 0) {  // don't need to wait
+        this.leave(true); // leave safe mode
+        return;
+      }
+
+      //之前已经进入安全模式，直接返回
+      if (reached &gt; 0) {  // threshold has already been reached before
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 启动SafeModeMonitor线程
+      reached = now();
+      smmthread = new Daemon(new SafeModeMonitor());
+      smmthread.start();
+      reportStatus("STATE* Safe mode extension entered.", true);
+    }
+</code></pre>
+
+<h5>1.2.1.3 更新需要备份的列表 —— updateNeededReplications（）</h5>
+
+<pre><code>  /* updates a block in under replication queue */
+  void updateNeededReplications(Block block,
+                        int curReplicasDelta, int expectedReplicasDelta) {
+    writeLock();
+    try {
+    //计算当前副本数
+    NumberReplicas repl = countNodes(block);
+    //期望的副本数
+    int curExpectedReplicas = getReplication(block);
+    //将该block更新到需要备份的列表中（neededReplications）
+    neededReplications.update(block, 
+                              repl.liveReplicas(), 
+                              repl.decommissionedReplicas(),
+                              curExpectedReplicas,
+                              curReplicasDelta, expectedReplicasDelta);
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h4>1.2.2 移除datanode —— unprotectedRemoveDatanode</h4>
+
+<pre><code>  void unprotectedRemoveDatanode(DatanodeDescriptor nodeDescr) {
+    //重置清空datanode中block信息
+    nodeDescr.resetBlocks();
+    //从invlidateSet中移除datanode
+    removeFromInvalidates(nodeDescr.getStorageID());
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug(
+                                    "BLOCK* NameSystem.unprotectedRemoveDatanode: "
+                                    + nodeDescr.getName() + " is out of service now.");
+    }
+  }
+</code></pre>
+
+<h5>1.2.2.1 removeFromInvalidates()</h5>
+
+<pre><code>  private void removeFromInvalidates(String storageID) {
+    //从recentInvalidateSet中移除该datanode
+    Collection&lt;Block&gt; blocks = recentInvalidateSets.remove(storageID);
+    if (blocks != null) {
+      //从正在删除的block总数中减去当前节点上的block总数
+      pendingDeletionBlocksCount -= blocks.size();
+    }
+  }
+</code></pre>
+
+<h2>二、 处理心跳检测请求 —— handleHeartbeat()</h2>
+
+<p>NameNode只负责创建一个HeartbeatMonitor来通过每个datanode的最新更新时间周期性检查是否有过期的datanode，而每个datanode是否的最新更新时间是由datanode主动向namenode报告的，namenode通过handleHeartbeat()处理心跳请求。</p>
+
+<pre><code>  DatanodeCommand[] handleHeartbeat(DatanodeRegistration nodeReg,
+      long capacity, long dfsUsed, long remaining,
+      int xceiverCount, int xmitsInProgress) throws IOException {
+    DatanodeCommand cmd = null;
+    synchronized (heartbeats) {
+      synchronized (datanodeMap) {
+        DatanodeDescriptor nodeinfo = null;
+        try {
+          nodeinfo = getDatanode(nodeReg);
+        } catch(UnregisteredDatanodeException e) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        // 检查该datanode是否需要被关闭，可以通过设置datanode的adminState为DECOMMISSIONED来关闭一个datanode
+        if (nodeinfo != null &amp;&amp; shouldNodeShutdown(nodeinfo)) {
+          setDatanodeDead(nodeinfo);
+          throw new DisallowedDatanodeException(nodeinfo);
+        }
+
+        if (nodeinfo == null || !nodeinfo.isAlive) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        updateStats(nodeinfo, false);
+        nodeinfo.updateHeartbeat(capacity, dfsUsed, remaining, xceiverCount);
+        updateStats(nodeinfo, true);
+
+        //检查租约恢复状态
+        cmd = nodeinfo.getLeaseRecoveryCommand(Integer.MAX_VALUE);
+        if (cmd != null) {
+          return new DatanodeCommand[] {cmd};
+        }
+
+        ArrayList&lt;DatanodeCommand&gt; cmds = new ArrayList&lt;DatanodeCommand&gt;(2);
+        //检查正在备份中的副本
+        cmd = nodeinfo.getReplicationCommand(
+              maxReplicationStreams - xmitsInProgress);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        //检查无效的block
+        cmd = nodeinfo.getInvalidateBlocks(blockInvalidateLimit);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        if (!cmds.isEmpty()) {
+          return cmds.toArray(new DatanodeCommand[cmds.size()]);
+        }
+      }
+    }
+
+    //检查是否需要升级系统
+    cmd = getDistributedUpgradeCommand();
+    if (cmd != null) {
+      return new DatanodeCommand[] {cmd};
+    }
+    return null;
+  }
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（3）——NameNode中的线程]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-thread/"/>
+    <updated>2012-10-18T21:37:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-thread</id>
+    <content type="html"><![CDATA[<p>NameNode存在三种运行模式：</p>
+
+<ol>
+<li>Normal： NameNode正常服务的状态</li>
+<li>Safe mode：NameNode重启时进入Safe mode，该模式下整个系统是只读的，以便于NameNode手机DataNode信息</li>
+<li>Backup mode：备份NameNode处于Backup mode，被动的接收主NameNode的检查点信息</li>
+</ol>
+
+
+<p>在NameNode中存在如下几种线程：</p>
+
+<ol>
+<li>DataNode 健康检查管理线程</li>
+<li>副本管理线程</li>
+<li>租约管理（lease Management）</li>
+<li>IPC Handler 线程</li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习(2)——NameNode初始化]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-startup/"/>
+    <updated>2012-10-18T21:35:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-startup</id>
+    <content type="html"><![CDATA[<h2>main()</h2>
+
+<pre><code>  public static void main(String argv[]) throws Exception {
+    try {
+      StringUtils.startupShutdownMessage(NameNode.class, argv, LOG);
+      //创建nameNode
+      NameNode namenode = createNameNode(argv, null);
+      if (namenode != null)
+        namenode.join();
+    } catch (Throwable e) {
+      LOG.error(StringUtils.stringifyException(e));
+      System.exit(-1);
+    }
+  }
+</code></pre>
+
+<h3>createNameNode()</h3>
+
+<pre><code>  public static NameNode createNameNode(String argv[], 
+                                 Configuration conf) throws IOException {
+    if (conf == null)
+      conf = new Configuration();
+      //从命令行参数中提取启动配置项数据
+    StartupOption startOpt = parseArguments(argv);
+    if (startOpt == null) {
+      printUsage();
+      return null;
+    }
+    //设置启动参数
+    setStartupOption(conf, startOpt);
+
+    switch (startOpt) {
+      case FORMAT:
+        boolean aborted = format(conf, true);
+        System.exit(aborted ? 1 : 0);
+      case FINALIZE:
+        aborted = finalize(conf, true);
+        System.exit(aborted ? 1 : 0);
+      default:
+    }
+
+    //新建NameNode
+    NameNode namenode = new NameNode(conf);
+    return namenode;
+  }
+</code></pre>
+
+<h3>NameNode()</h3>
+
+<pre><code>  public NameNode(Configuration conf) throws IOException {
+    super(conf);
+    try {
+    //初始化
+      initialize(getConf());
+    } catch (IOException e) {
+      this.stop();
+      throw e;
+    }
+  }
+</code></pre>
+
+<h3>initialize()</h3>
+
+<pre><code>  private void initialize(Configuration conf) throws IOException {
+    InetSocketAddress socAddr = NameNode.getAddress(conf);
+    int handlerCount = conf.getInt("dfs.namenode.handler.count", 10);
+    // 关键-&gt;创建一个RPC Server
+    this.server = RPC.getServer(this, socAddr.getHostName(), socAddr.getPort(),
+                                handlerCount, false, conf);
+
+    // The rpc-server port can be ephemeral... ensure we have the correct info
+    this.serverAddress = this.server.getListenerAddress(); 
+    FileSystem.setDefaultUri(conf, getUri(serverAddress));
+    LOG.info("Namenode up at: " + this.serverAddress);
+
+    myMetrics = new NameNodeMetrics(conf, this);
+
+    //关键-&gt;创建一个FSNameSystem
+    this.namesystem = new FSNamesystem(this, conf);
+    //启动HTTP Server
+    startHttpServer(conf);
+    //启动RPC Server
+    this.server.start();  //start RPC server   
+
+    startTrashEmptier(conf);
+  }
+</code></pre>
+
+<h2>FSNameSystem()</h2>
+
+<pre><code>  FSNamesystem(NameNode nn, Configuration conf) throws IOException {
+    try {
+      //初始化FSNameSystem
+      initialize(nn, conf);
+      userPasswordInformation = new UserPasswordInformation(conf);
+      extendAccessControlList = new ExtendAccessControlList(conf);
+    } catch(IOException e) {
+      LOG.error(getClass().getSimpleName() + " initialization failed.", e);
+      close();
+      throw e;
+    }
+  }
+</code></pre>
+
+<h3>FSNameSystem.initialize()</h3>
+
+<pre><code>  private void initialize(NameNode nn, Configuration conf) throws IOException {
+    this.systemStart = now();
+    this.fsLock = new ReentrantReadWriteLock(); // non-fair locking
+    setConfigurationParameters(conf);
+
+    this.nameNodeAddress = nn.getNameNodeAddress();
+    this.registerMBean(conf); // register the MBean for the FSNamesystemStutus
+
+    //创建FSDirectory
+    this.dir = new FSDirectory(this, conf);
+    StartupOption startOpt = NameNode.getStartupOption(conf);
+
+    //加载FSImage
+    this.dir.loadFSImage(getNamespaceDirs(conf),
+                         getNamespaceEditsDirs(conf), startOpt);
+    long timeTakenToLoadFSImage = now() - systemStart;
+    LOG.info("Finished loading FSImage in " + timeTakenToLoadFSImage + " msecs");
+    NameNode.getNameNodeMetrics().fsImageLoadTime.set(
+                              (int) timeTakenToLoadFSImage);
+    this.safeMode = new SafeModeInfo(conf);
+    setBlockTotal();
+    //创建PendingReplicationBlocks
+    pendingReplications = new PendingReplicationBlocks(
+                            conf.getInt("dfs.replication.pending.timeout.sec", 
+                                        -1) * 1000L);
+    //创建心跳检查线程                                          
+    this.hbthread = new Daemon(new HeartbeatMonitor());
+    //创建租约管理线程
+    this.lmthread = new Daemon(leaseManager.new Monitor());
+    //创建副本管理线程
+    this.replthread = new Daemon(new ReplicationMonitor());
+    hbthread.start();
+    lmthread.start();
+    replthread.start();
+
+    // 副本超额block管理线程
+    this.overreplthread = new Daemon(new OverReplicationMonitor());
+    overreplthread.start();
+
+    this.hostsReader = new HostsFileReader(conf.get("dfs.hosts",""),
+                                           conf.get("dfs.hosts.exclude",""));
+    //创建退役节点管理线程
+    this.dnthread = new Daemon(new DecommissionManager(this).new Monitor(
+        conf.getInt("dfs.namenode.decommission.interval", 30),
+        conf.getInt("dfs.namenode.decommission.nodes.per.interval", 5)));
+    dnthread.start();
+
+    this.dnsToSwitchMapping = ReflectionUtils.newInstance(
+        conf.getClass("topology.node.switch.mapping.impl", ScriptBasedMapping.class,
+            DNSToSwitchMapping.class), conf);
+
+    /* If the dns to swith mapping supports cache, resolve network 
+     * locations of those hosts in the include list, 
+     * and store the mapping in the cache; so future calls to resolve
+     * will be fast.
+     */
+    if (dnsToSwitchMapping instanceof CachedDNSToSwitchMapping) {
+      dnsToSwitchMapping.resolve(new ArrayList&lt;String&gt;(hostsReader.getHosts()));
+    }
+    //创建副本定位器用于定位副本存放位置
+    this.replicator = BlockPlacementPolicy.getInstance(
+        conf,
+        this,
+        this.clusterMap,
+        this.hostsReader,
+        this.dnsToSwitchMapping,
+        this);
+  }
+</code></pre>
+
+<h2>FSDirectory(this, conf)</h2>
+
+<p>新建FSDirecotry</p>
+
+<pre><code> FSDirectory(FSNamesystem ns, Configuration conf) {
+    //创建一个FSImage，并实例化构建FSDirectory
+    this(new FSImage(), ns, conf);
+    fsImage.setCheckpointDirectories(FSImage.getCheckpointDirs(conf, null),
+                                FSImage.getCheckpointEditsDirs(conf, null));
+  }
+</code></pre>
+
+<h3>this(new FSImage(), ns, conf);</h3>
+
+<pre><code>FSDirectory(FSImage fsImage, FSNamesystem ns, Configuration conf) {
+    this.bLock = new ReentrantReadWriteLock(); // non-fair
+    this.cond = bLock.writeLock().newCondition();
+    //创建根目录
+    rootDir = new INodeDirectoryWithQuota(INodeDirectory.ROOT_NAME,
+        ns.createFsOwnerPermissions(new FsPermission((short)0755)),
+        Integer.MAX_VALUE, -1);
+    this.fsImage = fsImage;
+    namesystem = ns;
+    initialize(conf);
+  }
+</code></pre>
+
+<h3>FSDirectory.initialize()</h3>
+
+<pre><code>  private void initialize(Configuration conf) {
+    MetricsContext metricsContext = MetricsUtil.getContext("dfs");
+    directoryMetrics = MetricsUtil.createRecord(metricsContext, "FSDirectory");
+    directoryMetrics.setTag("sessionId", conf.get("session.id"));
+  }
+</code></pre>
+
+<h3>FSDirectory.loadFSImage()</h3>
+
+<pre><code>  void loadFSImage(Collection&lt;File&gt; dataDirs,
+                   Collection&lt;File&gt; editsDirs,
+                   StartupOption startOpt) throws IOException {
+    // format before starting up if requested
+    if (startOpt == StartupOption.FORMAT) {
+      fsImage.setStorageDirectories(dataDirs, editsDirs);
+      fsImage.format();
+      startOpt = StartupOption.REGULAR;
+    }
+    try {
+      //从datadir和editdirs加载FSImage
+      if (fsImage.recoverTransitionRead(dataDirs, editsDirs, startOpt)) {
+        fsImage.saveNamespace(true);
+      }
+      //初始化Editlog
+      FSEditLog editLog = fsImage.getEditLog();
+      assert editLog != null : "editLog must be initialized";
+      if (!editLog.isOpen())
+        editLog.open();
+      fsImage.setCheckpointDirectories(null, null);
+    } catch(IOException e) {
+      fsImage.close();
+      throw e;
+    }
+    writeLock();
+    try {
+      this.ready = true;
+      cond.signalAll();
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h3>FSImage.recoverTransitionRead（）</h3>
+
+<pre><code>  boolean recoverTransitionRead(Collection&lt;File&gt; dataDirs,
+                             Collection&lt;File&gt; editsDirs,
+                                StartupOption startOpt
+                                ) throws IOException {
+    assert startOpt != StartupOption.FORMAT : 
+      "NameNode formatting should be performed before reading the image";
+
+    // none of the data dirs exist
+    if (dataDirs.size() == 0 || editsDirs.size() == 0)  
+      throw new IOException(
+        "All specified directories are not accessible or do not exist.");
+
+    if(startOpt == StartupOption.IMPORT 
+        &amp;&amp; (checkpointDirs == null || checkpointDirs.isEmpty()))
+      throw new IOException("Cannot import image from a checkpoint. "
+                          + "\"fs.checkpoint.dir\" is not set." );
+
+    if(startOpt == StartupOption.IMPORT 
+        &amp;&amp; (checkpointEditsDirs == null || checkpointEditsDirs.isEmpty()))
+      throw new IOException("Cannot import image from a checkpoint. "
+                          + "\"fs.checkpoint.edits.dir\" is not set." );
+
+    setStorageDirectories(dataDirs, editsDirs);
+    // 1.检查所有目录的状态和一致性
+    Map&lt;StorageDirectory, StorageState&gt; dataDirStates = 
+             new HashMap&lt;StorageDirectory, StorageState&gt;();
+    boolean isFormatted = false;
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                      dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      StorageState curState;
+      try {
+        curState = sd.analyzeStorage(startOpt);
+        // sd is locked but not opened
+        switch(curState) {
+        case NON_EXISTENT:
+          // name-node fails if any of the configured storage dirs are missing
+          throw new InconsistentFSStateException(sd.getRoot(),
+                                                 "storage directory does not exist or is not accessible.");
+        case NOT_FORMATTED:
+          break;
+        case NORMAL:
+          break;
+        default:  // recovery is possible
+          sd.doRecover(curState);      
+        }
+        if (curState != StorageState.NOT_FORMATTED 
+            &amp;&amp; startOpt != StartupOption.ROLLBACK) {
+          sd.read(); // read and verify consistency with other directories
+          isFormatted = true;
+        }
+        if (startOpt == StartupOption.IMPORT &amp;&amp; isFormatted)
+          // import of a checkpoint is allowed only into empty image directories
+          throw new IOException("Cannot import image from a checkpoint. " 
+              + " NameNode already contains an image in " + sd.getRoot());
+      } catch (IOException ioe) {
+        sd.unlock();
+        throw ioe;
+      }
+      dataDirStates.put(sd,curState);
+    }
+
+    if (!isFormatted &amp;&amp; startOpt != StartupOption.ROLLBACK 
+                     &amp;&amp; startOpt != StartupOption.IMPORT)
+      throw new IOException("NameNode is not formatted.");
+    if (layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION) {
+      checkVersionUpgradable(layoutVersion);
+    }
+    if (startOpt != StartupOption.UPGRADE
+          &amp;&amp; layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION
+          &amp;&amp; layoutVersion != FSConstants.LAYOUT_VERSION)
+        throw new IOException(
+                          "\nFile system image contains an old layout version " + layoutVersion
+                          + ".\nAn upgrade to version " + FSConstants.LAYOUT_VERSION
+                          + " is required.\nPlease restart NameNode with -upgrade option.");
+    // check whether distributed upgrade is reguired and/or should be continued
+    verifyDistributedUpgradeProgress(startOpt);
+
+    // 2. Format unformatted dirs.
+    this.checkpointTime = 0L;
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                     dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      StorageState curState = dataDirStates.get(sd);
+      switch(curState) {
+      case NON_EXISTENT:
+        assert false : StorageState.NON_EXISTENT + " state cannot be here";
+      case NOT_FORMATTED:
+        LOG.info("Storage directory " + sd.getRoot() + " is not formatted.");
+        LOG.info("Formatting ...");
+        sd.clearDirectory(); // create empty currrent dir
+        break;
+      default:
+        break;
+      }
+    }
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（1）——NameNode主要数据结构]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-datastructure/"/>
+    <updated>2012-10-18T11:04:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-datastructure</id>
+    <content type="html"><![CDATA[<h2>FSNameSystem</h2>
+
+<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
+
+<ol>
+<li>fsname->block列表的映射</li>
+<li>所有有效blocks集合</li>
+<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
+<li>每个datanode与其上的blocklist的映射</li>
+<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
+</ol>
+
+
+<h3>FSDirectory</h3>
+
+<p>FSDirectory用于维护当前系统中的文件树。</p>
+
+<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
+
+<h4>INode</h4>
+
+<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/INode.png" alt="INode" /></p>
+
+<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
+
+<h3>BlocksMap</h3>
+
+<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
+<img src="http://jiangbo.me/images/hdfs/BlocksMap.png" alt="BlocksMap" />
+BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
+
+<h4>Block</h4>
+
+<p>Block是HDFS中的基本读写单元，主要包括：</p>
+
+<ol>
+<li>blockId: 一个long类型的块id</li>
+<li>numBytes: 块大小</li>
+<li>generationStamp: 块更新的时间戳</li>
+</ol>
+
+
+<h4>BlockInfo</h4>
+
+<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/triplets.png" alt="triplets" /></p>
+
+<ol>
+<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
+<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
+<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
+</ol>
+
+
+<p>DN2,DN3的prev-blk和next-blk类似。
+HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
+
+<h4>FSImage</h4>
+
+<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
+HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
+FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/FSImage.png" alt="FSImage" /></p>
+
+<h5>FSImage头部信息</h5>
+
+<ol>
+<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
+<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
+<li>numberItemOfTree(long): 系统中的文件总数</li>
+<li>generationTimeStamp: 生成image的时间戳</li>
+</ol>
+
+
+<h5>INode信息</h5>
+
+<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
+
+<p><strong>INode头</strong></p>
+
+<ol>
+<li>nameLen(short): 文件名长度</li>
+<li>filename(String): 文件名</li>
+<li>replication(short): 备份数量</li>
+<li>modificationTime(long): 最近修改时间</li>
+<li>accessTime(long): 最近访问时间</li>
+<li>preferedBlockSize(long): 块大小（目录为0）</li>
+<li>block num(int): 块数量（目录为-1）</li>
+</ol>
+
+
+<p><strong>Blocks区</strong></p>
+
+<ol>
+<li>blockId(long)</li>
+<li>numBytes(long,block大小)</li>
+<li>generationTimeStamp(long, 更新时间戳）</li>
+</ol>
+
+
+<p><strong>文件权限</strong></p>
+
+<ol>
+<li>username(String): 文件用户名</li>
+<li>group(String): 所属组</li>
+<li>fileperm(short): 文件权限</li>
+</ol>
+
+
+<h5>underconstructionFile区</h5>
+
+<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
+
+<p><strong>client信息</strong></p>
+
+<ol>
+<li>clientName：client明</li>
+<li>clientMachine： client机器名</li>
+</ol>
+
+
+<p><strong>已分配的datanode信息</strong></p>
+
+<ol>
+<li>ipcport： 服务端口</li>
+<li>capacity: 容量</li>
+<li>dfsuse： 已使用的空间</li>
+<li>remaining： 剩余空间</li>
+<li>lastupdate： 最新更新时间</li>
+<li>xceiverCount</li>
+<li>location： datanode位置</li>
+<li>hostName：主机名</li>
+<li>state： admin管理状态</li>
+</ol>
+
+
+<h2>其他结构</h2>
+
+<h3>CorruptReplicasMap</h3>
+
+<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
+
+<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
+
+<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
+
+<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
+
+<p>datanodeMap用于维护datanode->block的映射</p>
+
+<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
+
+<p>维护多有当前活着的节点</p>
+
+<h3>UnderReplicatedBlocks neededReplications</h3>
+
+<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
+
+<h3>PendingReplicationBlocks pendingReplications;</h3>
+
+<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
+<img src="http://jiangbo.me/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
+
+<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
+
+<p>当前需要检查是否备份过多的block集合</p>
+
+<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
+
+<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[本地编译Hadoop小记]]></title>
@@ -1381,830 +3029,6 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
 1、用chrome打开：chrome://net-internals/#dns<br />
 2、点击上面的“clean host cache”<br />
 为了方便使用，可以加个bookmark:)</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mac上制作Ubuntu USB启动盘]]></title>
-    <link href="http://jiangbo.me/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/"/>
-    <updated>2011-11-09T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac</id>
-    <content type="html"><![CDATA[<p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
-
-<p><strong>一、下载ubuntu iso镜像</strong></p>
-
-<p><strong>二、将iso转换为img文件</strong></p>
-
-<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
-
-<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
-
-<p><strong>三、查看USB的盘符</strong></p>
-
-<p>$ diskutil list</p>
-
-<p>/dev/disk0</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
-
-<p>1:                        EFI                         209.7 MB   disk0s1</p>
-
-<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
-
-<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
-
-<p>/dev/disk1</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
-
-<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
-
-<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
-
-<p><strong>四、卸载USB磁盘</strong></p>
-
-<p>$ diskutil unmountDisk /dev/disk1</p>
-
-<p>Unmount of all volumes on disk1 was successful</p>
-
-<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
-
-<p><strong>五、将镜像写入USB</strong></p>
-
-<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
-
-<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
-
-<p><strong>六、弹出USB</strong></p>
-
-<p>$ diskutil eject /dev/disk1</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[vim支持GBK编码]]></title>
-    <link href="http://jiangbo.me/blog/2011/09/08/vim_gbk/"/>
-    <updated>2011-09-08T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/09/08/vim_gbk</id>
-    <content type="html"><![CDATA[<p><h2><strong>一、让ubuntu支持GBK编码</strong></h2>
-Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。</p>
-
-<p>首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件，在文件中添加如下内容：<br />
-zh_CN.UTF- 8 UTF- 8<br />
-en_US.UTF- 8 UTF- 8<br />
-zh_CN.GBK GBK<br />
-zh_CN.GB2312 GB2312<br />
-接着用sudo dpkg-reconfigure &#8211;force locales强制更新设置
-<h2><strong>二、设置Vimrc支持GBK</strong></h2>
-set fileencodings=utf-8,gbk,gb2312</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Velocity源码分析（二）——渲染执行之Introspection]]></title>
-    <link href="http://jiangbo.me/blog/2011/08/26/velocity_introspection/"/>
-    <updated>2011-08-26T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/08/26/velocity_introspection</id>
-    <content type="html"><![CDATA[<p><div><span style="font-size: large;"><strong>一、何为Introspection</strong></span></div>
-<div><span style="font-size: large;"><strong>
-</strong></span></div>
-<div>Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。</div>
-<div><em>Introspection is the self-observation and reporting of conscious inner thoughts, desires and sensations. It is a conscious and purposive process relying on thinking, reasoning, and examining one&#8217;s own thoughts, feelings, and, in more spiritual cases, one&#8217;s soul. </em></div>
-<div style="text-align: right;">——Wikipedia</div>
-<div>在计算机科学中，借用了哲学中的Introspeciton术语，表示一种能够识别一个事物它是什么，知道什么，能做什么的能力。典型的应用场景是面向对象语言中的类型自省（type introspeciton）。</div>
-<div><em>In computing, type introspection is a capability of some object-oriented programming languages to determine the type of an object at runtime.</em></div>
-<div style="text-align: right;">——Wikipedia</div>
-<div>以Java为例，Java提供了可以在运行时获取和检查JavaBean的接口API，实例如下：</div>
-<pre class="brush:java">import java.beans.BeanInfo;
-import java.beans.Introspector;
-import java.beans.IntrospectionException;
-import java.beans.PropertyDescriptor;
-public class SimpleBean{
-    private final String name = "SimpleBean";
-    private int size;
-    public String getName(){
-        return this.name;
-    }
-    public int getSize(){
-            return this.size;
-    }
-    public void setSize( int size ) {
-        this.size = size;
-    }
-    public static void main( String[] args )            throws IntrospectionException   {
-        BeanInfo info = Introspector.getBeanInfo( SimpleBean.class );
-for ( PropertyDescriptor pd : info.getPropertyDescriptors() )             System.out.println( pd.getName() );
-}
-}</pre>
-<div>Introspector.getBeanInfo(SimpleBean.class)是Java提供的一个自省工具类，可以在运行时获取SimpleBean类的类型信息BeanInfo，包括属性名、方法名、Bean描述等等信息。</div>
-<div>查阅资料过程中发现有些人认为自省即反射（Reflection），反射即自省，因为Java中自省是通过反射实现的。我认为这两个概念还是有区别的，自省是一个目的或者说机制，是一个上层的接口封装，而反射是达到这个目的或者实现这个机制的方法，是底层的具体实现。</div>
-<div><span style="font-size: large;"><strong>二、Velocity中的渲染执行</strong></span></div>
-<div><span style="font-size: large;"><strong>
-</strong></span></div>
-<div><span style="font-size: medium;"><strong>2.1 velocity中Introspection概述</strong></span></div>
-<div><span style="font-size: medium;"><strong>
-</strong></span></div>
-<div>Velocity作为一种模板语言允许我们向Context中放置一些JavaBean实例，并在模板中通过变量方式引用。如下所示：</div>
-<div>Welcome! ${person.name} !</div>
-<div>该模板中有一个引用变量${person.name}，在执行渲染时必须要知道person是个什么东东，person.name又是个什么东东，这里就需要自省机制发挥作用。</div>
-<div>Veloctiy的的自省机制实现位于源码包org.apache.velocity.util.introspection中，其主要类图结构如下：</div>
-<div><a href="http://jiangbo.me/images/uploads/2011/08/class-structure.png"><img class="aligncenter size-full wp-image-63" title="class-structure.png" src="http://jiangbo.me/images/uploads/2011/08/class-structure.png" alt="" width="863" height="351" /></a></div>
-<div>Uberspect中定义了渲染执行时所需的主要接口。该接口主要提供四个方法：</div>
-<div>
-<ol>
-	<li>getIterator()：支持迭代#foreache</li>
-	<li>getMethod()：支持方法调用</li>
-	<li>getPropertyGet()：支持获取属性值</li>
-	<li>getPropertySet()：支持设置属性值</li>
-</ol>
-Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspector完成基本的自省功能。Introspector扩展自基类IntrospectorBase，增添异常日志功能。</div></p>
-
-<p>
-<div>IntrospectorBase内部维护了一个introspectCache，用于缓存已经完成自省的类和方法信息。</div>
-<div>IntrospectorCacheImpl内通过一个HashMap维护一个class与其对应的类型信息，类型信息用一个ClassMap表示。</div>
-<div>一个ClassMap内部维护了一个MethodCache，用于缓存该类已经解析出得方法信息。</div>
-<div>MethodMap表示一个方法信息。</div>
-<div><span style="font-size: medium;"><strong>2.2 渲染执行详细流程</strong></span></div>
-<div><span style="font-size: medium;"><strong>
-</strong></span></div>
-<div>下面一如下模板为例，解释velocity中introspection的实际执行：</div>
-<div>template.vm</div>
-<div>${person.sayHi()}! I&#8217;m ${person.name}</div>
-<div>该模板的作用表示分别调用context中名为person的对象的sayHi()方法和name属性。该模板经过语法解析生成的AST如下（关于AST解析请参考上一篇velocity源码分析）：</div>
-<div><a href="http://jiangbo.me/images/uploads/2011/08/syntax-tree.png"><img class="aligncenter size-full wp-image-64" title="syntax-tree.png" src="http://jiangbo.me/images/uploads/2011/08/syntax-tree.png" alt="" width="483" height="185" /></a></div>
-<div>图1.语法解析后的AST</div>
-<div>${person.say()}被解析为一个拥有AST子节点的ASTReference节点，”! I’m”为一个ASTText节点，$person.name被解析为一个拥有ASTIdentifier子节点的ASTReference节点，”。”被解析为一个ASTText节点。</div>
-<div>引擎从根节点开始执行渲染ASTprocess的render方法主要是遍历子节点，依次执行子节点的渲染方法。</div>
-<div>ASTReference.render()方法主要调用其内部的execute（）方法获取实际的引用值，execute代码如下：</div>
-<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
-        throws MethodInvocationException
-    {</pre></p>
-
-<p>        if (referenceType == RUNT)<br />
-            return null;<br />
-        Object result = getVariableValue(context, rootString);</p>
-
-<p>        if (result == null &amp;&amp; !strictRef)<br />
-        {<br />
-            return EventHandlerUtil.invalidGetMethod(rsvc, context,<br />
-                    &#8220;$&#8221; + rootString, null, null, uberInfo);<br />
-        }</p>
-
-<p>        try<br />
-        {<br />
-            Object previousResult = result;<br />
-            int failedChild = -1;<br />
-            for (int i = 0; i &lt; numChildren; i++)<br />
-            {<br />
-                if (strictRef &amp;&amp; result == null)<br />
-                {<br />
-                    String name = jjtGetChild(i).getFirstToken().image;<br />
-                    throw new VelocityException(&#8220;Attempted to access &#8216;&#8221;<br />
-                        + name + &#8220;&#8217; on a null value at &#8221;<br />
-                        + Log.formatFileString(uberInfo.getTemplateName(),<br />
-                        + jjtGetChild(i).getLine(), jjtGetChild(i).getColumn()));<br />
-                }<br />
-                previousResult = result;<br />
-                //遍历执行子节点的execute方法<br />
-                result = jjtGetChild(i).execute(result,context);<br />
-                if (result == null &amp;&amp; !strictRef)  // If strict and null then well catch this<br />
-                                                   // next time through the loop<br />
-                {<br />
-                    failedChild = i;<br />
-                    break;<br />
-                }<br />
-            }</p>
-
-<p>            /**<br />
-            &#8230;&#8230;<br />
-            */<br />
-    }
-<div>1.execute方法先根据对象的名字从context中获取对象实例。</div>
-<div>2.遍历所有子节点，执行子节点的execute方法。</div>
-<div><strong><span style="font-size: small;">2.2.1 ASTMethod节点渲染</span></strong></div>
-<div>ASTMethod的execute方法中关键代码如下：</div>
-<div>
-<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
-        throws MethodInvocationException
-    {
-        if (o instanceof NullInstance &amp;&amp; ((NullInstance) o).isNotNull()) {
-            return o;
-        }</pre></div></p>
-
-<p>        /*<br />
-         *  获取方法信息<br />
-         */</p>
-
-<p>        VelMethod method = null;</p>
-
-<p>        Object [] params = new Object[paramCount];</p>
-
-<p>        try<br />
-        {<br />
-            // 计算参数类型<br />
-            final Class[] paramClasses = paramCount &gt; 0 ? new Class[paramCount] : ArrayUtils.EMPTY_CLASS_ARRAY;</p>
-
-<p>            for (int j = 0; j &lt; paramCount; j++)<br />
-            {<br />
-                params[j] = jjtGetChild(j + 1).value(context);</p>
-
-<p>                if (params[j] != null)<br />
-                {<br />
-                    paramClasses[j] = params[j].getClass();<br />
-                }<br />
-            }</p>
-
-<p>             //从cache中获取Method信息<br />
-            MethodCacheKey mck = new MethodCacheKey(methodName, paramClasses);<br />
-            IntrospectionCacheData icd =  context.icacheGet( mck );</p>
-
-<p>            if ( icd != null &amp;&amp; (o != null &amp;&amp; icd.contextData == o.getClass()) )<br />
-            {<br />
-                method = (VelMethod) icd.thingy;<br />
-            }<br />
-            else<br />
-            {<br />
-                //缓存未命中，调用UberIntrospectImpl.getMethod()执行自省<br />
-                method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</p>
-
-<p>                if ((method != null) &amp;&amp; (o != null))<br />
-                {<br />
-                    icd = new IntrospectionCacheData();<br />
-                    icd.contextData = o.getClass();<br />
-                    icd.thingy = method;<br />
-                    //更新缓存<br />
-                    context.icachePut( mck, icd );<br />
-                }<br />
-            }</p>
-
-<p>            if (typeOptimum &amp;&amp; method instanceof VelMethodImpl) {<br />
-                this.recordedData = icd;<br />
-            }</p>
-
-<p>            /*<br />
-             *  &#8230;.<br />
-             */<br />
-    }
-
-<div>1.首先从IntrospectionCache中查找已经缓存的自省结果信息</div>
-<div>2.如果未找到，则使用uberspector进行自省，获取方法信息，并缓存自省结果。</div>
-<div>3.调用自省返回的VelMethod的invoke方法，获取执行结果。</div>
-<div>其中，获取方法信息的过程</div>
-<div>method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</div>
-<div>实际调用就是UberspectImpl.getMethod()方法，该方法执行流程如下：</div>
-<div>
-<pre class="brush:java">    public VelMethod getMethod(Object obj, String methodName, Object[] args, Info i)
-            throws Exception
-    {
-        if (obj == null)
-        {
-            return null;
-        }
-        //调用Inspector.getMethod()
-        Method m = introspector.getMethod(obj.getClass(), methodName, args);
-        if (m != null)
-        {</pre>
-<pre class="brush:java">            //封装VelMethodImpl
-            return new VelMethodImpl(m);
-        }</pre></div></p>
-
-<p>        Class cls = obj.getClass();<br />
-        // if it&#8217;s an array<br />
-        if (cls.isArray())<br />
-        {<br />
-            // check for support via our array-&gt;list wrapper<br />
-            m = introspector.getMethod(ArrayListWrapper.class, methodName, args);<br />
-            if (m != null)<br />
-            {<br />
-                // and create a method that knows to wrap the value<br />
-                // before invoking the method<br />
-                return new VelMethodImpl(m, true);<br />
-            }<br />
-        }<br />
-        // watch for classes, to allow calling their static methods (VELOCITY-102)<br />
-        else if (cls == Class.class)<br />
-        {<br />
-            m = introspector.getMethod((Class)obj, methodName, args);<br />
-            if (m != null)<br />
-            {<br />
-                return new VelMethodImpl(m);<br />
-            }<br />
-        }<br />
-        return null;<br />
-    }
-
-<div>该方式实际调用Introspector.getMethod()方法。</div>
-<div>
-<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
-        throws IllegalArgumentException
-    {
-        try
-        {
-            //调用父类IntrospectorBase.getMethod()方法
-            return super.getMethod(c, name, params);
-        }
-        catch(MethodMap.AmbiguousException ae)
-        {
-           /*异常处理*/
-        }</pre></div></p>
-
-<p>        return null;<br />
-    }
-
-<div>Introspector.getMethod()实际只是扩展了其父类的getMethod方法，增加了异常日志功能。</div>
-<div>IntrospectorBase.getMethod()代码如下：</div>
-<div>
-<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
-            throws IllegalArgumentException,MethodMap.AmbiguousException
-    {
-        if (c == null)
-        {
-            throw new IllegalArgumentException ("class object is null!");
-        }
-        
-        if (params == null)
-        {
-            throw new IllegalArgumentException("params object is null!");
-        }</pre></div></p>
-
-<p>        IntrospectorCache ic = getIntrospectorCache();</p>
-
-<p>        ClassMap classMap = ic.get(c);<br />
-        if (classMap == null)<br />
-        {<br />
-            classMap = ic.put(c);<br />
-        }</p>
-
-<p>        return classMap.findMethod(name, params);<br />
-    }
-
-<div>该方法首先获取从IntrospectorCache中获取表示类信息的classMap，如果没找到则在cache中put该类型信息。有意思的是这里没有常见的缓存未命中直接查询的过程，而是直接更新缓存，也就意味着put方法里有构造类型信息的过程。</div>
-<div>IntrospectorCache.put()代码如下</div>
-<div>
-<pre class="brush:java">    public ClassMap put(final Class c)
-    {
-        //构造ClassMap
-        final ClassMap classMap = new ClassMap(c, log);
-        synchronized (classMapCache)
-        {
-            classMapCache.put(c, classMap);
-            classNameCache.add(c.getName());
-        }
-        return classMap;
-    }</pre>
-</div>
-<div>put方法首先构造一个ClassMap，然后更新classMapCache。</div>
-<div>构造ClassMap的过程如下：</div>
-<div>
-<pre class="brush:java">    public ClassMap(final Class clazz, final Log log)
-    {
-        this.clazz = clazz;
-        this.log = log;</pre></div></p>
-
-<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
-        {<br />
-            log.debug(&#8220;=================================================================&#8221;);<br />
-            log.debug(&#8220;== Class: &#8221; + clazz);<br />
-        }</p>
-
-<p>        methodCache = createMethodCache();</p>
-
-<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
-        {<br />
-            log.debug(&#8220;=================================================================&#8221;);<br />
-        }<br />
-    }
-
-<div>关键是构造一个MethodCache，createMethodCache过程如下：</div>
-<div>
-<pre class="brush:java">    private MethodCache createMethodCache()
-    {
-        MethodCache methodCache = new MethodCache(log);
-        for (Class classToReflect = getCachedClass(); classToReflect != null ; classToReflect = classToReflect.getSuperclass())
-        {
-            if (Modifier.isPublic(classToReflect.getModifiers()))
-            {
-                populateMethodCacheWith(methodCache, classToReflect);
-            }
-            Class [] interfaces = classToReflect.getInterfaces();
-            for (int i = 0; i &lt; interfaces.length; i++)
-            {
-                populateMethodCacheWithInterface(methodCache, interfaces[i]);
-            }
-        }
-        // return the already initialized cache
-        return methodCache;
-    }</pre>
-</div>
-<div>createMethodCache()首先构造一个MethodCache实例，然后通过反射获得类型的public方法信息，并递归的获取其实现的接口方法信息。</div>
-<div>IntrospectorBase.getMethod()方法获取到该ClassMap后，通过classMap.getMethod()返回一个需要的method，由于多态的存在，一个类会有多个同名方法，所以getMethod()过程中有一个根据参数类型寻找最佳匹配的方法getBestMatch（）这里有个循环遍历所有方法，并且比较所有参数类型的过程，而且这个过程在每次模板渲染执行时都会进行，代价很高，因此尽量少在放入模板的类中写多态方法有助提高渲染执行性能。</div>
-<div>至此一个ClassMap构造完毕，即一个类的自省过程完成。UberinspectorImpl成功的拿到了需要的方法信息，然后将Method封装VelMethodImpl返回。</div>
-<div>ASTMethod节点执行渲染时调用invoke方法实际调用的就是Method.invoke()，获得方法执行结果写入输出流中，完成渲染。</div>
-<div><strong><span style="font-size: small;">2.2.2 ASTIdentifier节点渲染</span></strong></div>
-<div>ASTIdentifier的execute方法中关键代码如下</div>
-<div>（TODO：ASTIndentifier.execute()代码）</div>
-<div>1.从IntrospectionCache中查找已经缓存的信息。</div>
-<div>2.如果缓存未命中，使用uberspector进行自省，并缓存自省结果</div>
-<div>3.调用自省的返回的VelPropertyGet的invoke方法，反射执行起get方法。</div>
-<div>
-<div>UberspectImpl.getPropertyGet()方法关键代码如下：</div>
-<div>
-<pre class="brush:java">    public VelPropertyGet getPropertyGet(Object obj, String identifier, Info i)
-            throws Exception
-    {
-        if (obj == null)
-        {
-            return null;
-        }</pre></div></div></p>
-
-<p>        Class claz = obj.getClass();</p>
-
-<p>         // 构造get&#8221;属性名&#8221;()形式的Executor<br />
-        AbstractExecutor executor = new PropertyExecutor(log, introspector, claz, identifier);</p>
-
-<p>        //构造一个Map形式的Executor<br />
-        if (!executor.isAlive())<br />
-        {<br />
-            executor = new MapGetExecutor(log, claz, identifier);<br />
-        }</p>
-
-<p>        // 构造get(&#8220;属性名&#8221;)形式的Executor</p>
-
-<p>        if (!executor.isAlive())<br />
-        {<br />
-            executor = new GetExecutor(log, introspector, claz, identifier);<br />
-        }<br />
-        //构建is&#8221;属性名&#8221;形式的executor<br />
-        if (!executor.isAlive())<br />
-        {<br />
-            executor = new BooleanPropertyExecutor(log, introspector, claz,<br />
-                                                   identifier);<br />
-        }</p>
-
-<p>        return (executor.isAlive()) ? new VelGetterImpl(executor) : null;<br />
-    }
-
-<div>1.首先根据对象的class类型和属性名构造一个get”属性名”的方法的PropertyExecutor。</div>
-<div>2.如果未找到get”属性名”的方法，则尝试构造一个Map.key形式的MapGetExecutor。</div>
-<div>3.如果也不是Map.key形式，尝试构造一个get(“属性名”)的GetExecutor。</div>
-<div>4.如果还没找到，则尝试构造一is”属性名”形式的BooleanPropertyExecutor。</div>
-<div>5.最终返回一个封装了Executor的VelGetImpl，如果未找到则返回null。</div>
-<div>所有的Executor均扩展自AbstractExecutor，VelGetImpl通过内置一个executor执行方法调用。Executor类图关系如下</div>
-<div><a href="http://jiangbo.me/images/uploads/2011/08/Excuter-class-structure.png"><img class="aligncenter size-full wp-image-76" title="Executor类图结构" src="http://jiangbo.me/images/uploads/2011/08/Excuter-class-structure.png" alt="" width="682" height="380" /></a></div>
-<div>Executor实现中除MapGetExecutor外，其余的Executor均通过内置一个introspector实现方法的构建，过程与上述ASTMethod节点渲染过程中introspector.getMethod()一致，只是方法名做了封装，如GetExecutor的方法名为get， PropertyExecutor的方法名为get”属性名”， BooleanPropertyExecutor方法名为is”属性名”，具体构建流程不再赘述。</div>
-<div>最终，ASTIndentifier.execute()方法通过UberInspectImpl.getPropertyGet()获得VelGetImpl，并调用VelGetImpl.invoke()获取方法执行的结果，写入输出流，完成渲染。</div>
-<div>UberInspectImpl.getPropertySet()的执行过程于getPropertyGet()大体一致，区别在于获取的是VelSetImpl，内置了SetExecutor，SetExecutor有三个扩展对应为MapSetExecutor（Map.key=value形式），PutExecutor（put(key, value)形式），SetPropertyExecutor（set”属性名”(value)形式）。其内部同样使用introspector.getMethod()方法构建Method，通过反射执行设置属性值。</div>
-<div><strong><span style="font-size: large;">三、总结</span></strong></div>
-<div>总的来说，作为模板语言velocity提供了可用的自省机制完成模板中对象引用及方法执行的的渲染。并在自省过程中提供了有效的缓存机制用以提升自省效率。但每次依旧需要解析AST，反射执行引用节点的方法，效率方面似乎还有优化的余地。</div>
-<div><strong><span style="font-size: large;">参考文档</span></strong></div>
-<div>《Java Introspeciton》 http://download.oracle.com/javase/tutorial/javabeans/introspection/index.html</div>
-<div>《Type Introspection》 http://en.wikipedia.org/wiki/Type_introspection</div>
-<div>《Introspection》http://en.wikipedia.org/wiki/Introspection</div>
-</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Velocity源码分析（一）——概述]]></title>
-    <link href="http://jiangbo.me/blog/2011/08/19/velocity_overview/"/>
-    <updated>2011-08-19T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/08/19/velocity_overview</id>
-    <content type="html"><![CDATA[<p><h2>一、概述</h2>
-Velocity模板引擎处理机制分为五个基本步骤：
-<ol>
-	<li>引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。</li>
-	<li>获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream），然后通过AST（Abstract Syntax Tree）解析器将InputStream解析为一个AST。</li>
-	<li>创建一个Context</li>
-	<li>将模板渲染所需的参数放入context</li>
-	<li>执行模板渲染，产生输出流。渲染过程中通过遍历该模板对应的AST，调用相应节点的处理器执行渲染。</li>
-</ol>
-整个处理流程如下图所示：</p>
-
-<p><a href="http://jiangbo.me/images/uploads/2011/08/Velocity-process-structure.png"><img class="aligncenter size-full wp-image-59" title="Velocity处理流程" src="http://jiangbo.me/images/uploads/2011/08/Velocity-process-structure.png" alt="" width="619" height="407" /></a>
-<h2>二、详细渲染流程</h2>
-下面以一个简单的模板template.vm为例，详细解释渲染过程。<br />
-VelocityMergeTest.java
-<pre class="brush:java">public class VelocityMergeTest {</pre></p>
-
-<p>public static void main(String[] args) {<br />
-VelocityEngine ve = new VelocityEngine();<br />
-ve.setProperty(Velocity.RESOURCE_LOADER, &#8220;class&#8221;);<br />
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-try {<br />
-//引擎初始化<br />
-ve.init();<br />
-//加载解析模板<br />
-Template tp = ve.getTemplate(&#8220;template.vm&#8221;);<br />
-//创建context<br />
-Context context = new VelocityContext();<br />
-//设置Context中参数值<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-StringWriter writer = new StringWriter();<br />
-//执行渲染<br />
-tp.merge(context, writer);<br />
-System.out.println(writer.toString());<br />
-} catch (Exception e) {<br />
-}
-}<br />
-}
-template.vm
-<pre class="brush:xml">&lt;html&gt;
-&lt;body&gt;
-Hello $foo world!
-&lt;/body&gt;
-&lt;/html&gt;</pre>
-<h3>1.引擎初始化</h3>
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-设置引擎的资源加载使用ClasspathResourceLoader。<br />
-ve.init()执行引擎的初始化。
-<h3>2.加载解析模板</h3>
-当执行ve.getTemplate(&#8220;template.vm&#8221;)时，首先通过ResourceLoader将tempalte加载为InputStream，然后通过Parser生成如下Token集合：<br />
-{[&lt;html&gt; &lt;body&gt; Hello], [$foo], [world! &lt;/body&gt; &lt;/html&gt; ]}，<br />
-可以发现velocity根本不关系模板最终要渲染出来的是html还是什么的其他的东西，也就以为这所有的html标签对velocity来讲都是纯文本。<br />
-最终构建的AST如下</p>
-
-<p><a href="http://jiangbo.me/images/uploads/2011/08/AST.png"><img class="aligncenter size-full wp-image-60" title="AST" src="http://jiangbo.me/images/uploads/2011/08/AST.png" alt="" width="367" height="169" /></a></p>
-
-<p>根节点下有三个子节点：
-<ol>
-	<li>[&lt;html&gt; &lt;body&gt; Hello]对应的ASTText节点；</li>
-	<li>[$foo]对应的ASTReference节点；</li>
-	<li>[world! &lt;/body&gt; &lt;/html&gt; ]对应的ASTText节点</li>
-</ol>
-Velocity引擎在这里有个优化策略，可以针对生成的语法树进行cache。
-<h3>3.创建context并设置参数</h3>
-Context context = new VelocityContext();<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-创建一个context，并在其中放入一个foo=VV的参数。
-<h3>4.执行渲染</h3>
-当执行tp.merge(context, writer);时，模板遍历其对应的AST树，执行每个节点的渲染过程。如ASTText节点只是简单的将文本写入writer。ASTReference节点需要从context中获取引用的参数foo的值VV，将$foo替换，并写入到writer中。Velocity的AST中有多种节点，如ASTIdentitor等，有些需要反射机制处理。当整个AST遍历结束，也就意味着模板渲染结束，渲染的结果位于writer流中。
-<h2>三、关于AST解析</h2>
-Velocity作为模板语言，其核心在与模板文件的解析，构建AST。Velocity的解析器是通过JavaCC构建的，JavaCC（Java Complier Complier）是一个用于生成解析器的工具，可以根据语法定义（.jj文件）生成用于校验一份文本是否符合该语法定义的java代码。JJTree是JavaCC中提供的一种根据语法定义（.jjt文件）生成构建符合该语法定义的文本的语法树的java代码的工具。<br />
-Velocity源码包中提供了用于构建velocity语法解析的的jjt文件，位于src/parser/Parser.jjt。可以自己手动从源码构建Velocity的解析器。步骤如下：<br />
-1.下载安装JavaCC，到http://javacc.java.net/下载即可，velocity的解析器需要3.2版本以上。下载后解压即可。<br />
-2.使用JJTree生成节点定义：<br />
-$ javacc-5.0/bin/jjtree Parser.jjt<br />
-这一过程中会生成节点定义的Java文件和Parser.jj语法定义文件<br />
-3.使用JavaCC生成解析器<br />
-$ javacc-5.0/bin/javacc Parser.jj<br />
-最终会生成Parser.java解析器和个节点定义。
-<h2>参考资料</h2>
-《Velocity Developer Guide》<a href="http://velocity.apache.org/engine/devel/developer-guide.html">http://velocity.apache.org/engine/devel/developer-guide.html</a>
-《JavaCC》<a href="http://javacc.java.net/">http://javacc.java.net/</a>
-《Velocity源码分析》<a href="http://www.khotyn.com/2011/07/22/velocity_sourcecode/">http://www.khotyn.com/2011/07/22/velocity_sourcecode/</a>
-《Velocity的一些优化记录》<a href="http://agapple.iteye.com/blog/1051724">http://agapple.iteye.com/blog/1051724</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Webx3源码分析－容器结构]]></title>
-    <link href="http://jiangbo.me/blog/2011/08/17/webx3-container-structure/"/>
-    <updated>2011-08-17T19:32:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/08/17/webx3-container-structure</id>
-    <content type="html"><![CDATA[<h3>一、Webx 框架概述</h3>
-
-<p>Webx是一套基于Java Servlet API构建的通用Web框架。整个Webx框框架层次分为三层：</p>
-
-<p><img src="http://jiangbo.me/images/webx/webx-framework-layer.png" alt="image" /></p>
-
-<ol>
-<li>SpringExt：提供了基于Spring的通用扩展机制</li>
-<li>WebxFramework：基于Servlet API，提供Web基础服务，如Spring初始化，日志初始化，接受请求，错误处理，开发模式等。Webx Framework只是对Servlet和spring的基础封装，并不关心Web框架中具体服务的处理，如Action处理，表单处理等。因此，可以在Webx Framework上扩展多种风格的Web框架。</li>
-<li>Webx Turbine：基于Webx Framework，提供具体的网页功能，如表单处理，Action相应处理等</li>
-</ol>
-
-
-<h3>二、Webx Framework容器结构</h3>
-
-<h4>1.1组件化应用结构</h4>
-
-<p>Webx Framework是基于组件化风格构建的，它将一个应用划分一个Webx应用包含至少一个组件组 (WebxComponents)，一个组件组由多个组件(WebxComponent)构成。</p>
-
-<p><img src="http://jiangbo.me/images/webx/webx-component.png" alt="image" /></p>
-
-<p>Webx Framework中定义了WebxComponents接口和WebxComponent接口，分别表示一组组件的信息和一个组件的描述。
-组件化的应用结构反应在容器上即应用中级联的父子容器的结构关系，如下图所示：</p>
-
-<p><img src="http://jiangbo.me/images/webx/webx-context-structure.png" alt="image" /></p>
-
-<p>Webx Framework将一个Web应用分解成多个小应用模块：app1, app2，等。每个应用模块独享一个子容器（Sub Context），共享根容器（Root Context）。子容器之间的beans无法相互注入，但是所有小应用都共享一个Root Context。根容器的bean可以被注入到子容器的bean中；反之不可以。</p>
-
-<h4>1.2 基于Spring的容器类扩展</h4>
-
-<p>为实现上述应用组件化结构，Webx Framework在在Spring容器基础上按照组件化风格进行扩展：</p>
-
-<p><img src="http://jiangbo.me/images/webx/webx-container.png" alt="image" /></p>
-
-<p>com.alibaba.citrus.webx.context.XmlWebApplicationContext是Webx框架的从XML文件中装配的，用于Web应用环境的Application Context，扩展自Spring的org.springframework.web.context.support.XmlWebApplicationContext，主要扩展点如下：</p>
-
-<ol>
-<li>支持SpringExt的捐献(ConfigurationPoint)机制（SpringExt在后面文章中讲解）</li>
-<li>实现了ResourceLoadingExtendable接口，扩展的resource loading机制。假如ResourceLoadingExtender 被设置，则使用它来装载资源，否则使用默认的装载器。</li>
-<li>默认开启annotation config，相当于&lt;context:annotation-config/>。</li>
-<li>假如parentResolvableDependenciesAccessible==true，则支持从parent context中取得预先置入resolvableDependencies中的对象。默认为true。</li>
-</ol>
-
-
-<p>ResourceLoadingXmlWebApplicationContext继承自XmlWebApplicationContext，扩展了从resource loading service中装载的功能。WebxApplicationContext是用于Webx框架的application context。直接继承自ResourceLoadingXmlWebApplicationContext，扩展了取得默认Spring配置的实现，默认Root容器的配置文件位于WEB-INF/webx.xml，子容器的配置文件位于WEB-INF/webx-<em>.xml（</em>代表component名）。由于继承关系，WebxApplicationContext继承了负累所有的特性，在原来Spring容器XmlWebApplicationContext基础之上扩展如下功能：</p>
-
-<ol>
-<li>支持SpringExt，包括configuration point和resource loading支持</li>
-<li>定义默认容器配置文件位置</li>
-</ol>
-
-
-<p>WebxComponentsContext和WebxComponentContext直接扩展自WebxApplicationContext，分别对应为WebxComponents和WebxComponent的容器。</p>
-
-<p>WebxComponentsContext中内置了一个WebxComponentsLoader用于装载Webx components，并且覆写了postProcessBeanFactory()处理定制BeanFactory，以及finishRefresh()处理子容器的刷新。</p>
-
-<p>WebxComponentContext包含了对应的WebxComponent实例，并将其注入到容器中，即在一个WebxComponentContext中，引用的WebxComponent均是其对应的component实例。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Eclipse中debug maven jetty应用]]></title>
-    <link href="http://jiangbo.me/blog/2011/08/10/eclipse-debug-maven-jetty/"/>
-    <updated>2011-08-10T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/08/10/eclipse-debug-maven-jetty</id>
-    <content type="html"><![CDATA[<p>Maven和Jetty有很好的集成，可以方便的使用mvn jetty:run 启动一个web应用，但是默认的maven-jetty插件并没有开启debug模式，而日常开发中难免需要用IDE debug引用。下面描述下如何配置eclipse，使其可以进行maven-jetty项目的debug。
-<h2> <span class="Apple-style-span" style="font-size: 26px; font-weight: bold;"><strong>1.首先设置启动方式。</strong></span></h2>
-在Ecipse -&gt;Run-&gt;External Tools -&gt;External Tool Configuration&#8230;中打开配置窗口，选中Program节点，双击新建一个新的配置。</p>
-
-<p>Name自定义，Main Tab下，Location设置为mvn命令的路径，Working Directory设置为需要进行debug的项目目录，Arguments设置为jetty:run</p>
-
-<p><a href="http://jiangbo.me/images/uploads/2011/08/Run.png"><img class="aligncenter size-full wp-image-45" title="Run" src="http://jiangbo.me/images/uploads/2011/08/Run.png" alt="" width="702" height="664" /></a></p>
-
-<p>在Envriroment Tab中新建一个环境变量MAVEN_OPTS，值为</p>
-
-<p>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=8089,server=y,suspend=y</p>
-
-<p><a href="http://jiangbo.me/images/uploads/2011/08/MAVEN_OPTS.png"><img class="aligncenter size-full wp-image-46" title="MAVEN_OPTS" src="http://jiangbo.me/images/uploads/2011/08/MAVEN_OPTS.png" alt="" width="702" height="664" /></a></p>
-
-<p>点击Apply，保存配置；close，关闭窗口。
-<h2>2.设置Debug信息</h2>
-打开Eclipse-&gt;Run-&gt;Debug Configurations窗口，在左侧列表中选择新建一个 Remote Java Application配置。在Connect Tab下，Project设置为当前需要debug的项目，Host设置为localhost，端口为8089（上面MAVEN_OPTS里的address=8089）</p>
-
-<p><a href="http://jiangbo.me/images/uploads/2011/08/debug.png"><img class="aligncenter size-full wp-image-47" title="debug" src="http://jiangbo.me/images/uploads/2011/08/debug.png" alt="" width="719" height="720" /></a></p>
-
-<p>点击Apply，保存配置，close，关闭窗口</p>
-
-<p>&nbsp;
-<h2><strong>3.运行应用。</strong></h2>
-Eclipse-&gt;Run-&gt;External Tools-&gt;Extrernal Tools Configurations，选择第一步设置的启动配置，执行Run，启动应用。Eclipse终端中会输出</p>
-
-<p>Listening for transport dt_socket at address: 8089</p>
-
-<p>表示应用启动监听debug端口8089</p>
-
-<p>&nbsp;
-<h2><strong>4.开启debug</strong></h2>
-Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，启动debug</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Mac配置docbook工具链]]></title>
-    <link href="http://jiangbo.me/blog/2011/08/09/mac-config-docbook-tool-chain/"/>
-    <updated>2011-08-09T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/08/09/mac-config-docbook-tool-chain</id>
-    <content type="html"><![CDATA[<p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
-<strong>一、安装工具链</strong>
-docbook工具链包含三部分<br />
-1.xsltproc（mac自带）<br />
-2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
-3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
-下载解压后得到：<br />
-docbook-xsl-1.76.1<br />
-fop-1.0<br />
-两个目录。<br />
-此时可以已经可以进行docbook撰写了，不过只限英文:)
-<strong>二、撰写docbook，并生成pdf</strong>
-使用文本编辑器编写如下xml，保存为webx.xml
-<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
-
-<p>&lt;!DOCTYPE book PUBLIC &#8220;-//OASIS//DTD DocBook XML V4.0//EN&#8221;  &#8220;http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd&#8221;&gt;</p>
-
-<p>&lt;book&gt;<br />
-&lt;bookinfo&gt;<br />
-&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
-&lt;author&gt;<br />
-&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
-&lt;surname&gt;Jiang&lt;/surname&gt;<br />
-&lt;affiliation&gt;<br />
-&lt;address&gt;<br />
-&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
-&lt;/address&gt;<br />
-&lt;/affiliation&gt;<br />
-&lt;/author&gt;<br />
-&lt;copyright&gt;<br />
-&lt;year&gt;2011&lt;/year&gt;<br />
-&lt;/copyright&gt;<br />
-&lt;abstract&gt;<br />
-&lt;para&gt;Webx&lt;/para&gt;<br />
-&lt;/abstract&gt;<br />
-&lt;/bookinfo&gt;<br />
-&lt;part&gt;<br />
-&lt;title&gt;Part1&lt;/title&gt;<br />
-&lt;chapter&gt;<br />
-&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
-&lt;sect1&gt;<br />
-&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
-&lt;para&gt;     Your Text &lt;/para&gt;<br />
-&lt;/sect1&gt;<br />
-&lt;/chapter&gt;<br />
-&lt;chapter&gt;<br />
-&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
-&lt;sect1&gt;<br />
-&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
-&lt;para&gt;     Your Text &lt;/para&gt;<br />
-&lt;/sect1&gt;<br />
-&lt;/chapter&gt;<br />
-&lt;/part&gt;<br />
-&lt;/book&gt;
-使用xsltproc转换为中间文件<br />
-$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
-此时会生成中间文件inter.fo<br />
-使用fop生成pdf<br />
-$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
-最终生成了名为webx.pdf的pdf文件</p>
-
-<p><strong>三、设置FOP支持中文</strong>
-但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
-找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
-<strong>1.生成字体矩阵</strong></p>
-
-<p>进入到fop安装目录，执行</p>
-
-<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr &#8217; &#8217; &#8216;:&#8217;` org.apache.fop.fonts.apps.TTFReader -ttcanme &#8220;SimHei&#8221; /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
-
-<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
-
-<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
-<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
-
-<p>&lt;filterList&gt;</p>
-
-<p>……</p>
-
-<p>&lt;/filterList&gt;</p>
-
-<p>&lt;fonts&gt;</p>
-
-<p>&lt;font metrics-url=&#8221;file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml&#8221; kerning=&#8221;yes&#8221; embed-url=&#8221;file:///Library/Fonts/Microsoft/SimHei.ttf&#8221;&gt;</p>
-
-<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
-
-<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
-
-<p>&lt;/font&gt;</p>
-
-<p>&lt;!&#8211;&lt;directory recursive=&#8221;true&#8221;&gt;/Library/Fonts/&lt;/directory&gt;&#8211;&gt;</p>
-
-<p>&lt;!&#8211;    &lt;auto-detect/&gt;&#8211;&gt;</p>
-
-<p>&lt;/fonts&gt;</p>
-
-<p>……
-<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
-
-<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
-<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
-&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-                xmlns:exsl="http://exslt.org/common"
-                xmlns:fo="http://www.w3.org/1999/XSL/Format"
-                xmlns:ng="http://docbook.org/docbook-ng"
-                xmlns:db="http://docbook.org/ns/docbook"
-                exclude-result-prefixes="db ng exsl"
-                version='1.0'&gt;</pre></p>
-
-<p>&lt;xsl:import href=&#8221;/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl&#8221;/&gt;<br />
-&lt;xsl:param name=&#8221;body.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;xsl:param name=&#8221;monospace.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;xsl:param name=&#8221;title.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;/xsl:stylesheet&gt;
-<strong>4.使用新样式表进行转换</strong></p>
-
-<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
-
-<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
 ]]></content>
   </entry>
   

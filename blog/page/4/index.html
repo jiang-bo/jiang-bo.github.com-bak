@@ -9,8 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、何为Introspection Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。
-Introspection is the self-observation and reporting of conscious inner &hellip;">
+  <meta name="description" content="问题 有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。 解决 如何获取本机IP 用ruby获取本机的动态ip，网上很多教程都用 require 'socket' IPSocket.getaddress( &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -85,7 +84,7 @@ Introspection is the self-observation and reporting of conscious inner &hellip;"
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/08/26/velocity_introspection/">Velocity源码分析（二）——渲染执行之Introspection</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a></h1>
     
     
       <p class="meta">
@@ -101,16 +100,160 @@ Introspection is the self-observation and reporting of conscious inner &hellip;"
   
 
 
-<time datetime="2011-08-26T00:00:00+08:00" pubdate data-updated="true">Aug 26<span>th</span>, 2011</time>
+<time datetime="2012-01-04T17:35:00+08:00" pubdate data-updated="true">Jan 4<span>th</span>, 2012</time>
         
-         | <a href="/blog/2011/08/26/velocity_introspection/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h3>问题</h3>
+
+<p>有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。</p>
+
+<h3>解决</h3>
+
+<h4>如何获取本机IP</h4>
+
+<p>用ruby获取本机的动态ip，网上很多教程都用</p>
+
+<pre><code>require 'socket'
+
+IPSocket.getaddress(Socket.gethostname)
+puts TCPSocket.gethostbyname(Socket.gethostname)
+</code></pre>
+
+<p>这个在mac下是正常的，但是在linux下就只能拿到127.0.0.1
+在StackOverflow上有另一种解决方案</p>
+
+<pre><code>require 'socket'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = rig
+end
+</code></pre>
+
+<p>这段主要是通过开启一个UDP链接来获取本地对外ip，因为UDP是无状态，所以不会实际建立网络链接，但是会获取本机对外ip。</p>
+
+<h4>如何发送消息</h4>
+
+<p>获取ip后需要通过gtalk发送，gtalk使用的是xmpp协议，ruby中协议有多种开源实现，比较简单通用的是xmpp4r，详细教程请看这里
+首先需要安装xmpp4r-simple</p>
+
+<pre><code>gem install xmpp4r-simple
+</code></pre>
+
+<p>注意，貌似这个gem不支持1.9.*，所以使用之前先将ruby切换到1.8.7版本
+然后编写代码，主要两步：</p>
+
+<ul>
+<li>建立链接</li>
+<li>发送消息</li>
+</ul>
+
+
+<p>代码如下：</p>
+
+<pre><code> require 'rubygems'
+ require 'xmpp4r-simple'  
+
+ username = gmailusername
+ password = gmailpassword
+ to_username = destination_gmailusername  
+
+ puts "Connecting to jabber server.."
+ jabber = Jabber::Simple.new(username+'@gmail.com',password)
+ puts "Connected."
+ jabber.deliver(to_username+"@gmail.com", "Hello..!")
+ sleep(1)
+</code></pre>
+
+<p>注意，最后那个sleep不能少，尽管我还不知道为啥:(</p>
+
+<p>如此以来整个的获取ip，发送給gtalk的脚本为：</p>
+
+<pre><code>require 'rubygems'
+require 'socket'
+require 'xmpp4r-simple'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = orig
+end
+
+jabber = Jabber::Simple.new('gmailuseanme@gmail.com','password')
+jabber.deliver('destusenam@gmail.com', local_ip)
+sleep 1
+</code></pre>
+
+<h4>设置自动运行</h4>
+
+<p>linux设置自动运行是老生常谈了，在/etc/rc.local加上一句运行脚本的命令即可：</p>
+
+<pre><code>ruby /home/jiangbo/ruby/getIP.rb
+</code></pre>
+
+<h3>结尾</h3>
+
+<p>这样每次机器重启时，就能够通过gtalk获取到ip了，不过还遗留一个问题，就是在机器重启时，必须保证接收消息的gtalk在线，因为这种方式的消息gtalk不会自动重法，目前不知怎么解决。</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-12-31T00:00:00+08:00" pubdate data-updated="true">Dec 31<span>st</span>, 2011</time>
+        
+         | <a href="/blog/2011/12/31/my2011and2012/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/velocity源码分析/'>Velocity源码分析</a>
+    <a class='category' href='/blog/categories/生活/'>生活</a>
   
 </span>
 
@@ -121,401 +264,53 @@ Introspection is the self-observation and reporting of conscious inner &hellip;"
   </header>
 
 
-  <div class="entry-content"><p><div><span style="font-size: large;"><strong>一、何为Introspection</strong></span></div>
-<div><span style="font-size: large;"><strong>
-</strong></span></div>
-<div>Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。</div>
-<div><em>Introspection is the self-observation and reporting of conscious inner thoughts, desires and sensations. It is a conscious and purposive process relying on thinking, reasoning, and examining one&#8217;s own thoughts, feelings, and, in more spiritual cases, one&#8217;s soul. </em></div>
-<div style="text-align: right;">——Wikipedia</div>
-<div>在计算机科学中，借用了哲学中的Introspeciton术语，表示一种能够识别一个事物它是什么，知道什么，能做什么的能力。典型的应用场景是面向对象语言中的类型自省（type introspeciton）。</div>
-<div><em>In computing, type introspection is a capability of some object-oriented programming languages to determine the type of an object at runtime.</em></div>
-<div style="text-align: right;">——Wikipedia</div>
-<div>以Java为例，Java提供了可以在运行时获取和检查JavaBean的接口API，实例如下：</div>
-<pre class="brush:java">import java.beans.BeanInfo;
-import java.beans.Introspector;
-import java.beans.IntrospectionException;
-import java.beans.PropertyDescriptor;
-public class SimpleBean{
-    private final String name = "SimpleBean";
-    private int size;
-    public String getName(){
-        return this.name;
-    }
-    public int getSize(){
-            return this.size;
-    }
-    public void setSize( int size ) {
-        this.size = size;
-    }
-    public static void main( String[] args )            throws IntrospectionException   {
-        BeanInfo info = Introspector.getBeanInfo( SimpleBean.class );
-for ( PropertyDescriptor pd : info.getPropertyDescriptors() )             System.out.println( pd.getName() );
-}
-}</pre>
-<div>Introspector.getBeanInfo(SimpleBean.class)是Java提供的一个自省工具类，可以在运行时获取SimpleBean类的类型信息BeanInfo，包括属性名、方法名、Bean描述等等信息。</div>
-<div>查阅资料过程中发现有些人认为自省即反射（Reflection），反射即自省，因为Java中自省是通过反射实现的。我认为这两个概念还是有区别的，自省是一个目的或者说机制，是一个上层的接口封装，而反射是达到这个目的或者实现这个机制的方法，是底层的具体实现。</div>
-<div><span style="font-size: large;"><strong>二、Velocity中的渲染执行</strong></span></div>
-<div><span style="font-size: large;"><strong>
-</strong></span></div>
-<div><span style="font-size: medium;"><strong>2.1 velocity中Introspection概述</strong></span></div>
-<div><span style="font-size: medium;"><strong>
-</strong></span></div>
-<div>Velocity作为一种模板语言允许我们向Context中放置一些JavaBean实例，并在模板中通过变量方式引用。如下所示：</div>
-<div>Welcome! ${person.name} !</div>
-<div>该模板中有一个引用变量${person.name}，在执行渲染时必须要知道person是个什么东东，person.name又是个什么东东，这里就需要自省机制发挥作用。</div>
-<div>Veloctiy的的自省机制实现位于源码包org.apache.velocity.util.introspection中，其主要类图结构如下：</div>
-<div><a href="/images/uploads/2011/08/class-structure.png"><img class="aligncenter size-full wp-image-63" title="class-structure.png" src="/images/uploads/2011/08/class-structure.png" alt="" width="863" height="351" /></a></div>
-<div>Uberspect中定义了渲染执行时所需的主要接口。该接口主要提供四个方法：</div>
-<div>
-<ol>
-	<li>getIterator()：支持迭代#foreache</li>
-	<li>getMethod()：支持方法调用</li>
-	<li>getPropertyGet()：支持获取属性值</li>
-	<li>getPropertySet()：支持设置属性值</li>
-</ol>
-Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspector完成基本的自省功能。Introspector扩展自基类IntrospectorBase，增添异常日志功能。</div></p>
+  <div class="entry-content"><p>一眨眼，一年又过去了，奔三的步伐又向前迈进了一步…</p>
 
-<p>
-<div>IntrospectorBase内部维护了一个introspectCache，用于缓存已经完成自省的类和方法信息。</div>
-<div>IntrospectorCacheImpl内通过一个HashMap维护一个class与其对应的类型信息，类型信息用一个ClassMap表示。</div>
-<div>一个ClassMap内部维护了一个MethodCache，用于缓存该类已经解析出得方法信息。</div>
-<div>MethodMap表示一个方法信息。</div>
-<div><span style="font-size: medium;"><strong>2.2 渲染执行详细流程</strong></span></div>
-<div><span style="font-size: medium;"><strong>
-</strong></span></div>
-<div>下面一如下模板为例，解释velocity中introspection的实际执行：</div>
-<div>template.vm</div>
-<div>${person.sayHi()}! I&#8217;m ${person.name}</div>
-<div>该模板的作用表示分别调用context中名为person的对象的sayHi()方法和name属性。该模板经过语法解析生成的AST如下（关于AST解析请参考上一篇velocity源码分析）：</div>
-<div><a href="/images/uploads/2011/08/syntax-tree.png"><img class="aligncenter size-full wp-image-64" title="syntax-tree.png" src="/images/uploads/2011/08/syntax-tree.png" alt="" width="483" height="185" /></a></div>
-<div>图1.语法解析后的AST</div>
-<div>${person.say()}被解析为一个拥有AST子节点的ASTReference节点，”! I’m”为一个ASTText节点，$person.name被解析为一个拥有ASTIdentifier子节点的ASTReference节点，”。”被解析为一个ASTText节点。</div>
-<div>引擎从根节点开始执行渲染ASTprocess的render方法主要是遍历子节点，依次执行子节点的渲染方法。</div>
-<div>ASTReference.render()方法主要调用其内部的execute（）方法获取实际的引用值，execute代码如下：</div>
-<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
-        throws MethodInvocationException
-    {</pre></p>
+<p><h2>2011流水账</h2></p>
 
-<p>        if (referenceType == RUNT)<br />
-            return null;<br />
-        Object result = getVariableValue(context, rootString);</p>
+<p>1月～3月，入职来第一次正是参加了大项目，中间夹杂个春节，据说每年年底做大项目是部门的传统，今年也不例外啊:(，项目苦了写，不过学了不少</p>
 
-<p>        if (result == null &amp;&amp; !strictRef)<br />
-        {<br />
-            return EventHandlerUtil.invalidGetMethod(rsvc, context,<br />
-                    &#8220;$&#8221; + rootString, null, null, uberInfo);<br />
-        }</p>
+<p><p>4月～6月，公司进行服务化改造，作为主力开发参与了部门的服务化建设，期间送走了两个同事好友，一个去了厦门，一个回了宁波，各自寻找自己的幸福去了。<br />
+附加一句，上半年基本还处在阴霾期，期间养成了去酒吧喝酒的习惯，有钱去酒吧，没钱去地摊，酒量现在还可以。</p></p>
 
-<p>        try<br />
-        {<br />
-            Object previousResult = result;<br />
-            int failedChild = -1;<br />
-            for (int i = 0; i &lt; numChildren; i++)<br />
-            {<br />
-                if (strictRef &amp;&amp; result == null)<br />
-                {<br />
-                    String name = jjtGetChild(i).getFirstToken().image;<br />
-                    throw new VelocityException(&#8220;Attempted to access &#8216;&#8221;<br />
-                        + name + &#8220;&#8217; on a null value at &#8221;<br />
-                        + Log.formatFileString(uberInfo.getTemplateName(),<br />
-                        + jjtGetChild(i).getLine(), jjtGetChild(i).getColumn()));<br />
-                }<br />
-                previousResult = result;<br />
-                //遍历执行子节点的execute方法<br />
-                result = jjtGetChild(i).execute(result,context);<br />
-                if (result == null &amp;&amp; !strictRef)  // If strict and null then well catch this<br />
-                                                   // next time through the loop<br />
-                {<br />
-                    failedChild = i;<br />
-                    break;<br />
-                }<br />
-            }</p>
+<p>7月～8月，参加了另外一个项目，8月底的时候由于上半年持续表现不错，连续两个3.75，所以被升了一级，薪水也有了不错的涨幅:)。同时部门也组织了一次outing，去了舟山嵊泗岛，很祥和的小渔村，很不错。中间的时候李辉来杭州玩，许久不见的兄弟啊</p>
 
-<p>            /**<br />
-            &#8230;&#8230;<br />
-            */<br />
-    }
-<div>1.execute方法先根据对象的名字从context中获取对象实例。</div>
-<div>2.遍历所有子节点，执行子节点的execute方法。</div>
-<div><strong><span style="font-size: small;">2.2.1 ASTMethod节点渲染</span></strong></div>
-<div>ASTMethod的execute方法中关键代码如下：</div>
-<div>
-<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
-        throws MethodInvocationException
-    {
-        if (o instanceof NullInstance &amp;&amp; ((NullInstance) o).isNotNull()) {
-            return o;
-        }</pre></div></p>
+<p>9月第一次自己带了一个小项目。同时又送走一位同事。</p>
 
-<p>        /*<br />
-         *  获取方法信息<br />
-         */</p>
+<p>十一期间，休了半个月的假，和同事几人一起去了趟西藏，花光了半年多的积蓄，感觉无法用语言形容，还会再去的，一定</p>
 
-<p>        VelMethod method = null;</p>
+<p>11月～12月，需求不断，每日都投入在工作中，有些疲惫哈</p>
 
-<p>        Object [] params = new Object[paramCount];</p>
+<p><h2>2011总结</h2></p>
 
-<p>        try<br />
-        {<br />
-            // 计算参数类型<br />
-            final Class[] paramClasses = paramCount &gt; 0 ? new Class[paramCount] : ArrayUtils.EMPTY_CLASS_ARRAY;</p>
+<p>回顾下11年初定的三个目标：</p>
 
-<p>            for (int j = 0; j &lt; paramCount; j++)<br />
-            {<br />
-                params[j] = jjtGetChild(j + 1).value(context);</p>
+<p><em>1. 工作顺利挺进，争取升一级</em></p>
 
-<p>                if (params[j] != null)<br />
-                {<br />
-                    paramClasses[j] = params[j].getClass();<br />
-                }<br />
-            }</p>
+<p><em>2. 保养皮肤，争取帅一点</em></p>
 
-<p>             //从cache中获取Method信息<br />
-            MethodCacheKey mck = new MethodCacheKey(methodName, paramClasses);<br />
-            IntrospectionCacheData icd =  context.icacheGet( mck );</p>
+<p><em>3. 去西藏，无论如何，我一定会去的</em></p>
 
-<p>            if ( icd != null &amp;&amp; (o != null &amp;&amp; icd.contextData == o.getClass()) )<br />
-            {<br />
-                method = (VelMethod) icd.thingy;<br />
-            }<br />
-            else<br />
-            {<br />
-                //缓存未命中，调用UberIntrospectImpl.getMethod()执行自省<br />
-                method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</p>
+<p><p>第一点顺利完成；第二点除了痘少些，人也老些，基本没变；第三点纠结许久也顺利完成，而且收获远超期望。<br />
+除了以上三点，还有些额外收获，譬如结束单身生活啥的:)，老家盖新房啥的<br />
+总的来说11年过的还算不错，基本算是从阴霾走向光明，逐渐奔向幸福，哈哈</p></p>
 
-<p>                if ((method != null) &amp;&amp; (o != null))<br />
-                {<br />
-                    icd = new IntrospectionCacheData();<br />
-                    icd.contextData = o.getClass();<br />
-                    icd.thingy = method;<br />
-                    //更新缓存<br />
-                    context.icachePut( mck, icd );<br />
-                }<br />
-            }</p>
+<p><h2>2012的三件事</h2></p>
 
-<p>            if (typeOptimum &amp;&amp; method instanceof VelMethodImpl) {<br />
-                this.recordedData = icd;<br />
-            }</p>
+<p>按照惯例，还是列下明年的目标把，不多，还是三个：</p>
 
-<p>            /*<br />
-             *  &#8230;.<br />
-             */<br />
-    }
+<p><ol>
+<li>自己做个网站</li>
+<li>再一次长途旅行（环青海湖或这挺进新疆，诚征驴友）</li>
+<li>还有一个很重要的事，一时想不起来了，暂定“顺利度过2012吧！”</li>
+</ol></p>
 
-<div>1.首先从IntrospectionCache中查找已经缓存的自省结果信息</div>
-<div>2.如果未找到，则使用uberspector进行自省，获取方法信息，并缓存自省结果。</div>
-<div>3.调用自省返回的VelMethod的invoke方法，获取执行结果。</div>
-<div>其中，获取方法信息的过程</div>
-<div>method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</div>
-<div>实际调用就是UberspectImpl.getMethod()方法，该方法执行流程如下：</div>
-<div>
-<pre class="brush:java">    public VelMethod getMethod(Object obj, String methodName, Object[] args, Info i)
-            throws Exception
-    {
-        if (obj == null)
-        {
-            return null;
-        }
-        //调用Inspector.getMethod()
-        Method m = introspector.getMethod(obj.getClass(), methodName, args);
-        if (m != null)
-        {</pre>
-<pre class="brush:java">            //封装VelMethodImpl
-            return new VelMethodImpl(m);
-        }</pre></div></p>
+<p><h2>祝福</h2></p>
 
-<p>        Class cls = obj.getClass();<br />
-        // if it&#8217;s an array<br />
-        if (cls.isArray())<br />
-        {<br />
-            // check for support via our array-&gt;list wrapper<br />
-            m = introspector.getMethod(ArrayListWrapper.class, methodName, args);<br />
-            if (m != null)<br />
-            {<br />
-                // and create a method that knows to wrap the value<br />
-                // before invoking the method<br />
-                return new VelMethodImpl(m, true);<br />
-            }<br />
-        }<br />
-        // watch for classes, to allow calling their static methods (VELOCITY-102)<br />
-        else if (cls == Class.class)<br />
-        {<br />
-            m = introspector.getMethod((Class)obj, methodName, args);<br />
-            if (m != null)<br />
-            {<br />
-                return new VelMethodImpl(m);<br />
-            }<br />
-        }<br />
-        return null;<br />
-    }
+<p>还是按照惯例，最后送上祝福：</p>
 
-<div>该方式实际调用Introspector.getMethod()方法。</div>
-<div>
-<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
-        throws IllegalArgumentException
-    {
-        try
-        {
-            //调用父类IntrospectorBase.getMethod()方法
-            return super.getMethod(c, name, params);
-        }
-        catch(MethodMap.AmbiguousException ae)
-        {
-           /*异常处理*/
-        }</pre></div></p>
-
-<p>        return null;<br />
-    }
-
-<div>Introspector.getMethod()实际只是扩展了其父类的getMethod方法，增加了异常日志功能。</div>
-<div>IntrospectorBase.getMethod()代码如下：</div>
-<div>
-<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
-            throws IllegalArgumentException,MethodMap.AmbiguousException
-    {
-        if (c == null)
-        {
-            throw new IllegalArgumentException ("class object is null!");
-        }
-        
-        if (params == null)
-        {
-            throw new IllegalArgumentException("params object is null!");
-        }</pre></div></p>
-
-<p>        IntrospectorCache ic = getIntrospectorCache();</p>
-
-<p>        ClassMap classMap = ic.get(c);<br />
-        if (classMap == null)<br />
-        {<br />
-            classMap = ic.put(c);<br />
-        }</p>
-
-<p>        return classMap.findMethod(name, params);<br />
-    }
-
-<div>该方法首先获取从IntrospectorCache中获取表示类信息的classMap，如果没找到则在cache中put该类型信息。有意思的是这里没有常见的缓存未命中直接查询的过程，而是直接更新缓存，也就意味着put方法里有构造类型信息的过程。</div>
-<div>IntrospectorCache.put()代码如下</div>
-<div>
-<pre class="brush:java">    public ClassMap put(final Class c)
-    {
-        //构造ClassMap
-        final ClassMap classMap = new ClassMap(c, log);
-        synchronized (classMapCache)
-        {
-            classMapCache.put(c, classMap);
-            classNameCache.add(c.getName());
-        }
-        return classMap;
-    }</pre>
-</div>
-<div>put方法首先构造一个ClassMap，然后更新classMapCache。</div>
-<div>构造ClassMap的过程如下：</div>
-<div>
-<pre class="brush:java">    public ClassMap(final Class clazz, final Log log)
-    {
-        this.clazz = clazz;
-        this.log = log;</pre></div></p>
-
-<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
-        {<br />
-            log.debug(&#8220;=================================================================&#8221;);<br />
-            log.debug(&#8220;== Class: &#8221; + clazz);<br />
-        }</p>
-
-<p>        methodCache = createMethodCache();</p>
-
-<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
-        {<br />
-            log.debug(&#8220;=================================================================&#8221;);<br />
-        }<br />
-    }
-
-<div>关键是构造一个MethodCache，createMethodCache过程如下：</div>
-<div>
-<pre class="brush:java">    private MethodCache createMethodCache()
-    {
-        MethodCache methodCache = new MethodCache(log);
-        for (Class classToReflect = getCachedClass(); classToReflect != null ; classToReflect = classToReflect.getSuperclass())
-        {
-            if (Modifier.isPublic(classToReflect.getModifiers()))
-            {
-                populateMethodCacheWith(methodCache, classToReflect);
-            }
-            Class [] interfaces = classToReflect.getInterfaces();
-            for (int i = 0; i &lt; interfaces.length; i++)
-            {
-                populateMethodCacheWithInterface(methodCache, interfaces[i]);
-            }
-        }
-        // return the already initialized cache
-        return methodCache;
-    }</pre>
-</div>
-<div>createMethodCache()首先构造一个MethodCache实例，然后通过反射获得类型的public方法信息，并递归的获取其实现的接口方法信息。</div>
-<div>IntrospectorBase.getMethod()方法获取到该ClassMap后，通过classMap.getMethod()返回一个需要的method，由于多态的存在，一个类会有多个同名方法，所以getMethod()过程中有一个根据参数类型寻找最佳匹配的方法getBestMatch（）这里有个循环遍历所有方法，并且比较所有参数类型的过程，而且这个过程在每次模板渲染执行时都会进行，代价很高，因此尽量少在放入模板的类中写多态方法有助提高渲染执行性能。</div>
-<div>至此一个ClassMap构造完毕，即一个类的自省过程完成。UberinspectorImpl成功的拿到了需要的方法信息，然后将Method封装VelMethodImpl返回。</div>
-<div>ASTMethod节点执行渲染时调用invoke方法实际调用的就是Method.invoke()，获得方法执行结果写入输出流中，完成渲染。</div>
-<div><strong><span style="font-size: small;">2.2.2 ASTIdentifier节点渲染</span></strong></div>
-<div>ASTIdentifier的execute方法中关键代码如下</div>
-<div>（TODO：ASTIndentifier.execute()代码）</div>
-<div>1.从IntrospectionCache中查找已经缓存的信息。</div>
-<div>2.如果缓存未命中，使用uberspector进行自省，并缓存自省结果</div>
-<div>3.调用自省的返回的VelPropertyGet的invoke方法，反射执行起get方法。</div>
-<div>
-<div>UberspectImpl.getPropertyGet()方法关键代码如下：</div>
-<div>
-<pre class="brush:java">    public VelPropertyGet getPropertyGet(Object obj, String identifier, Info i)
-            throws Exception
-    {
-        if (obj == null)
-        {
-            return null;
-        }</pre></div></div></p>
-
-<p>        Class claz = obj.getClass();</p>
-
-<p>         // 构造get&#8221;属性名&#8221;()形式的Executor<br />
-        AbstractExecutor executor = new PropertyExecutor(log, introspector, claz, identifier);</p>
-
-<p>        //构造一个Map形式的Executor<br />
-        if (!executor.isAlive())<br />
-        {<br />
-            executor = new MapGetExecutor(log, claz, identifier);<br />
-        }</p>
-
-<p>        // 构造get(&#8220;属性名&#8221;)形式的Executor</p>
-
-<p>        if (!executor.isAlive())<br />
-        {<br />
-            executor = new GetExecutor(log, introspector, claz, identifier);<br />
-        }<br />
-        //构建is&#8221;属性名&#8221;形式的executor<br />
-        if (!executor.isAlive())<br />
-        {<br />
-            executor = new BooleanPropertyExecutor(log, introspector, claz,<br />
-                                                   identifier);<br />
-        }</p>
-
-<p>        return (executor.isAlive()) ? new VelGetterImpl(executor) : null;<br />
-    }
-
-<div>1.首先根据对象的class类型和属性名构造一个get”属性名”的方法的PropertyExecutor。</div>
-<div>2.如果未找到get”属性名”的方法，则尝试构造一个Map.key形式的MapGetExecutor。</div>
-<div>3.如果也不是Map.key形式，尝试构造一个get(“属性名”)的GetExecutor。</div>
-<div>4.如果还没找到，则尝试构造一is”属性名”形式的BooleanPropertyExecutor。</div>
-<div>5.最终返回一个封装了Executor的VelGetImpl，如果未找到则返回null。</div>
-<div>所有的Executor均扩展自AbstractExecutor，VelGetImpl通过内置一个executor执行方法调用。Executor类图关系如下</div>
-<div><a href="/images/uploads/2011/08/Excuter-class-structure.png"><img class="aligncenter size-full wp-image-76" title="Executor类图结构" src="/images/uploads/2011/08/Excuter-class-structure.png" alt="" width="682" height="380" /></a></div>
-<div>Executor实现中除MapGetExecutor外，其余的Executor均通过内置一个introspector实现方法的构建，过程与上述ASTMethod节点渲染过程中introspector.getMethod()一致，只是方法名做了封装，如GetExecutor的方法名为get， PropertyExecutor的方法名为get”属性名”， BooleanPropertyExecutor方法名为is”属性名”，具体构建流程不再赘述。</div>
-<div>最终，ASTIndentifier.execute()方法通过UberInspectImpl.getPropertyGet()获得VelGetImpl，并调用VelGetImpl.invoke()获取方法执行的结果，写入输出流，完成渲染。</div>
-<div>UberInspectImpl.getPropertySet()的执行过程于getPropertyGet()大体一致，区别在于获取的是VelSetImpl，内置了SetExecutor，SetExecutor有三个扩展对应为MapSetExecutor（Map.key=value形式），PutExecutor（put(key, value)形式），SetPropertyExecutor（set”属性名”(value)形式）。其内部同样使用introspector.getMethod()方法构建Method，通过反射执行设置属性值。</div>
-<div><strong><span style="font-size: large;">三、总结</span></strong></div>
-<div>总的来说，作为模板语言velocity提供了可用的自省机制完成模板中对象引用及方法执行的的渲染。并在自省过程中提供了有效的缓存机制用以提升自省效率。但每次依旧需要解析AST，反射执行引用节点的方法，效率方面似乎还有优化的余地。</div>
-<div><strong><span style="font-size: large;">参考文档</span></strong></div>
-<div>《Java Introspeciton》 http://download.oracle.com/javase/tutorial/javabeans/introspection/index.html</div>
-<div>《Type Introspection》 http://en.wikipedia.org/wiki/Type_introspection</div>
-<div>《Introspection》http://en.wikipedia.org/wiki/Introspection</div>
+<p><p>亲们，尽管我这个人平时很少和大家联系，但我内心真的很想念你们，大家都要幸福啊！<br />
+2012，幸福快乐！</p>
 </p>
 </div>
   
@@ -529,7 +324,7 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/08/19/velocity_overview/">Velocity源码分析（一）——概述</a></h1>
+      <h1 class="entry-title"><a href="/blog/2011/12/17/rails_new_optimize_bundle_install/">优化rails New时bundle Install速度</a></h1>
     
     
       <p class="meta">
@@ -545,16 +340,16 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
   
 
 
-<time datetime="2011-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2011</time>
+<time datetime="2011-12-17T00:00:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2011</time>
         
-         | <a href="/blog/2011/08/19/velocity_overview/#disqus_thread">Comments</a>
+         | <a href="/blog/2011/12/17/rails_new_optimize_bundle_install/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/velocity源码分析/'>Velocity源码分析</a>
+    <a class='category' href='/blog/categories/ruby/'>ruby</a>
   
 </span>
 
@@ -565,92 +360,14 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
   </header>
 
 
-  <div class="entry-content"><p><h2>一、概述</h2>
-Velocity模板引擎处理机制分为五个基本步骤：
-<ol>
-	<li>引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。</li>
-	<li>获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream），然后通过AST（Abstract Syntax Tree）解析器将InputStream解析为一个AST。</li>
-	<li>创建一个Context</li>
-	<li>将模板渲染所需的参数放入context</li>
-	<li>执行模板渲染，产生输出流。渲染过程中通过遍历该模板对应的AST，调用相应节点的处理器执行渲染。</li>
-</ol>
-整个处理流程如下图所示：</p>
-
-<p><a href="/images/uploads/2011/08/Velocity-process-structure.png"><img class="aligncenter size-full wp-image-59" title="Velocity处理流程" src="/images/uploads/2011/08/Velocity-process-structure.png" alt="" width="619" height="407" /></a>
-<h2>二、详细渲染流程</h2>
-下面以一个简单的模板template.vm为例，详细解释渲染过程。<br />
-VelocityMergeTest.java
-<pre class="brush:java">public class VelocityMergeTest {</pre></p>
-
-<p>public static void main(String[] args) {<br />
-VelocityEngine ve = new VelocityEngine();<br />
-ve.setProperty(Velocity.RESOURCE_LOADER, &#8220;class&#8221;);<br />
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-try {<br />
-//引擎初始化<br />
-ve.init();<br />
-//加载解析模板<br />
-Template tp = ve.getTemplate(&#8220;template.vm&#8221;);<br />
-//创建context<br />
-Context context = new VelocityContext();<br />
-//设置Context中参数值<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-StringWriter writer = new StringWriter();<br />
-//执行渲染<br />
-tp.merge(context, writer);<br />
-System.out.println(writer.toString());<br />
-} catch (Exception e) {<br />
-}
-}<br />
-}
-template.vm
-<pre class="brush:xml">&lt;html&gt;
-&lt;body&gt;
-Hello $foo world!
-&lt;/body&gt;
-&lt;/html&gt;</pre>
-<h3>1.引擎初始化</h3>
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-设置引擎的资源加载使用ClasspathResourceLoader。<br />
-ve.init()执行引擎的初始化。
-<h3>2.加载解析模板</h3>
-当执行ve.getTemplate(&#8220;template.vm&#8221;)时，首先通过ResourceLoader将tempalte加载为InputStream，然后通过Parser生成如下Token集合：<br />
-{[&lt;html&gt; &lt;body&gt; Hello], [$foo], [world! &lt;/body&gt; &lt;/html&gt; ]}，<br />
-可以发现velocity根本不关系模板最终要渲染出来的是html还是什么的其他的东西，也就以为这所有的html标签对velocity来讲都是纯文本。<br />
-最终构建的AST如下</p>
-
-<p><a href="/images/uploads/2011/08/AST.png"><img class="aligncenter size-full wp-image-60" title="AST" src="/images/uploads/2011/08/AST.png" alt="" width="367" height="169" /></a></p>
-
-<p>根节点下有三个子节点：
-<ol>
-	<li>[&lt;html&gt; &lt;body&gt; Hello]对应的ASTText节点；</li>
-	<li>[$foo]对应的ASTReference节点；</li>
-	<li>[world! &lt;/body&gt; &lt;/html&gt; ]对应的ASTText节点</li>
-</ol>
-Velocity引擎在这里有个优化策略，可以针对生成的语法树进行cache。
-<h3>3.创建context并设置参数</h3>
-Context context = new VelocityContext();<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-创建一个context，并在其中放入一个foo=VV的参数。
-<h3>4.执行渲染</h3>
-当执行tp.merge(context, writer);时，模板遍历其对应的AST树，执行每个节点的渲染过程。如ASTText节点只是简单的将文本写入writer。ASTReference节点需要从context中获取引用的参数foo的值VV，将$foo替换，并写入到writer中。Velocity的AST中有多种节点，如ASTIdentitor等，有些需要反射机制处理。当整个AST遍历结束，也就意味着模板渲染结束，渲染的结果位于writer流中。
-<h2>三、关于AST解析</h2>
-Velocity作为模板语言，其核心在与模板文件的解析，构建AST。Velocity的解析器是通过JavaCC构建的，JavaCC（Java Complier Complier）是一个用于生成解析器的工具，可以根据语法定义（.jj文件）生成用于校验一份文本是否符合该语法定义的java代码。JJTree是JavaCC中提供的一种根据语法定义（.jjt文件）生成构建符合该语法定义的文本的语法树的java代码的工具。<br />
-Velocity源码包中提供了用于构建velocity语法解析的的jjt文件，位于src/parser/Parser.jjt。可以自己手动从源码构建Velocity的解析器。步骤如下：<br />
-1.下载安装JavaCC，到http://javacc.java.net/下载即可，velocity的解析器需要3.2版本以上。下载后解压即可。<br />
-2.使用JJTree生成节点定义：<br />
-$ javacc-5.0/bin/jjtree Parser.jjt<br />
-这一过程中会生成节点定义的Java文件和Parser.jj语法定义文件<br />
-3.使用JavaCC生成解析器<br />
-$ javacc-5.0/bin/javacc Parser.jj<br />
-最终会生成Parser.java解析器和个节点定义。
-<h2>参考资料</h2>
-《Velocity Developer Guide》<a href="http://velocity.apache.org/engine/devel/developer-guide.html">http://velocity.apache.org/engine/devel/developer-guide.html</a>
-《JavaCC》<a href="http://javacc.java.net/">http://javacc.java.net/</a>
-《Velocity源码分析》<a href="http://www.khotyn.com/2011/07/22/velocity_sourcecode/">http://www.khotyn.com/2011/07/22/velocity_sourcecode/</a>
-《Velocity的一些优化记录》<a href="http://agapple.iteye.com/blog/1051724">http://agapple.iteye.com/blog/1051724</a></p>
+  <div class="entry-content"><p>最近痴迷ruby和ror，但是每次rails new xxx时总会在bundle install 停留很久，学习了下，发现rails new时会进行bundle install，自动到rubygems.org上检查是否有更新。如果确定不需要更新，事实上是可以跳过这个步骤的，方法很简单：
+<code>
+rails new my_app --skip-bundle
+</code>
+另外在单独执行bundle install时默认也会自动检查所有更新，解决方法时
+<code>
+bundle insall --local
+</code></p>
 </div>
   
   
@@ -663,7 +380,7 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/08/17/webx3-container-structure/">Webx3源码分析－容器结构</a></h1>
+      <h1 class="entry-title"><a href="/blog/2011/12/17/rails-common-error/">Rails中常见的错误</a></h1>
     
     
       <p class="meta">
@@ -679,16 +396,16 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
   
 
 
-<time datetime="2011-08-17T19:32:00+08:00" pubdate data-updated="true">Aug 17<span>th</span>, 2011</time>
+<time datetime="2011-12-17T00:00:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2011</time>
         
-         | <a href="/blog/2011/08/17/webx3-container-structure/#disqus_thread">Comments</a>
+         | <a href="/blog/2011/12/17/rails-common-error/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/webx/'>webx</a>
+    <a class='category' href='/blog/categories/ruby/'>ruby</a>
   
 </span>
 
@@ -699,63 +416,17 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
   </header>
 
 
-  <div class="entry-content"><h3>一、Webx 框架概述</h3>
-
-<p>Webx是一套基于Java Servlet API构建的通用Web框架。整个Webx框框架层次分为三层：</p>
-
-<p><img src="/images/webx/webx-framework-layer.png" alt="image" /></p>
-
-<ol>
-<li>SpringExt：提供了基于Spring的通用扩展机制</li>
-<li>WebxFramework：基于Servlet API，提供Web基础服务，如Spring初始化，日志初始化，接受请求，错误处理，开发模式等。Webx Framework只是对Servlet和spring的基础封装，并不关心Web框架中具体服务的处理，如Action处理，表单处理等。因此，可以在Webx Framework上扩展多种风格的Web框架。</li>
-<li>Webx Turbine：基于Webx Framework，提供具体的网页功能，如表单处理，Action相应处理等</li>
-</ol>
-
-
-<h3>二、Webx Framework容器结构</h3>
-
-<h4>1.1组件化应用结构</h4>
-
-<p>Webx Framework是基于组件化风格构建的，它将一个应用划分一个Webx应用包含至少一个组件组 (WebxComponents)，一个组件组由多个组件(WebxComponent)构成。</p>
-
-<p><img src="/images/webx/webx-component.png" alt="image" /></p>
-
-<p>Webx Framework中定义了WebxComponents接口和WebxComponent接口，分别表示一组组件的信息和一个组件的描述。
-组件化的应用结构反应在容器上即应用中级联的父子容器的结构关系，如下图所示：</p>
-
-<p><img src="/images/webx/webx-context-structure.png" alt="image" /></p>
-
-<p>Webx Framework将一个Web应用分解成多个小应用模块：app1, app2，等。每个应用模块独享一个子容器（Sub Context），共享根容器（Root Context）。子容器之间的beans无法相互注入，但是所有小应用都共享一个Root Context。根容器的bean可以被注入到子容器的bean中；反之不可以。</p>
-
-<h4>1.2 基于Spring的容器类扩展</h4>
-
-<p>为实现上述应用组件化结构，Webx Framework在在Spring容器基础上按照组件化风格进行扩展：</p>
-
-<p><img src="/images/webx/webx-container.png" alt="image" /></p>
-
-<p>com.alibaba.citrus.webx.context.XmlWebApplicationContext是Webx框架的从XML文件中装配的，用于Web应用环境的Application Context，扩展自Spring的org.springframework.web.context.support.XmlWebApplicationContext，主要扩展点如下：</p>
-
-<ol>
-<li>支持SpringExt的捐献(ConfigurationPoint)机制（SpringExt在后面文章中讲解）</li>
-<li>实现了ResourceLoadingExtendable接口，扩展的resource loading机制。假如ResourceLoadingExtender 被设置，则使用它来装载资源，否则使用默认的装载器。</li>
-<li>默认开启annotation config，相当于&lt;context:annotation-config/>。</li>
-<li>假如parentResolvableDependenciesAccessible==true，则支持从parent context中取得预先置入resolvableDependencies中的对象。默认为true。</li>
-</ol>
-
-
-<p>ResourceLoadingXmlWebApplicationContext继承自XmlWebApplicationContext，扩展了从resource loading service中装载的功能。WebxApplicationContext是用于Webx框架的application context。直接继承自ResourceLoadingXmlWebApplicationContext，扩展了取得默认Spring配置的实现，默认Root容器的配置文件位于WEB-INF/webx.xml，子容器的配置文件位于WEB-INF/webx-<em>.xml（</em>代表component名）。由于继承关系，WebxApplicationContext继承了负累所有的特性，在原来Spring容器XmlWebApplicationContext基础之上扩展如下功能：</p>
-
-<ol>
-<li>支持SpringExt，包括configuration point和resource loading支持</li>
-<li>定义默认容器配置文件位置</li>
-</ol>
-
-
-<p>WebxComponentsContext和WebxComponentContext直接扩展自WebxApplicationContext，分别对应为WebxComponents和WebxComponent的容器。</p>
-
-<p>WebxComponentsContext中内置了一个WebxComponentsLoader用于装载Webx components，并且覆写了postProcessBeanFactory()处理定制BeanFactory，以及finishRefresh()处理子容器的刷新。</p>
-
-<p>WebxComponentContext包含了对应的WebxComponent实例，并将其注入到容器中，即在一个WebxComponentContext中，引用的WebxComponent均是其对应的component实例。</p>
+  <div class="entry-content"><p><h1>Rails中常见错误总结</h1>
+<h3>NoMothedError</h3>
+NoMethodError通常表示引用了错误的方法，比如link_to写成了lunk_to。根据页面上的错误提示很容易能够定位到错误代码位于哪一行。
+<h3>NameError</h3>
+NameError常见于引用了错误的变量，比如变量不存在等
+<h3>SyntaxError: unexpected $end</h3>
+SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少了end关键字。def和do必须要有对应的end。不过通常错误提示无法定位具体哪一行缺少了end，需要自己审查代码逻辑。
+<h3>invalid multibyte char(US-ASCII)</h3>
+如果使用的是Ruby1.9，出现:invalid multibyte char(US-ASCII)的时候，通常表示代码源文件中有UTF-8字符，比如中文，根据Ruby1.9规范，必须在源文件的头部加上编码注解<br />
+#encoding: utf-8<br />
+并且代码的源文件格式必须时utf-8的。</p>
 </div>
   
   
@@ -768,7 +439,7 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/08/10/eclipse-debug-maven-jetty/">Eclipse中debug Maven Jetty应用</a></h1>
+      <h1 class="entry-title"><a href="/blog/2011/12/07/clean-dns-cache-on-chrome/">Chrome中清除dns缓存</a></h1>
     
     
       <p class="meta">
@@ -784,16 +455,16 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
   
 
 
-<time datetime="2011-08-10T00:00:00+08:00" pubdate data-updated="true">Aug 10<span>th</span>, 2011</time>
+<time datetime="2011-12-07T00:00:00+08:00" pubdate data-updated="true">Dec 7<span>th</span>, 2011</time>
         
-         | <a href="/blog/2011/08/10/eclipse-debug-maven-jetty/#disqus_thread">Comments</a>
+         | <a href="/blog/2011/12/07/clean-dns-cache-on-chrome/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/技术生活/'>技术生活</a>
+    <a class='category' href='/blog/categories/未分类/'>未分类</a>
   
 </span>
 
@@ -804,219 +475,10 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
   </header>
 
 
-  <div class="entry-content"><p>Maven和Jetty有很好的集成，可以方便的使用mvn jetty:run 启动一个web应用，但是默认的maven-jetty插件并没有开启debug模式，而日常开发中难免需要用IDE debug引用。下面描述下如何配置eclipse，使其可以进行maven-jetty项目的debug。
-<h2> <span class="Apple-style-span" style="font-size: 26px; font-weight: bold;"><strong>1.首先设置启动方式。</strong></span></h2>
-在Ecipse -&gt;Run-&gt;External Tools -&gt;External Tool Configuration&#8230;中打开配置窗口，选中Program节点，双击新建一个新的配置。</p>
-
-<p>Name自定义，Main Tab下，Location设置为mvn命令的路径，Working Directory设置为需要进行debug的项目目录，Arguments设置为jetty:run</p>
-
-<p><a href="/images/uploads/2011/08/Run.png"><img class="aligncenter size-full wp-image-45" title="Run" src="/images/uploads/2011/08/Run.png" alt="" width="702" height="664" /></a></p>
-
-<p>在Envriroment Tab中新建一个环境变量MAVEN_OPTS，值为</p>
-
-<p>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=8089,server=y,suspend=y</p>
-
-<p><a href="/images/uploads/2011/08/MAVEN_OPTS.png"><img class="aligncenter size-full wp-image-46" title="MAVEN_OPTS" src="/images/uploads/2011/08/MAVEN_OPTS.png" alt="" width="702" height="664" /></a></p>
-
-<p>点击Apply，保存配置；close，关闭窗口。
-<h2>2.设置Debug信息</h2>
-打开Eclipse-&gt;Run-&gt;Debug Configurations窗口，在左侧列表中选择新建一个 Remote Java Application配置。在Connect Tab下，Project设置为当前需要debug的项目，Host设置为localhost，端口为8089（上面MAVEN_OPTS里的address=8089）</p>
-
-<p><a href="/images/uploads/2011/08/debug.png"><img class="aligncenter size-full wp-image-47" title="debug" src="/images/uploads/2011/08/debug.png" alt="" width="719" height="720" /></a></p>
-
-<p>点击Apply，保存配置，close，关闭窗口</p>
-
-<p>&nbsp;
-<h2><strong>3.运行应用。</strong></h2>
-Eclipse-&gt;Run-&gt;External Tools-&gt;Extrernal Tools Configurations，选择第一步设置的启动配置，执行Run，启动应用。Eclipse终端中会输出</p>
-
-<p>Listening for transport dt_socket at address: 8089</p>
-
-<p>表示应用启动监听debug端口8089</p>
-
-<p>&nbsp;
-<h2><strong>4.开启debug</strong></h2>
-Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，启动debug</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/09/mac-config-docbook-tool-chain/">Mac配置docbook工具链</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-08-09T00:00:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/08/09/mac-config-docbook-tool-chain/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/mac/'>Mac</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
-<strong>一、安装工具链</strong>
-docbook工具链包含三部分<br />
-1.xsltproc（mac自带）<br />
-2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
-3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
-下载解压后得到：<br />
-docbook-xsl-1.76.1<br />
-fop-1.0<br />
-两个目录。<br />
-此时可以已经可以进行docbook撰写了，不过只限英文:)
-<strong>二、撰写docbook，并生成pdf</strong>
-使用文本编辑器编写如下xml，保存为webx.xml
-<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
-
-<p>&lt;!DOCTYPE book PUBLIC &#8220;-//OASIS//DTD DocBook XML V4.0//EN&#8221;  &#8220;http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd&#8221;&gt;</p>
-
-<p>&lt;book&gt;<br />
-&lt;bookinfo&gt;<br />
-&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
-&lt;author&gt;<br />
-&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
-&lt;surname&gt;Jiang&lt;/surname&gt;<br />
-&lt;affiliation&gt;<br />
-&lt;address&gt;<br />
-&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
-&lt;/address&gt;<br />
-&lt;/affiliation&gt;<br />
-&lt;/author&gt;<br />
-&lt;copyright&gt;<br />
-&lt;year&gt;2011&lt;/year&gt;<br />
-&lt;/copyright&gt;<br />
-&lt;abstract&gt;<br />
-&lt;para&gt;Webx&lt;/para&gt;<br />
-&lt;/abstract&gt;<br />
-&lt;/bookinfo&gt;<br />
-&lt;part&gt;<br />
-&lt;title&gt;Part1&lt;/title&gt;<br />
-&lt;chapter&gt;<br />
-&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
-&lt;sect1&gt;<br />
-&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
-&lt;para&gt;     Your Text &lt;/para&gt;<br />
-&lt;/sect1&gt;<br />
-&lt;/chapter&gt;<br />
-&lt;chapter&gt;<br />
-&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
-&lt;sect1&gt;<br />
-&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
-&lt;para&gt;     Your Text &lt;/para&gt;<br />
-&lt;/sect1&gt;<br />
-&lt;/chapter&gt;<br />
-&lt;/part&gt;<br />
-&lt;/book&gt;
-使用xsltproc转换为中间文件<br />
-$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
-此时会生成中间文件inter.fo<br />
-使用fop生成pdf<br />
-$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
-最终生成了名为webx.pdf的pdf文件</p>
-
-<p><strong>三、设置FOP支持中文</strong>
-但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
-找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
-<strong>1.生成字体矩阵</strong></p>
-
-<p>进入到fop安装目录，执行</p>
-
-<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr &#8217; &#8217; &#8216;:&#8217;` org.apache.fop.fonts.apps.TTFReader -ttcanme &#8220;SimHei&#8221; /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
-
-<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
-
-<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
-<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
-
-<p>&lt;filterList&gt;</p>
-
-<p>……</p>
-
-<p>&lt;/filterList&gt;</p>
-
-<p>&lt;fonts&gt;</p>
-
-<p>&lt;font metrics-url=&#8221;file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml&#8221; kerning=&#8221;yes&#8221; embed-url=&#8221;file:///Library/Fonts/Microsoft/SimHei.ttf&#8221;&gt;</p>
-
-<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
-
-<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
-
-<p>&lt;/font&gt;</p>
-
-<p>&lt;!&#8211;&lt;directory recursive=&#8221;true&#8221;&gt;/Library/Fonts/&lt;/directory&gt;&#8211;&gt;</p>
-
-<p>&lt;!&#8211;    &lt;auto-detect/&gt;&#8211;&gt;</p>
-
-<p>&lt;/fonts&gt;</p>
-
-<p>……
-<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
-
-<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
-<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
-&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-                xmlns:exsl="http://exslt.org/common"
-                xmlns:fo="http://www.w3.org/1999/XSL/Format"
-                xmlns:ng="http://docbook.org/docbook-ng"
-                xmlns:db="http://docbook.org/ns/docbook"
-                exclude-result-prefixes="db ng exsl"
-                version='1.0'&gt;</pre></p>
-
-<p>&lt;xsl:import href=&#8221;/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl&#8221;/&gt;<br />
-&lt;xsl:param name=&#8221;body.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;xsl:param name=&#8221;monospace.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;xsl:param name=&#8221;title.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;/xsl:stylesheet&gt;
-<strong>4.使用新样式表进行转换</strong></p>
-
-<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
-
-<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
+  <div class="entry-content"><p>web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：<br />
+1、用chrome打开：chrome://net-internals/#dns<br />
+2、点击上面的“clean host cache”<br />
+为了方便使用，可以加个bookmark:)</p>
 </div>
   
   
@@ -1041,6 +503,34 @@ $~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
       </li>
     
@@ -1050,34 +540,6 @@ $~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
     
       <li class="post">
         <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a>
       </li>
     
   </ul>
