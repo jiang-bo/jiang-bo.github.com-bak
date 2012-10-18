@@ -1,0 +1,578 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS源码学习（8）——Backup Mode - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="元数据的持久化 HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-backup-mode">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS源码学习（8）——Backup Mode</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:51:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>元数据的持久化</h2>
+
+<p>HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。NameNode启动时会从本地磁盘加载FSImage和FSEditLog，并将EditLog中的日志信息合并到FSImage中进行之持久化（该合并过程称为一个检查点：checkpoint），并构建文件系统的元信息。</p>
+
+<p>但是持久化的数据中不包括block<->datanode的映射信息，该信息由每个datanode向NameNode发起blockReport()请求时报告其所拥有的block信息。</p>
+
+<h3>Editlog记录修改日志</h3>
+
+<p>EditLog的持久化文件是一个二进制文件，大体结构如下：</p>
+
+<p><img src="/images/hdfs/EditLogFile.png" alt="EditLogFile" /></p>
+
+<p>EditLog文件开始是一个日志版本号，0.19版本的hdfs中该version为-18。
+随后是每一条操作的事务日志，每条日志的起始为一个操作类型位，随后是该操作的详细信息，不同的操作类型所带的详细信息也不同。加载EditLog是根据layoutVersion和edit_op位采取不同的方式解析后面的详细信息。
+EditLog能够记录如下17中操作：</p>
+
+<p><img src="/images/hdfs/EditLogOp.png" alt="EditLogOp" /></p>
+
+<p>EditLog为每种操作都提供了相应的log方法，当系统中发生文件修改时，会调用相应的log方法记录日志</p>
+
+<h2>元数据加载与恢复</h2>
+
+<p>NameNode启动过程中最终会通过FSImage.loadFSImage()来从fsimage目录中加载最新的fsimage镜像和editslog，并合并构建命名空间。
+代码结构如下：</p>
+
+<pre><code>  boolean loadFSImage() throws IOException {
+    // 根据checkpointtime查找最新的fsimage
+    long latestNameCheckpointTime = Long.MIN_VALUE;
+    long latestEditsCheckpointTime = Long.MIN_VALUE;
+    StorageDirectory latestNameSD = null;
+    StorageDirectory latestEditsSD = null;
+    boolean needToSave = false;
+    isUpgradeFinalized = true;
+    Collection&lt;String&gt; imageDirs = new ArrayList&lt;String&gt;();
+    Collection&lt;String&gt; editsDirs = new ArrayList&lt;String&gt;();
+    for (Iterator&lt;StorageDirectory&gt; it = dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      if (!sd.getVersionFile().exists()) {
+        needToSave |= true;
+        continue; // some of them might have just been formatted
+      }
+      boolean imageExists = false, editsExists = false;
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        imageExists = getImageFile(sd, NameNodeFile.IMAGE).exists();
+        imageDirs.add(sd.getRoot().getCanonicalPath());
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        editsExists = getImageFile(sd, NameNodeFile.EDITS).exists();
+        editsDirs.add(sd.getRoot().getCanonicalPath());
+      }
+
+      checkpointTime = readCheckpointTime(sd);
+      if ((checkpointTime != Long.MIN_VALUE) &amp;&amp; 
+          ((checkpointTime != latestNameCheckpointTime) || 
+           (checkpointTime != latestEditsCheckpointTime))) {
+        // Force saving of new image if checkpoint time
+        // is not same in all of the storage directories.
+        needToSave |= true;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE) &amp;&amp; 
+         (latestNameCheckpointTime &lt; checkpointTime) &amp;&amp; imageExists) {
+        latestNameCheckpointTime = checkpointTime;
+        latestNameSD = sd;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS) &amp;&amp; 
+           (latestEditsCheckpointTime &lt; checkpointTime) &amp;&amp; editsExists) {
+        latestEditsCheckpointTime = checkpointTime;
+        latestEditsSD = sd;
+      }
+      if (checkpointTime &lt;= 0L)
+        needToSave |= true;
+      // set finalized flag
+      isUpgradeFinalized = isUpgradeFinalized &amp;&amp; !sd.getPreviousDir().exists();
+    }
+
+    // 确保至少有一个fsimage和一个edits目录
+    if (latestNameSD == null)
+      throw new IOException("Image file is not found in " + imageDirs);
+    if (latestEditsSD == null)
+      throw new IOException("Edits file is not found in " + editsDirs);
+
+    // 确保获得的fsimage和edits是同一个检查点
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime
+        &amp;&amp; latestNameSD != latestEditsSD
+        &amp;&amp; latestNameSD.getStorageDirType() == NameNodeDirType.IMAGE
+        &amp;&amp; latestEditsSD.getStorageDirType() == NameNodeDirType.EDITS) {
+      // This is a rare failure when NN has image-only and edits-only
+      // storage directories, and fails right after saving images,
+      // in some of the storage directories, but before purging edits.
+      // See -NOTE- in saveNamespace().
+      LOG.error("This is a rare failure scenario!!!");
+      LOG.error("Image checkpoint time " + latestNameCheckpointTime +
+          " &gt; edits checkpoint time " + latestEditsCheckpointTime);
+      LOG.error("Name-node will treat the image as the latest state of " +
+          "the namespace. Old edits will be discarded.");
+    } else if (latestNameCheckpointTime != latestEditsCheckpointTime)
+      throw new IOException("Inconsitent storage detected, " +
+          "image and edits checkpoint times do not match. " +
+          "image checkpoint time = " + latestNameCheckpointTime +
+          "edits checkpoint time = " + latestEditsCheckpointTime);
+
+    // 如果上次检查点中断了，则恢复该检查点
+    needToSave |= recoverInterruptedCheckpoint(latestNameSD, latestEditsSD);
+
+    long startTime = FSNamesystem.now();
+    long imageSize = getImageFile(latestNameSD, NameNodeFile.IMAGE).length();
+
+    //
+    // 加载fsimage文件
+    //
+    latestNameSD.read();
+    needToSave |= loadFSImage(getImageFile(latestNameSD, NameNodeFile.IMAGE));
+    LOG.info("Image file of size " + imageSize + " loaded in " 
+        + (FSNamesystem.now() - startTime)/1000 + " seconds.");
+
+    // 加载最新的edits并作用于fsimage上
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime)
+      // the image is already current, discard edits
+      needToSave |= true;
+    else // latestNameCheckpointTime == latestEditsCheckpointTime
+      needToSave |= (loadFSEdits(latestEditsSD) &gt; 0);
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其中FSImage.loadFSImage(File curFile) 代码如下：</p>
+
+<pre><code>  boolean loadFSImage(File curFile) throws IOException {
+    assert this.getLayoutVersion() &lt; 0 : "Negative layout version is expected.";
+    assert curFile != null : "curFile is null";
+
+    FSNamesystem fsNamesys = FSNamesystem.getFSNamesystem();
+    FSDirectory fsDir = fsNamesys.dir;
+
+    //
+    // Load in bits
+    //
+    boolean needToSave = true;
+    DataInputStream in = new DataInputStream(new BufferedInputStream(
+                              new FileInputStream(curFile)));
+    try {
+      /*
+       * Note: Remove any checks for version earlier than 
+       * Storage.LAST_UPGRADABLE_LAYOUT_VERSION since we should never get 
+       * to here with older images.
+       */
+
+      /*
+       * TODO we need to change format of the image file
+       * it should not contain version and namespace fields
+       */
+      // 读取imageversion
+      int imgVersion = in.readInt();
+      // 读取namespaceid
+      this.namespaceID = in.readInt();
+
+      // 读取镜像中的文件数
+      long numFiles;
+      if (imgVersion &lt;= -16) {
+        numFiles = in.readLong();
+      } else {
+        numFiles = in.readInt();
+      }
+
+      this.layoutVersion = imgVersion;
+      // 读取镜像时间戳
+      if (imgVersion &lt;= -12) {
+        long genstamp = in.readLong();
+        fsNamesys.setGenerationStamp(genstamp); 
+      }
+
+      needToSave = (imgVersion != FSConstants.LAYOUT_VERSION);
+
+      // 读取每个文件的信息
+      short replication = FSNamesystem.getFSNamesystem().getDefaultReplication();
+
+      LOG.info("Number of files = " + numFiles);
+
+      byte[][] pathComponents;
+      byte[][] parentPath = ;
+      INodeDirectory parentINode = fsDir.rootDir;
+      for (long i = 0; i &lt; numFiles; i++) {
+        long modificationTime = 0;
+        long atime = 0;
+        long blockSize = 0;
+        //读取文件名(path)
+        pathComponents = readPathComponents(in);
+        //读取副本数
+        replication = in.readShort();
+        //调整副本数，使其不超过系统的最大和最小副本数限制
+        replication = FSEditLog.adjustReplication(replication);
+        //读取文件修改时间
+        modificationTime = in.readLong();
+        if (imgVersion &lt;= -17) {
+        //读取最近访问时间
+          atime = in.readLong();
+        }
+        if (imgVersion &lt;= -8) {
+        //读取block块大小
+          blockSize = in.readLong();
+        }
+        //读取block数
+        int numBlocks = in.readInt();
+        //构建blocks
+        Block blocks[] = null;
+
+        // 老版本hdfs中，numBlocks=0表示目录，新版本中numBlocks=-1表示目录
+        if ((-9 &lt;= imgVersion &amp;&amp; numBlocks &gt; 0) ||
+            (imgVersion &lt; -9 &amp;&amp; numBlocks &gt;= 0)) {
+           //构建文件block信息
+          blocks = new Block[numBlocks];
+          for (int j = 0; j &lt; numBlocks; j++) {
+            blocks[j] = new Block();
+            if (-14 &lt; imgVersion) {
+              blocks[j].set(in.readLong(), in.readLong(), 
+                            Block.GRANDFATHER_GENERATION_STAMP);
+            } else {
+              // 读取block信息
+              blocks[j].readFields(in);
+            }
+          }
+        }
+        // 老版本inode中不维护blocksize，如果存在多个block，blocksize选取第一个block的大小，如果只有一个block，则选该block大小和默认大小中较大的，如果没有block，则选用默认大小
+        if (-8 &lt;= imgVersion &amp;&amp; blockSize == 0) {
+          if (numBlocks &gt; 1) {
+            blockSize = blocks[0].getNumBytes();
+          } else {
+            long first = ((numBlocks == 1) ? blocks[0].getNumBytes(): 0);
+            blockSize = Math.max(fsNamesys.getDefaultBlockSize(), first);
+          }
+        }
+
+        // 如果是目录（blocks=null），读取该目录的配额
+        long nsQuota = -1L;
+        if (imgVersion &lt;= -16 &amp;&amp; blocks == null) {
+          nsQuota = in.readLong();
+        }
+        long dsQuota = -1L;
+        if (imgVersion &lt;= -18 &amp;&amp; blocks == null) {
+          dsQuota = in.readLong();
+        }
+
+        //获取权限信息
+        PermissionStatus permissions = fsNamesys.getUpgradePermission();
+        if (imgVersion &lt;= -11) {
+          permissions = PermissionStatus.read(in);
+        }
+
+        //如果该path为root，且设置了配额信息，则更新根目录的配额
+        if (isRoot(pathComponents)) { // it is the root
+          // update the root's attributes
+          if (nsQuota != -1 || dsQuota != -1) {
+            fsDir.rootDir.setQuota(nsQuota, dsQuota);
+          }
+          fsDir.rootDir.setModificationTime(modificationTime);
+          fsDir.rootDir.setPermissionStatus(permissions);
+          continue;
+        }
+        //如果该inode的parent与当前路径不一至，获取新的parentPaht
+        if(!isParent(pathComponents, parentPath)) {
+          parentINode = null;
+          parentPath = getParent(pathComponents);
+        }
+        // 将该inode添加到inode树中
+        parentINode = fsDir.addToParent(pathComponents, parentINode, permissions,
+                                        blocks, replication, modificationTime, 
+                                        atime, nsQuota, dsQuota, blockSize);
+      }
+
+      // 加载datanode信息，imgVersion&lt;-12的版本事实上啥都不做，datanode信息已经不保存在fsimage中
+      this.loadDatanodes(imgVersion, in);
+
+      // 加载正在构建中的文件
+      this.loadFilesUnderConstruction(imgVersion, in, fsNamesys);
+
+    } finally {
+      in.close();
+    }
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其核心就是加载并解析fsimage文件，构建命名空间，fsimage文件的结构参见《NameNode中主要数据结构》</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:51:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/10/18/hdfs-namenode-block-management/" title="Previous Post: HDFS源码学习（7）——Block管理">&laquo; HDFS源码学习（7）——Block管理</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/10/18/hdfs-namenode-safe-mode/" title="Next Post: HDFS源码学习（9）——安全模式（SafeMode）">HDFS源码学习（9）——安全模式（SafeMode） &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/18/hdfs-namenode-backup-mode/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/18/hdfs-namenode-backup-mode/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

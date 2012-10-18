@@ -9,18 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="&nbsp;
-今天在添加uart
-驱动时，需要向现有的
-uC/OS
-工程文件中添加头文件。 1.
-直接在工程目录下新建一个目录，将uart.c
-和
-uart.h
-添加到该目录下， 2.
-在工程项目上右键-&gt;add-&gt;add&nbsp;group
-，添加一个组
-uC-UART 3. &hellip;">
+  <meta name="description" content="今天从网上用wget下了很多的电子书，不过文件名的编码都是GBK，系统默认为UTF-8，可以用convmv来转换文件名编码，例如将GBK编码的文件filename重命名为UTF-8：
+convmv -f gbk -t utf-8 filename --notest&nbsp; &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -95,7 +85,7 @@ uC-UART 3. &hellip;">
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2009/11/16/post/">IAR开发环境中添加头文件</a></h1>
+      <h1 class="entry-title"><a href="/blog/2010/08/01/post/">Linux批量转换文件名编码</a></h1>
     
     
       <p class="meta">
@@ -111,16 +101,16 @@ uC-UART 3. &hellip;">
   
 
 
-<time datetime="2009-11-16T00:00:00+08:00" pubdate data-updated="true">Nov 16<span>th</span>, 2009</time>
+<time datetime="2010-08-01T00:00:00+08:00" pubdate data-updated="true">Aug 1<span>st</span>, 2010</time>
         
-         | <a href="/blog/2009/11/16/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2010/08/01/post/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/嵌入式开发/'>嵌入式开发</a>
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
   
 </span>
 
@@ -131,2588 +121,280 @@ uC-UART 3. &hellip;">
   </header>
 
 
-  <div class="entry-content">&nbsp;
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">今天在添加<span style="font-family: Times New Roman;">uart</span>
-<span style="font-family: 宋体;">驱动时，需要向现有的</span>
-<span style="font-family: Times New Roman;">uC/OS</span>
-<span style="font-family: 宋体;">工程文件中添加头文件。</span>
-</span>
-<span style="font-size: 10.5pt; font-family: '宋体';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">1.</span>
-<span style="font-size: 10.5pt; font-family: '宋体';">直接在工程目录下新建一个目录，将<span style="font-family: Times New Roman;">uart.c</span>
-<span style="font-family: 宋体;">和</span>
-<span style="font-family: Times New Roman;">uart.h</span>
-<span style="font-family: 宋体;">添加到该目录下，</span>
-</span>
-<span style="font-size: 10.5pt; font-family: '宋体';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">2.</span>
-<span style="font-size: 10.5pt; font-family: '宋体';">在工程项目上右键<span style="font-family: Times New Roman;">-&gt;add-&gt;add&nbsp;group</span>
-<span style="font-family: 宋体;">，添加一个组</span>
-<span style="font-family: Times New Roman;">uC-UART</span>
-</span>
-<span style="font-size: 10.5pt; font-family: '宋体';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">3.</span>
-<span style="font-size: 10.5pt; font-family: '宋体';">在该组上继续右键<span style="font-family: Times New Roman;">-&gt;add-&gt;add&nbsp;file</span>
-<span style="font-family: 宋体;">，添加</span>
-<span style="font-family: Times New Roman;">uart.c</span>
-<span style="font-family: 宋体;">和</span>
-<span style="font-family: Times New Roman;">uart.h</span>
-</span>
-<span style="font-size: 10.5pt; font-family: '宋体';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt; text-align: center;"><span style="font-size: 10.5pt; font-family: '宋体';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">4.</span>
-<span style="font-size: 10.5pt; font-family: '宋体';">修改<span style="font-family: Times New Roman;">includes.h</span>
-<span style="font-family: 宋体;">，添加</span>
-<span style="font-family: Times New Roman;">#include&nbsp;&lt;uart.h&gt;</span>
-</span>
-<span style="font-size: 10.5pt; font-family: '宋体';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">5.</span>
-<span style="font-size: 10.5pt; font-family: '宋体';">此时直接编译会报错说无法找到<span style="font-family: Times New Roman;">&lt;uart.h&gt;</span>
-<span style="font-family: 宋体;">，还需要将上述目录添加到编译路径中，右键工程</span>
-<span style="font-family: Times New Roman;">-&gt;option-&gt;C/C++&nbsp;Compiler-&gt;preprocessor</span>
-<span style="font-family: 宋体;">，将</span>
-<span style="font-family: Times New Roman;">uart.h</span>
-<span style="font-family: 宋体;">所在路径添加到</span>
-<span style="font-family: Times New Roman;">include</span>
-<span style="font-family: 宋体;">路径中</span>
-</span>
-<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt; text-align: center;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
-</p>
-<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">6.</span>
-<span style="font-size: 10.5pt; font-family: '宋体';">重新编译，就没有错误了。</span>
-<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
-</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/11/15/post/">Android示例HelloGallery中R.styleable Unresolved的解决办法</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-11-15T00:00:00+08:00" pubdate data-updated="true">Nov 15<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/11/15/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/android/'>Android</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>&nbsp; &nbsp;&nbsp; 今天尝试编译Android SDK中APIDemos中的程序，调试到HelloGallery的时候，在下面这段代码中：<pre class="brush: java">public ImageAdapter(Context c) {
-        mContext = c;
-        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
-        mGalleryItemBackground = a.getResourceId(
-                android.R.styleable.Theme_galleryItemBackground, 0);
-        a.recycle();
-    }</pre>
-&nbsp;</p>
-<p>&nbsp;&nbsp;&nbsp; 编译出错，提示说android.R.styleable unresolved，在网上查了下，说R.styleable在SDK1.5中已经不再支持，所以会出现这个错误。解决方法如下：</p>
-<p>1.在res/values目录下新建attrs.xml，在其中添加如下内容：</p>
-<p><pre class="brush: xhtml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
-&lt;resources&gt;
-	&lt;declare-styleable name=&quot;Gallery&quot;&gt;
-        &lt;attr name=&quot;android:galleryItemBackground&quot;&gt;
-        &lt;/attr&gt;
-    &lt;/declare-styleable&gt;
-&lt;/resources&gt;</pre>
-</p>
-<p>2.修改HelloGallery.java，将出错的那段代码：</p>
-<p><pre class="brush: java">public ImageAdapter(Context c) {
-        mContext = c;
-        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
-        mGalleryItemBackground = a.getResourceId(
-                android.R.styleable.Theme_galleryItemBackground, 0);
-        a.recycle();
-    }</pre>
-</p>
-<p>修改为：</p>
-<p><pre class="brush: java">public ImageAdapter(Context c) {
-        	mContext = c;
-            TypedArray a = obtainStyledAttributes(R.styleable.Gallery);
-            mGalleryItemBackground = a.getResourceId(
-                    R.styleable.Gallery_android_galleryItemBackground, 0);
-            a.recycle();
-        }</pre>
-</p>
-<p>3.重新运行就可以了</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/10/03/post/">SLF4J: Failed to Load Class &quot;org.slf4j.impl.StaticLoggerBinder&quot;问题解决</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-10-03T00:00:00+08:00" pubdate data-updated="true">Oct 3<span>rd</span>, 2009</time>
-        
-         | <a href="/blog/2009/10/03/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>今天初次学习Hibernate，按照指导做的时候，出现如下错误：</p> <p>SLF4J: Failed to load class &#8220;org.slf4j.impl.StaticLoggerBinder&#8221;.   <br />SLF4J: See <a href="http://www.slf4j.org/codes.html#StaticLoggerBinder">http://www.slf4j.org/codes.html#StaticLoggerBinder</a> for further details.    <br />Exception in thread &#8220;main&#8221; java.lang.NoClassDefFoundError: org/slf4j/impl/StaticLoggerBinder    <br />    at org.slf4j.LoggerFactory.getSingleton(LoggerFactory.java:223)    <br />    at org.slf4j.LoggerFactory.bind(LoggerFactory.java:120)    <br />    at org.slf4j.LoggerFactory.performInitialization(LoggerFactory.java:111)    <br />    at org.slf4j.LoggerFactory.getILoggerFactory(LoggerFactory.java:269)    <br />    at org.slf4j.LoggerFactory.getLogger(LoggerFactory.java:242)    <br />    at org.slf4j.LoggerFactory.getLogger(LoggerFactory.java:255)    <br />    at org.hibernate.cfg.Configuration.<clinit>(Configuration.java:152)    <br />    at com.jiang.hibernate.Base.main(Base.java:25)</clinit></p> <p>问题的原因是无法找到org.slf4j.impl.StaticLoggerBinder，我找了一下，确实没有该类，网上搜了一下下面是官方的解答<a title="http://www.slf4j.org/codes.html#StaticLoggerBinder" href="http://www.slf4j.org/codes.html#StaticLoggerBinder">http://www.slf4j.org/codes.html#StaticLoggerBinder</a>：</p> <p>This error is reported when the <code>org.slf4j.impl.StaticLoggerBinder</code> class could not be loaded into memory. This happens when no appropriate SLF4J binding could be found on the class path. Placing one (and only one) of <em>slf4j-nop.jar</em>, <em>slf4j-simple.jar</em>, <em>slf4j-log4j12.jar</em>, <em>slf4j-jdk14.jar</em> or <em>logback-classic.jar</em> on the class path should solve the problem. </p> <p>You can download SLF4J bindings from the project <a href="http://www.slf4j.org/download.html">download page</a>. </p> <p>大意是<code>org.slf4j.impl.StaticLoggerBinder</code> 无法载入到内存，原因是没有找到合适的绑定SLF4J，需要添加所列举的包中的某一个。</p> <p>解决方法如下：</p> <p>下载slf4j-nop.jar，添加到路径中，就解决问题了</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/09/24/post/">[转贴]提问的智慧</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-09-24T00:00:00+08:00" pubdate data-updated="true">Sep 24<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/09/24/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>提问的<span style="color: #ff0000;">智慧</span>
-</h2>
-<p align="right">D.H.Grand[nOBODY/Ginux]　2001</p>
-<p>在黑客世界里，当提出一个技术问题时，你能得到怎样的回答？这取决于挖出答案的难度，同样取决于你提问的方法。本指南旨在帮助你提高发问技巧，以获取你最想要的答案。
-</p>
-<p>　　首先你必须明白，黑客们只偏爱艰巨的任务，或者能激发他们思维的好问题。
-如若不然，我们还来干吗？如果你有值得我们反复咀嚼玩味的好问题，我们自会对你感激不尽。好问题是激励，是厚礼，可以提高我们的理解力，而且通常会暴露我
-们以前从没意识到或者思考过的问题。对黑客而言，&ldquo;问得好！&rdquo;是发自内心的大力称赞。
-</p>
-<p>　　尽管黑客们有蔑视简单问题和不友善的坏名声，有时看起来似乎我们对新手，对知识贫乏者怀有敌意，但其实不是那样的。 </p>
-<p>　　我们不想掩饰对这样一些人的蔑视&#8211;他们不愿思考，或者在发问前不去完成他们应该做的事。这种人只会谋杀时间&#8211;他们只愿索取，从不付出，无端消耗我们的时间，而我们本可以把时间用在更有趣的问题或者更值得回答的人身上。
-  我们称这样的人为&ldquo;失败者&rdquo;（由于历史原因，我们有时把它拼作&ldquo;lusers&rdquo;）。 </p>
-<p>　　我们在很大程度上属于志愿者，从繁忙的生活中抽出时间来解惑答疑，而且时常被提问淹没。所以我们无情的滤掉一些话题，特别是抛弃那些看起来象失败者的家伙，以便更高效的利用时间来回答胜利者的问题。
-</p>
-<p>　　如果你觉得我们过于傲慢的态度让你不爽，让你委屈，不妨设身处地想想。我们并没有要求你向我们屈服&#8211;事实上，我们中的大多数人最喜欢公平交易
-不过了，只要你付出小小努力来满足最起码的要求，我们就会欢迎你加入到我们的文化中来。但让我们帮助那些不愿意帮助自己的人是没有
-意义的。如果你不能接受这种&ldquo;歧视&rdquo;，我们建议你花点钱找家商业公司签个技术支持协议得了，别向黑客乞求帮助。 </p>
-<p>　　如果你决定向我们求助，当然不希望被视为失败者，更不愿成为失败者中的一员。立刻得到有效答案的最好方法，就是象胜利者那样提问 &mdash;&mdash; 聪明、自信、有解决问题的思路，只是偶尔在特定的问题上需要获得一点帮助。
-</p>
-<p> 　　（欢迎对本指南提出改进意见。任何建议请E-mail至<a href="mailto:esr@thyrsus.com">esr@thyrsus.com</a>
-，然而
-  请注意，本文并非网络礼节的通用指南，我通常会拒绝无助于在技术论坛得到有用答案的建议。） （当然，如果你写中文，最好还是寄<a href="mailto:DHGrand@hotmail.com">DHGrand@hotmail.com</a>
-;-）
-</p>
-<p><span style="color: #009900;"><strong><br />
-  = 提问之前 = </strong>
-</span>
-</p>
-<p>　　在通过电邮、新闻组或者聊天室提出技术问题前，检查你有没有做到： </p>
-<blockquote>
-<blockquote>
-<p>1. 通读手册，试着自己找答案。 <br />
-      2. 在FAQ里找答案（一份维护得好的FAQ可以包罗万象:）。 <br />
-      3. 在网上搜索（个人推荐google~~~）。 <br />
-      4. 向你身边精于此道的朋友打听。 </p>
-</blockquote>
-</blockquote>
-<p>　　当你提出问题的时候，首先要说明在此之前你干了些什么；这将有助于树立你的形象：你不是一个妄图不劳而获的乞讨者，不愿浪费别人的时间。如果提问者能从答案中学到东西，我们更乐于回答他的问题。
-</p>
-<p>　　周全的思考，准备好你的问题，草率的发问只能得到草率的回答，或者根本得不到任何答案。越表现出在寻求帮助前为解决问题付出的努力，你越能得到实质性的帮助。
-</p>
-<p>　　小心别问错了问题。如果你的问题基于错误的假设，普通黑客（J. Random Hacker）通常会用无意义的字面解释来答复你，心里想着&ldquo;蠢问题&#8230;&rdquo;，希望着你会从问题的回答（而非你想得到的答案）中汲取教训。
-</p>
-<p>　　决不要自以为够资格得到答案，你没这种资格。毕竟你没有为这种服务支付任何报酬。你要自己去&ldquo;挣&rdquo;回一个答案，靠提出一个有内涵的，有趣的，有思维激励作用的问题&#8211;一个对社区的经验有潜在贡献的问题，而不仅仅是被动的从他人处索要知识&#8211;去挣到这个答案。
-</p>
-<p>　　另一方面，表明你愿意在找答案的过程中做点什么，是一个非常好的开端。&ldquo;谁能给点提示？&rdquo;、&ldquo;我这个例子里缺了什么？&rdquo;以及&ldquo;我应该检查什么地方？&rdquo;比&ldquo;请把确切的过程贴出来&rdquo;更容易得到答复。因为你显得只要有人指点正确的方向，你就有完成它的能力和决心。
-</p>
-<p><br />
-<span style="color: #009900;"><strong>= 怎样提问 = </strong>
-</span>
-</p>
-<p><strong>- 谨慎选择论坛 </strong>
-<br />
-  　　小心选择提问的场合。如果象下面描述的那样，你很可能被忽略掉或者被看作失败者： </p>
-<blockquote>
-<blockquote>
-<p>1. 在风马牛不相及的论坛贴出你的问题 <br />
-      2. 在探讨高级技巧的论坛张贴非常初级的问题；反之亦然 <br />
-      3. 在太多的不同新闻组交叉张贴 </p>
-</blockquote>
-</blockquote>
-<p><strong>- 用辞贴切，语法正确，拼写无误</strong>
-<br />
-  　　我们从经验中发现，粗心的写作者通常也是马虎的思考者（我敢打包票）。 回答粗心大意者的问题很不值得，我们宁愿把时间耗在别处。 </p>
-<p>　　正确的拼写，标点符号和大小写很重要。 <br />
-  　　更一般的说，如果你的提问写得象个半文盲，你很有可能被忽视。 </p>
-<p>　　如果你在使用非母语的论坛提问，你可以犯点拼写和语法上的小错&#8211;但决不能在思考上马虎（没错，我们能弄清两者的分别） </p>
-<p><strong>- 使用含义丰富，描述准确的标题 </strong>
-<br />
-  　　在邮件列表或者新闻组中，大约50字以内的主题标题是抓住资深专家注意力 的黄金时机。别用喋喋不休的&ldquo;帮帮忙&rdquo;（更别说&ldquo;救命啊！！！！！&rdquo;这 样让人反感的话）来浪费这个机会。不要妄想用你的痛苦程度来打动我们，
-  别用空格代替问题的描述，哪怕是极其简短的描述。 </p>
-<p>　　蠢问题： 救命啊！我的膝上机不能正常显示了！ <br />
-  　　聪明问题： XFree86 4.1下鼠标光标变形，Fooware MV1005的显示芯片。 </p>
-<p>　　如果你在回复中提出问题，记得要修改内容标题，表明里面有一个问题。一个看起来象&ldquo;Re：测试&rdquo;或者&ldquo;Re：新bug&rdquo;的问题很难引起足够重视。另外，引用并删减前文的内容，给新来的读者留下线索。
-</p>
-<p><strong>- 精确描述，信息量大</strong>
-</p>
-<blockquote>
-<p>1. 谨慎明确的描述症状。 <br />
-    2. 提供问题发生的环境（机器配置、操作系统、应用程序以及别的什么）。 <br />
-    3. 说明你在提问前是怎样去研究和理解这个问题的。 <br />
-    4. 说明你在提问前采取了什么步骤去解决它。 <br />
-    5. 罗列最近做过什么可能有影响的硬件、软件变更。 </p>
-</blockquote>
-<p>　　尽量想象一个黑客会怎样反问你，在提问的时候预先给他答案。 </p>
-<p>　　Simon Tatham写过一篇名为《如何有效的报告Bug》的出色短文。强力推荐你也读一读。 </p>
-<p><strong>- 话不在多</strong>
-<br />
-  　　你需要提供精确有效的信息。这并不是要求你简单的把成吨的出错代码或者数据完全转储摘录到你的提问中。如果你有庞大而复杂的测试条件，尽量把它剪裁得越小越好。
-</p>
-<p>　　这样做的用处至少有三点。第一，表现出你为简化问题付出了努力，这可以使你得 到回答的机会增加；第二，简化问题使你得到有用答案的机会增加；第三，在提炼
-  你的bug报告的过程中，也许你自己就能找出问题所在或作出更正。 </p>
-<p><strong>- 只说症状，不说猜想</strong>
-<br />
-  　　告诉黑客们你认为问题是怎样引起的没什么帮助。（如果你的推断如此有效，还用向别人求助吗？），因此要确信你原原本本告诉了他们问题的症状，不要加进你自己的理解和推论。让黑客们来诊断吧。
-</p>
-<blockquote>
-<p>蠢问题： 我在内核编译中一次又一次遇到SIG11错误，我怀疑某条飞线搭在主板的走线上了，这种情况应该怎样检查最好？ <br />
-    聪明问题： 我自制的一套K6/233系统，主板是FIC-PA2007 （VIA Apollo VP2芯片组），256MB Corsair PC133
-    SDRAM，在内核编译中频频产生SIG11错误，从开机20分钟以后就有这种情况，开机 前20分钟内从没发生过。重启也没有用，但是关机一晚上就又能工作20分钟。所有
-    内存都换过了，没有效果。相关部分的典型编译记录如下&#8230;。 </p>
-</blockquote>
-<p><strong>- 按时间顺序列出症状</strong>
-<br />
-  　　对找出问题最有帮助的线索，往往就是问题发生前的一系列操作，因此，你的说明 应该包含操作步骤，以及电脑的反应，直到问题产生。 </p>
-<p>　　如果你的说明很长（超过四个段落），在开头简述问题会有所帮助，接下来按时间顺序详述。这样黑客们就知道该在你的说明中找什么。 </p>
-<p><strong>- 明白你想问什么</strong>
-<br />
-  　　漫无边际的提问近乎无休无止的时间黑洞。最能给你有用答案的人也正是最忙的人（他们忙是因为要亲自完成大部分工作）。这样的人对无节制的时间黑洞不太感冒，因此也可以说他们对漫无边际的提问不大感冒。
-</p>
-<p>　　如果你明确表述需要回答者做什么（提供建议，发送一段代码，检查你的补丁或是别的），就最有可能得到有用的答案。这会定出一个时间和精力的上
-限，便于回答者集中精力来帮你，这很凑效。要理解专家们生活的世界，要把专业技能想象为充裕的资源，而回复的时间则是贫乏的资源。解决你的问题需要的时间
-越少，越能从忙碌的专家口中掏出答案。
-</p>
-<p>　　因此，优化问题的结构，尽量减少专家们解决它所需要的时间，会有很大的帮助&#8211;这通常和简化问题有所区别。因此，问&ldquo;我想更好的理解X，能给点
-提示吗？&rdquo;通常比问&ldquo;你能解释一下X吗？&rdquo;更好。如果你的代码不能工作，问问它有什么地方不对，比要求别人替你修改要明智得多。
-</p>
-<p><strong>- 别问应该自己解决的问题</strong>
-<br />
-  　　黑客们总是善于分辨哪些问题应该由你自己解决；因为我们中的大多数都曾自己解决这类问题。同样，这些问题得由你来搞定，你会从中学到东西。你可以要求给点提示，但别要求得到完整的解决方案。
-</p>
-<p><strong>- 去除无意义的疑问</strong>
-<br />
-  　　别用无意义的话结束提问，例如&ldquo;有人能帮我吗？&rdquo;或者&ldquo;有答案吗？&rdquo;。 首先：如果你对问题的描述不很合适，这样问更是画蛇添足。其次：由于这 样问是画蛇添足，黑客们会很厌烦你&#8211;而且通常会用逻辑上正确的回答来表
-  示他们的蔑视，例如：&ldquo;没错，有人能帮你&rdquo;或者&ldquo;不，没答案&rdquo;。 </p>
-<p><strong>- 谦逊绝没有害处，而且常帮大忙</strong>
-<br />
-  彬　　彬有礼，多用&ldquo;请&rdquo;和&ldquo;先道个谢了&rdquo;。让大家都知道你对他们花费时间义务提供帮助心存感激。然而，如果你有很多问题无法解决，礼貌将会增加你得到有用答案的机会。
-</p>
-<p>　　（我们注意到，自从本指南发布后，从资深黑客处得到的唯一严重缺陷反馈，就是对预先道谢这一条。一些黑客觉得&ldquo;先谢了&rdquo;的言外之意是过后就不会再感谢任何人了。我们的建议是：都道谢。）
-</p>
-<p><strong>- 问题解决后，加个简短说明</strong>
-<br />
-　　问题解决后，向所有帮助过你的人发个说明，让他们知道问题是怎样解决的，并再一次向他们表示感谢。如果问题在新闻组或者邮件列表中引起了广泛关注，应
-该在那里贴一个补充说明。补充说明不必很长或是很深入；简单的一句&ldquo;你好，原来是网线出了问题！谢谢大家&#8211;Bill&rdquo;比什么也不说要强。事实上，除非结
-论真的很有技术含量，否则简短可爱的小结比长篇学术论文更好。说明问题是怎样解决的，但大可不必将解决问题的过程复述一遍。除了表示礼貌和反馈信息以外，
-这种补充有助于他人在邮件列表/新闻组/论坛中搜索对你有过帮助的完整解决方案，这可能对他们也很有用。最后（至少？），这种补充有助于所有提供过帮助的
-人从中得到满足感。如果你自己不是老手或者黑客，那就相信我们，这种感觉对于那些你向他们求助的导师或者专家而言，是非常重要的。问题久拖未决会让人灰
-心；黑客们渴望看到问题被解决。好人有好报，满足他们的渴望，你会在下次贴出新问题时尝到甜头。
-</p>
-<p><strong>- 还是不懂</strong>
-<br />
-　　如果你不是很理解答案，别立刻要求对方解释。象你以前试着自己解决问题时那样（利用手册，FAQ，网络，身边的高手），去理解它。如果你真的需要对方
-解释，记得表现出你已经学到了点什么。比方说，如果我回答你：&ldquo;看来似乎是zEntry被阻塞了；你应该先清除它。&rdquo;，然后：一个很糟的后续问
-题：&ldquo;zEntry是什么？&rdquo;
-聪明的问法应该是这样：&ldquo;哦~~~我看过帮助了但是只有-z和-p两个参数中提到了zEntry而且还都没有清楚的解释:&lt;你是指这两个中的哪一个
-吗？还是我看漏了什么？&rdquo;
-</p>
-<p><br />
-<span style="color: #009900;"><strong>= 三思而后问 = </strong>
-</span>
-</p>
-<p>以下是几个经典蠢问题，以及黑客在拒绝回答时的心中所想： </p>
-<blockquote>
-<p>问题：我能在哪找到X程序？ <br />
-    问题：我的程序/配置/SQL申明没有用 <br />
-    问题：我的Windows有问题，你能帮我吗？ <br />
-    问题：我在安装Linux（或者X）时有问题，你能帮我吗？ <br />
-    问题：我怎么才能破解root帐号/窃取OP特权/读别人的邮件呢？ </p>
-</blockquote>
-<p>提问：我能在哪找到X程序？ <br />
-  回答：就在我找到它的地方啊蠢货&#8211;搜索引擎的那一头。天呐！还有人不会用Google吗？ </p>
-<p>提问：我的程序（配置、SQL申明）没有用 <br />
-  回答：这不算是问题吧，我对找出你的真正问题没兴趣&#8211;如果要我问你二十个问题才找得出来的话&#8211;我有更有意思的事要做呢。 </p>
-<p>在看到这类问题的时候，我的反应通常不外如下三种： </p>
-<blockquote>
-<p>1. 你还有什么要补充的吗？ <br />
-    2. 真糟糕，希望你能搞定。 <br />
-    3. 这跟我有什么鸟相关？ </p>
-</blockquote>
-<p>提问：我的Windows有问题，你能帮我吗？ <br />
-  回答：能啊，扔掉萎软的垃圾，换Linux吧。 </p>
-<p>提问：我在安装Linux（或者X）时有问题，你能帮我吗？ <br />
-  回答：不能，我只有亲自在你的电脑上动手才能找到毛病。还是去找你当地的Linux用户组寻求手把手的指导吧（你能在这儿找到用户组的清单）。 </p>
-<p>提问：我怎么才能破解root帐号/窃取OP特权/读别人的邮件呢？ <br />
-  回答：想要这样做，说明你是个卑鄙小人；想找个黑客帮你，说明你是个白痴！ </p>
-<p><strong><span style="color: #009900;"><br />
-  = 好问题，坏问题 = </span>
-</strong>
-</p>
-<p>　　最后，我举一些例子来说明，怎样聪明的提问；同一个问题的两种问法被放在一起，一种是愚蠢的，另一种才是明智的。 </p>
-<p>蠢问题：我可以在哪儿找到关于Foonly Flurbamatic的资料？ <br />
-  // 这种问法无非想得到&ldquo;STFW&rdquo;这样的回答。 </p>
-<p>聪明问题：我用Google搜索过&ldquo;Foonly Flurbamatic 2600&rdquo;，但是没找到有用的结果。谁知道上哪儿去找对这种设备编程的资料？ <br />
-  // 这个问题已经STFW过了，看起来他真的遇到了麻烦。 </p>
-<p>蠢问题：我从FOO项目找来的源码没法编译。它怎么这么烂？ <br />
-  // 他觉得都是别人的错，这个傲慢自大的家伙 </p>
-<p>聪明问题：FOO项目代码在Nulix 6.2版下无法编译通过。我读过了FAQ，但里面没有提到跟Nulix有关的问题。这是我编译过程的记录，我有什么做得不对的地方吗？
-  <br />
-  // 他讲明了环境，也读过了FAQ，还指明了错误，并且他没有把问题的责任推到别人头上，这个家伙值得留意。 </p>
-<p>蠢问题：我的主板有问题了，谁来帮我？ <br />
-  // 普通黑客对这类问题的回答通常是：&ldquo;好的，还要帮你拍拍背和换尿布吗？&rdquo; ，然后按下删除键。 </p>
-<p>聪明问题：我在S2464主板上试过了X、Y和Z，但没什么作用，我又试了A、B和C。请注意当我尝试C时的奇怪现象。显然边带传输中出现了收缩，但结果出人意料。在多处理器主板上引起边带泄漏的通常原因是什么？谁有好主意接下来我该做些什么测试才能找出问题？
-  <br />
-  // 这个家伙，从另一个角度来看，值得去回答他。他表现出了解决问题的能力，而不是坐等天上掉答案。 </p>
-<p>　　在最后一个问题中，注意&ldquo;告诉我答案&rdquo;和&ldquo;给我启示，指出我还应该做什么诊断工作&rdquo;之间微妙而又重要的区别。事实上，后一个问题源自于2001年8月在Linux内核邮件列表上的一个真实的提问。我（Eric）就是那个提出问题的人。我在Tyan
-  S2464主板上观察到了这种无法解释的锁定现象，列表成员们提供了解决那一问题的重要信息。 </p>
-<p>　　通过我的提问方法，我给了大家值得玩味的东西；我让人们很容易参与并且被吸引进来。我显示了自己具备和他们同等的能力，邀请他们与我共同探讨。
-我告诉他们我所走过的弯路，以避免他们再浪费时间，这是一种对他人时间价值的尊重。后来，当我向每个人表示感谢，并且赞赏这套程序（指邮件列表中的讨论
-&#8211;译者注）运作得非常出色的时候，一个Linux内核邮件列（lkml）成员表示，问题得到解决并非由于我是这个列表中的&ldquo;名人&rdquo;，而是因为我用了正确
-的方式来提问。我们黑客从某种角度来说是拥有丰富知识但缺乏人情味的家伙；我相信他是对的，如果我象个乞讨者那样提问，不论我是谁，一定会惹恼某些人或者
-被他们忽视。他建议我记下这件事，给编写这个指南的人一些指导。
-</p>
-<p><br />
-<span style="color: #009900;"><strong> = 找不到答案怎么办 = </strong>
-</span>
-</p>
-<p>　　如果仍得不到答案，请不要以为我们觉得无法帮助你。有时只是看到你问题的人不知道答案罢了。没有回应不代表你被忽视，虽然不可否认这种差别很难区分。 </p>
-<p>　　总的说来，简单的重复张贴问题是个很糟的想法。这将被视为无意义的喧闹。 </p>
-<p>　　你可以通过其它渠道获得帮助，这些渠道通常更适合初学者的需要。有许多网上的以及本地的用户组，由狂热的软件爱好者（即使他们可能从没亲自写过任何软件）组成。通常人们组建这样的团体来互相帮助并帮助新手。
-</p>
-<p>　　另外，你可以向很多商业公司寻求帮助，不论公司大还是小（Red Hat 和LinuxCare
-就是两个最常见的例子）。别为要付费才能获得帮助而感到沮丧！毕竟，假使你的汽车发动机汽缸密封圈爆掉了&#8211;完全可能如此&#8211;你还得把它送到修车铺，并且
-为维修付费。就算软件没花费你一分钱，你也不能强求技术支持总是免费的。
-</p>
-<p>　　对大众化的软件，就象Linux之类而言，每个开发者至少会有上万名用户。根本不可能由一个人来处理来自上万名用户的求助电话。要知道，即使你
-要为帮助付费，同你必须购买同类软件相比，你所付出的也是微不足道的（通常封闭源代码软件的技术支持费用比开放源代码软件要高得多，且内容也不那么丰
-富）。
-</p>
-<p>
-Copyright (C) 2001 by Eric S. Raymond <br />
-  中文版 Copyleft 2001 by D.H.Grand(nOBODY/Ginux) <br />
-  英文版：<a href="http://www.tuxedo.org/%7Eesr/faqs/smart-questions.html">http://www.tuxedo.org/~esr/faqs/smart-questions.html</a>
-<br />
-  感谢 Eric 的耐心指点和同意，本文才得以完成并发布， <br />
-  本指南 英文版版权为 Eric Steven Raymond 所有， <br />
-  中文版版权由 D.H.Grand[nOBODY/Ginux] 所有</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/09/23/post/">浅谈Java垃圾收集</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-09-23T00:00:00+08:00" pubdate data-updated="true">Sep 23<span>rd</span>, 2009</time>
-        
-         | <a href="/blog/2009/09/23/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>&nbsp;</p>
-<!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:WordDocument&gt;
-  &lt;w:View&gt;Normal&lt;/w:View&gt;
-  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
-  &lt;w:TrackMoves /&gt;
-  &lt;w:TrackFormatting /&gt;
-  &lt;w:PunctuationKerning /&gt;
-  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
-  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
-  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
-  &lt;w:ValidateAgainstSchemas /&gt;
-  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
-  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
-  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
-  &lt;w:DoNotPromoteQF /&gt;
-  &lt;w:LidThemeOther&gt;EN-US&lt;/w:LidThemeOther&gt;
-  &lt;w:LidThemeAsian&gt;ZH-CN&lt;/w:LidThemeAsian&gt;
-  &lt;w:LidThemeComplexScript&gt;X-NONE&lt;/w:LidThemeComplexScript&gt;
-  &lt;w:Compatibility&gt;
-   &lt;w:SpaceForUL /&gt;
-   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
-   &lt;w:DoNotLeaveBackslashAlone /&gt;
-   &lt;w:ULTrailSpace /&gt;
-   &lt;w:DoNotExpandShiftReturn /&gt;
-   &lt;w:AdjustLineHeightInTable /&gt;
-   &lt;w:BreakWrappedTables /&gt;
-   &lt;w:SnapToGridInCell /&gt;
-   &lt;w:WrapTextWithPunct /&gt;
-   &lt;w:UseAsianBreakRules /&gt;
-   &lt;w:DontGrowAutofit /&gt;
-   &lt;w:SplitPgBreakAndParaMark /&gt;
-   &lt;w:DontVertAlignCellWithSp /&gt;
-   &lt;w:DontBreakConstrainedForcedTables /&gt;
-   &lt;w:DontVertAlignInTxbx /&gt;
-   &lt;w:Word11KerningPairs /&gt;
-   &lt;w:CachedColBalance /&gt;
-   &lt;w:UseFELayout /&gt;
-  &lt;/w:Compatibility&gt;
-  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
-  &lt;m:mathPr&gt;
-   &lt;m:mathFont m:val="Cambria Math" /&gt;
-   &lt;m:brkBin m:val="before" /&gt;
-   &lt;m:brkBinSub m:val="&#45;-" /&gt;
-   &lt;m:smallFrac m:val="off" /&gt;
-   &lt;m:dispDef /&gt;
-   &lt;m:lMargin m:val="0" /&gt;
-   &lt;m:rMargin m:val="0" /&gt;
-   &lt;m:defJc m:val="centerGroup" /&gt;
-   &lt;m:wrapIndent m:val="1440" /&gt;
-   &lt;m:intLim m:val="subSup" /&gt;
-   &lt;m:naryLim m:val="undOvr" /&gt;
-  &lt;/m:mathPr&gt;&lt;/w:WordDocument&gt;
-&lt;/xml&gt;&lt;![endif]--><!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:LatentStyles DefLockedState="false" DefUnhideWhenUsed="true"
-  DefSemiHidden="true" DefQFormat="false" DefPriority="99"
-  LatentStyleCount="267"&gt;
-  &lt;w:LsdException Locked="false" Priority="0" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Normal" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="heading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="35" QFormat="true" Name="caption" /&gt;
-  &lt;w:LsdException Locked="false" Priority="10" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" Name="Default Paragraph Font" /&gt;
-  &lt;w:LsdException Locked="false" Priority="11" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtitle" /&gt;
-  &lt;w:LsdException Locked="false" Priority="22" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Strong" /&gt;
-  &lt;w:LsdException Locked="false" Priority="20" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="59" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Table Grid" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Placeholder Text" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="No Spacing" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Revision" /&gt;
-  &lt;w:LsdException Locked="false" Priority="34" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="List Paragraph" /&gt;
-  &lt;w:LsdException Locked="false" Priority="29" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="30" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="19" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="21" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="31" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="32" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="33" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Book Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="37" Name="Bibliography" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" QFormat="true" Name="TOC Heading" /&gt;
- &lt;/w:LatentStyles&gt;
-&lt;/xml&gt;&lt;![endif]-->
-<p><!-- 
- /* Font Definitions */
- @font-face
-	{font-family:宋体;
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-alt:SimSun;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
-@font-face
-	{font-family:"Cambria Math";
-	panose-1:2 4 5 3 5 4 6 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:roman;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1107304683 0 0 159 0;}
-@font-face
-	{font-family:Calibri;
-	panose-1:2 15 5 2 2 2 4 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:swiss;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1073750139 0 0 159 0;}
-@font-face
-	{font-family:"/@宋体";
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{mso-style-unhide:no;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
-	{mso-style-priority:34;
-	mso-style-unhide:no;
-	mso-style-qformat:yes;
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	text-indent:21.0pt;
-	mso-char-indent-count:2.0;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-.MsoChpDefault
-	{mso-style-type:export-only;
-	mso-default-props:yes;
-	font-size:10.0pt;
-	mso-ansi-font-size:10.0pt;
-	mso-bidi-font-size:10.0pt;
-	mso-ascii-font-family:Calibri;
-	mso-fareast-font-family:宋体;
-	mso-hansi-font-family:Calibri;
-	mso-font-kerning:0pt;}
- /* Page Definitions */
- @page
-	{mso-page-border-surround-header:no;
-	mso-page-border-surround-footer:no;}
-@page Section1
-	{size:612.0pt 792.0pt;
-	margin:72.0pt 90.0pt 72.0pt 90.0pt;
-	mso-header-margin:36.0pt;
-	mso-footer-margin:36.0pt;
-	mso-paper-source:0;}
-div.Section1
-	{page:Section1;}
- /* List Definitions */
- @list l0
-	{mso-list-id:170995965;
-	mso-list-type:hybrid;
-	mso-list-template-ids:-1083421606 1103162782 67698713 67698715 67698703 67698713 67698715 67698703 67698713 67698715;}
-@list l0:level1
-	{mso-level-number-format:japanese-counting;
-	mso-level-text:%1．;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	margin-left:22.5pt;
-	text-indent:-22.5pt;}
-@list l1
-	{mso-list-id:1147746093;
-	mso-list-type:hybrid;
-	mso-list-template-ids:901176736 -1117124388 67698713 67698715 67698703 67698713 67698715 67698703 67698713 67698715;}
-@list l1:level1
-	{mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	margin-left:39.0pt;
-	text-indent:-18.0pt;}
-ol
-	{margin-bottom:0cm;}
-ul
-	{margin-bottom:0cm;}
---></p>
-<!-- [if gte mso 10]&gt;
-&lt;mce:style&gt;&lt;!--
- /* Style Definitions */
- table.MsoNormalTable
-	{mso-style-name:普通表格;
-	mso-tstyle-rowband-size:0;
-	mso-tstyle-colband-size:0;
-	mso-style-noshow:yes;
-	mso-style-priority:99;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
-	mso-para-margin:0cm;
-	mso-para-margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:10.0pt;
-	font-family:"Calibri","sans-serif";}
--->
-<p>&nbsp;</p>
-<!-- [endif]-->
-<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">尽管这是一个被大家说烂了的话题，但是，还是写一写，主要是为了理清自己的思路而已</span>
-<span lang="EN-US">~</span>
-</p>
-<p class="MsoNormal"><span lang="EN-US"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-<span style="font-family: 宋体;">内存管理是很多程序的关键因素，以前写</span>
-<span lang="EN-US">C</span>
-<span style="font-family: 宋体;">的时候，无数的</span>
-<span lang="EN-US">malloc</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">free</span>
-<span style="font-family: 宋体;">，老师强调了无数遍，有一个</span>
-<span lang="EN-US">malloc</span>
-<span style="font-family: 宋体;">就应该对应一个</span>
-<span lang="EN-US">free</span>
-<span style="font-family: 宋体;">，否则，内存泄漏就会像噩梦一样缠绕着你。后来写</span>
-<span lang="EN-US">C++</span>
-<span style="font-family: 宋体;">，换成了</span>
-<span lang="EN-US">new</span>
-<span style="font-family: 宋体;">和</span>
-<span lang="EN-US">delete</span>
-<span style="font-family: 宋体;">，最后学</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">的时候，老师讲了，</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">做的比较好，不用程序员去管内存的申请和释放。因为</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">里内置了一个</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">（</span>
-<span lang="EN-US">Garbage Collector</span>
-<span style="font-family: 宋体;">，垃圾收集器），他会负责所有</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">的内存管理。但是，当时不太明白</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">的原理是什么，</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">中有个</span>
-<span lang="EN-US">new</span>
-<span style="font-family: 宋体;">，但是没见到有</span>
-<span lang="EN-US">delete</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">free</span>
-<span style="font-family: 宋体;">，或者</span>
-<span lang="EN-US">remove</span>
-<span style="font-family: 宋体;">之类的表示释放内存的啊。后来自己研究了一下，下面是一些研究心得，有错误轻拍啊</span>
-<span lang="EN-US">~</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: -22.5pt;"><!-- [if !supportLists]--><strong><span lang="EN-US"><span>一．</span>
-</span>
-</strong>
-<!-- [endif]--><strong><span style="font-family: 宋体;">什么是</span>
-<span lang="EN-US">GC</span>
-</strong>
-<strong><span style="font-family: 宋体;">？</span>
-<span lang="EN-US"></span>
-</strong>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">首先说，什么是</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">？在这之前，先搞清楚什么是堆，什么是栈，学过编译原理的可会能比较清楚些。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span lang="EN-US">C</span>
-<span style="font-family: 宋体;">语言中，内存主要划分为数据段，代码段，堆，以及栈，数据段，代码段比较容易理解，数据段就是保存全局变量或常量，或者静态变量的地方，代码段顾名思义就是保存程序代码的，这两个区域在程序加载执行后是固定不变的，而内存的动态管理主要涉及堆，以及栈。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">栈中通常保存的是局部变量，以及函数调用，比如</span>
-<span lang="EN-US">A</span>
-<span style="font-family: 宋体;">函数中声明了一个局部变量，</span>
-<span lang="EN-US">varA</span>
-<span style="font-family: 宋体;">，这个变量就存在栈中，</span>
-<span lang="EN-US">A</span>
-<span style="font-family: 宋体;">函数调用了</span>
-<span lang="EN-US">B</span>
-<span style="font-family: 宋体;">函数，那么，就会将</span>
-<span lang="EN-US">A</span>
-<span style="font-family: 宋体;">函数的运行状态入栈，</span>
-<span lang="EN-US">B</span>
-<span style="font-family: 宋体;">函数入栈，栈顶是</span>
-<span lang="EN-US">B</span>
-<span style="font-family: 宋体;">，执行</span>
-<span lang="EN-US">B</span>
-<span style="font-family: 宋体;">。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">堆中保存的就是动态申请的内存，在</span>
-<span lang="EN-US">C</span>
-<span style="font-family: 宋体;">中就是通过</span>
-<span lang="EN-US">malloc</span>
-<span style="font-family: 宋体;">获得的内存区域，使用完毕后需要</span>
-<span lang="EN-US">free</span>
-<span style="font-family: 宋体;">掉，通常所说的内存管理也是管理这部分内存，因为栈中通过函数调用，变量的生存期等自动的申请释放了。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">上面所说的是</span>
-<span lang="EN-US">C</span>
-<span style="font-family: 宋体;">中的内存分配，那么在</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">中会是什么样呢？</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">中：</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><em><span style="font-family: 宋体;">实例变量和对象驻留在堆上。</span>
-<span lang="EN-US"></span>
-</em>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><em><span style="font-family: 宋体;">局部变量驻留在栈上。</span>
-<span lang="EN-US"></span>
-</em>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">这只是书上说的，但是好像还是不是很清楚，要想搞清楚，我们必须知道当我们在执行一句</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span lang="EN-US">AnObject anObj = new AnObject();</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">的时候，到底发生了什么。事实上，</span>
-<span lang="EN-US">anObj</span>
-<span style="font-family: 宋体;">只是一个类似于</span>
-<span lang="EN-US">C</span>
-<span style="font-family: 宋体;">中指针（注意，只是类似，不完全一样）的变量，他实际上只是一个地址值（或者其它的什么，看</span>
-<span lang="EN-US">JVM</span>
-<span style="font-family: 宋体;">了），指向</span>
-<span lang="EN-US">AnObject</span>
-<span style="font-family: 宋体;">（）在内存中的实际位置&mdash;&mdash;堆中的某个位置。而所谓的局部变量驻留在栈上，指的是</span>
-<span lang="EN-US">anObj</span>
-<span style="font-family: 宋体;">这个类似于指针的值是保存在栈上的。可以这么说，所有的对象都是驻留在堆上，栈中保存的只是局部变量对堆上某个对象的引用。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">不过有一点要注意，对象的实例变量也是保存在堆中的（不会有人不知道实例变量是什么吧）。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">简单的说了堆和栈，回归正题，</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">的主要任务就是在</span>
-<span lang="EN-US">new</span>
-<span style="font-family: 宋体;">时，申请一份空间，当该对象没用时（一会说什么时候叫做&ldquo;没用&rdquo;）删除它，为其他对象腾地方。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><strong><span lang="EN-US">GC</span>
-</strong>
-<strong><span style="font-family: 宋体;">的工作原理：</span>
-<span lang="EN-US"></span>
-</strong>
-</p>
-<p class="MsoListParagraph" style="margin-left: 21pt;"><span style="font-family: 宋体;">好像有一种说法，</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">使用一种叫做标记和清除的算法，对于某种</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">的实现，可能是这样，但是，</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">规范中并没有规定任何特定的实现（我理解，就是说，你怎么实现都行，只要能够实现申请和释放的功能就行）。我没有更深入的研究它的实现，因为我没想过要实现一个</span>
-<span lang="EN-US">JVM</span>
-<span style="font-family: 宋体;">，有兴趣的可以尝试一下。对于</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">应用开发，需要知道什么时候一个对象到达被收集的标准了（也就是&ldquo;没用了&rdquo;），就可以了。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: -22.5pt;"><!-- [if !supportLists]--><strong><span lang="EN-US"><span>二．</span>
-</span>
-</strong>
-<!-- [endif]--><strong><span style="font-family: 宋体;">收集条件</span>
-<span lang="EN-US"></span>
-</strong>
-</p>
-<p class="MsoNormal"><span lang="EN-US"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-<span style="font-family: 宋体;">下面就来说一下比较重要的什么时候满足收集条件？</span>
-</p>
-<p class="MsoNormal"><span lang="EN-US"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-<span style="font-family: 宋体;">每个</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">程序都会有一到多个线程，每个线程都具有自己的线程栈。通常，在一个</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">程序中，至少会运行一个线程（也就是位于栈低的</span>
-<span lang="EN-US">main()</span>
-<span style="font-family: 宋体;">）。每个线程都有自己的生命期，（不太清楚线程的最好还是看看</span>
-<span lang="EN-US">OS</span>
-<span style="font-family: 宋体;">的书，或这比较好的</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">书对线程也有介绍）。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">收集条件就是：</span>
-</p>
-<p class="MsoNormal"><span lang="EN-US"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-<em><span style="font-family: 宋体;">没有任何活的线程能够访问一个对象时，该对象就符合垃圾收集条件。</span>
-</em>
-</p>
-<p class="MsoNormal"><span lang="EN-US"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-<span style="font-family: 宋体;">根据这一定义，当</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">发现一个对象不能被任何活线程访问时，就会认为该对象符合收集条件，在某一时刻将其删除（不确定的某个时刻，一会说什么时候</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">执行）。什么叫做一个对象被线程访问呢，就是说，该线程中有一个引用变量指向的是该对象在堆中的位置。</span>
-</p>
-<p class="MsoNormal"><span lang="EN-US"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-<span style="font-family: 宋体;">这也就涉及到一个问题，一直以为</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">中不会出现内存耗尽，因为有</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">在，不会出现内存泄漏，事实上不是这样的，内存耗尽是可能的，例如你创建并保持访问太多的对象，就会出现内存耗尽。</span>
-</p>
-<p class="MsoNormal"><span lang="EN-US"><span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-<span style="font-family: 宋体;">可能通过上面的解释还是不能够具体的理解什么时候满足收集条件，下面举几个具体的例子：</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: -18pt;"><!-- [if !supportLists]--><strong><span lang="EN-US"><span>1.<span style='font-family: "Times New Roman"; font-style: normal; font-variant: normal; font-weight: normal; font-size: 7pt; line-height: normal; font-size-adjust: none; font-stretch: normal; -x-system-font: none;'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-</span>
-</strong>
-<!-- [endif]--><strong><span style="font-family: 宋体;">空引用</span>
-<span lang="EN-US"></span>
-</strong>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span style="font-family: 宋体;">这是最简单的一种满足收集条件的情况：</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">StringBuffer sb = new StringBuffer(&ldquo;GC&rdquo;);</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">//</span>
-<span style="font-family: 宋体;">其它操作</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">Sb = null;</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">//</span>
-<span style="font-family: 宋体;">此时如果没有其它对象引用</span>
-<span lang="EN-US">StringBuffer(&ldquo;GC&rdquo;)</span>
-<span style="font-family: 宋体;">（也就是没有进行过类似</span>
-<span lang="EN-US">xx=sb;</span>
-<span style="font-family: 宋体;">操作），那么</span>
-<span lang="EN-US">StringBuffer(&ldquo;GC&rdquo;)</span>
-<span style="font-family: 宋体;">在堆中的对象就满足收集条件。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: -18pt;"><!-- [if !supportLists]--><strong><span lang="EN-US"><span>2.<span style='font-family: "Times New Roman"; font-style: normal; font-variant: normal; font-weight: normal; font-size: 7pt; line-height: normal; font-size-adjust: none; font-stretch: normal; -x-system-font: none;'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-</span>
-</strong>
-<!-- [endif]--><strong><span style="font-family: 宋体;">重新为引用变量赋值</span>
-<span lang="EN-US"></span>
-</strong>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">StringBuffer sb = new StringBuffer(&ldquo;GC&rdquo;);</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">StringBuffer sbx = new StringBuffer(&ldquo;Another&rdquo;);</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">//</span>
-<span style="font-family: 宋体;">其它操作</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">Sb = sbx;</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span lang="EN-US">//</span>
-<span style="font-family: 宋体;">此时，</span>
-<span lang="EN-US">sb</span>
-<span style="font-family: 宋体;">指向了</span>
-<span lang="EN-US">sbx</span>
-<span style="font-family: 宋体;">所指向的</span>
-<span lang="EN-US">Another</span>
-<span style="font-family: 宋体;">对象，没有引用变量再指向</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">对象，那么该对象也满足收集条件。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: -18pt;"><!-- [if !supportLists]--><strong><span lang="EN-US"><span>3.<span style='font-family: "Times New Roman"; font-style: normal; font-variant: normal; font-weight: normal; font-size: 7pt; line-height: normal; font-size-adjust: none; font-stretch: normal; -x-system-font: none;'>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </span>
-</span>
-</span>
-</strong>
-<!-- [endif]--><strong><span style="font-family: 宋体;">隔离引用</span>
-<span lang="EN-US"></span>
-</strong>
-</p>
-<p class="MsoListParagraph" style="margin-left: 39pt; text-indent: 0cm;"><span style="font-family: 宋体;">这一条可能是比较难理解的，简单说，就是尽管某个对象被其他人引用，但是引用者也在堆上，没有堆外的引用，那么引用者与被引用者都满足收集条件。</span>
-</p>
-<p>
-<span style="font-size: 10.5pt; font-family: 宋体;">上面说过，对象的实例变量也保存在堆上，如果某个对象</span>
-<span style='font-size: 10.5pt; font-family: "Calibri","sans-serif";' lang="EN-US">A</span>
-<span style="font-size: 10.5pt; font-family: 宋体;">的实例变量</span>
-<span style='font-size: 10.5pt; font-family: "Calibri","sans-serif";' lang="EN-US">i</span>
-<span style="font-size: 10.5pt; font-family: 宋体;">引用另外一个对象</span>
-<span style='font-size: 10.5pt; font-family: "Calibri","sans-serif";' lang="EN-US">B</span>
-<span style="font-size: 10.5pt; font-family: 宋体;">，但是除此之外没有其他人引用他们中的任何一个，那么他们两个都符合收集条件。示例如下：</span>
-</p>
-<p><span style="font-size: 10.5pt; font-family: 宋体;"><pre class="brush: java">public class A  
-{
-	A i;
-	public static void main(String[] args) 
-	{
-		A  a1 = new A();
-		A  a2 = new A();
-		A  a3 = new A();
-		a1.i = a2;
-		a2.i = a3;
-		a3.i = a1;
-		a1 = null;
-		a2 = null;
-		a3 = null;
-		//此时尽管有对堆上对象的引用，但是引用者也在堆上
-	}
+  <div class="entry-content"><p>今天从网上用wget下了很多的电子书，不过文件名的编码都是GBK，系统默认为UTF-8，可以用convmv来转换文件名编码，例如将GBK编码的文件filename重命名为UTF-8：</p>
+<p><pre class="brush: ruby:nogutter">convmv -f gbk -t utf-8 filename --notest</pre>&nbsp;</p>
+<p>由于需要转换的文件比较多，写了个脚本来实现，主要就是一个文件目录的递归遍历：</p>
+<p><pre class="brush: python:nogutter">list_dir(){
+for file in $1/*
+do
+if [ -d $file ]; then
+echo "$file is dirctory"
+list_dir $file
+elif [ -f $file ]; then
+echo "convert $file..."
+convmv -f gbk -t utf-8 $file --notest
+fi
+done
 }
-</pre>
+if [ $# -gt 0 ]; then
+list_dir "$1"
+else
+list_dir "."
+fi
+</pre>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/06/28/post/">Linux批量重命名方法</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-06-28T00:00:00+08:00" pubdate data-updated="true">Jun 28<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/06/28/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
 </span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>经常会遇到需要批量重命名文件的情况，用鼠标太夸张了，简单总结两种比较简单的方法：</p>
+<p>问题：</p>
+<p>存在大量html文件，需要重命名为htm文件</p>
+<p>1.rename</p>
+<p>通常重命名的命令是mv，Larry Wall写的rename具有更强大的功能。能够用perl的正则语法结构进行文件重命名。<pre class="brush: css:nogutter">NAME
+       rename - renames multiple files
+SYNOPSIS
+       rename [ -v ] [ -n ] [ -f ] perlexpr [ files ]
+DESCRIPTION
+       &quot;rename&quot; renames the filenames supplied according to the rule specified
+       as the first argument.  The perlexpr argument is a Perl expression
+       which is expected to modify the $_ string in Perl for at least some of
+       the filenames specified.  If a given filename is not modified by the
+       expression, it will not be renamed.  If no filenames are given on the
+       command line, filenames will be read via standard input.
+       For example, to rename all files matching &quot;*.bak&quot; to strip the
+       extension, you might say
+               rename 's//.bak$//' *.bak
+       To translate uppercase names to lower, you'd use
+               rename 'y/A-Z/a-z/' *&nbsp;</pre>
 </p>
-<p><!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:WordDocument&gt;
-  &lt;w:View&gt;Normal&lt;/w:View&gt;
-  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
-  &lt;w:TrackMoves /&gt;
-  &lt;w:TrackFormatting /&gt;
-  &lt;w:PunctuationKerning /&gt;
-  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
-  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
-  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
-  &lt;w:ValidateAgainstSchemas /&gt;
-  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
-  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
-  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
-  &lt;w:DoNotPromoteQF /&gt;
-  &lt;w:LidThemeOther&gt;EN-US&lt;/w:LidThemeOther&gt;
-  &lt;w:LidThemeAsian&gt;ZH-CN&lt;/w:LidThemeAsian&gt;
-  &lt;w:LidThemeComplexScript&gt;X-NONE&lt;/w:LidThemeComplexScript&gt;
-  &lt;w:Compatibility&gt;
-   &lt;w:SpaceForUL /&gt;
-   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
-   &lt;w:DoNotLeaveBackslashAlone /&gt;
-   &lt;w:ULTrailSpace /&gt;
-   &lt;w:DoNotExpandShiftReturn /&gt;
-   &lt;w:AdjustLineHeightInTable /&gt;
-   &lt;w:BreakWrappedTables /&gt;
-   &lt;w:SnapToGridInCell /&gt;
-   &lt;w:WrapTextWithPunct /&gt;
-   &lt;w:UseAsianBreakRules /&gt;
-   &lt;w:DontGrowAutofit /&gt;
-   &lt;w:SplitPgBreakAndParaMark /&gt;
-   &lt;w:DontVertAlignCellWithSp /&gt;
-   &lt;w:DontBreakConstrainedForcedTables /&gt;
-   &lt;w:DontVertAlignInTxbx /&gt;
-   &lt;w:Word11KerningPairs /&gt;
-   &lt;w:CachedColBalance /&gt;
-   &lt;w:UseFELayout /&gt;
-  &lt;/w:Compatibility&gt;
-  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
-  &lt;m:mathPr&gt;
-   &lt;m:mathFont m:val="Cambria Math" /&gt;
-   &lt;m:brkBin m:val="before" /&gt;
-   &lt;m:brkBinSub m:val="&#45;-" /&gt;
-   &lt;m:smallFrac m:val="off" /&gt;
-   &lt;m:dispDef /&gt;
-   &lt;m:lMargin m:val="0" /&gt;
-   &lt;m:rMargin m:val="0" /&gt;
-   &lt;m:defJc m:val="centerGroup" /&gt;
-   &lt;m:wrapIndent m:val="1440" /&gt;
-   &lt;m:intLim m:val="subSup" /&gt;
-   &lt;m:naryLim m:val="undOvr" /&gt;
-  &lt;/m:mathPr&gt;&lt;/w:WordDocument&gt;
-&lt;/xml&gt;&lt;![endif]--><!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:LatentStyles DefLockedState="false" DefUnhideWhenUsed="true"
-  DefSemiHidden="true" DefQFormat="false" DefPriority="99"
-  LatentStyleCount="267"&gt;
-  &lt;w:LsdException Locked="false" Priority="0" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Normal" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="heading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="35" QFormat="true" Name="caption" /&gt;
-  &lt;w:LsdException Locked="false" Priority="10" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" Name="Default Paragraph Font" /&gt;
-  &lt;w:LsdException Locked="false" Priority="11" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtitle" /&gt;
-  &lt;w:LsdException Locked="false" Priority="22" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Strong" /&gt;
-  &lt;w:LsdException Locked="false" Priority="20" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="59" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Table Grid" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Placeholder Text" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="No Spacing" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Revision" /&gt;
-  &lt;w:LsdException Locked="false" Priority="34" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="List Paragraph" /&gt;
-  &lt;w:LsdException Locked="false" Priority="29" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="30" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="19" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="21" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="31" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="32" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="33" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Book Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="37" Name="Bibliography" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" QFormat="true" Name="TOC Heading" /&gt;
- &lt;/w:LatentStyles&gt;
-&lt;/xml&gt;&lt;![endif]--><!-- 
- /* Font Definitions */
- @font-face
-	{font-family:宋体;
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-alt:SimSun;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
-@font-face
-	{font-family:"Cambria Math";
-	panose-1:2 4 5 3 5 4 6 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:roman;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1107304683 0 0 159 0;}
-@font-face
-	{font-family:Calibri;
-	panose-1:2 15 5 2 2 2 4 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:swiss;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1073750139 0 0 159 0;}
-@font-face
-	{font-family:"/@宋体";
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{mso-style-unhide:no;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
-	{mso-style-priority:34;
-	mso-style-unhide:no;
-	mso-style-qformat:yes;
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	text-indent:21.0pt;
-	mso-char-indent-count:2.0;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-.MsoChpDefault
-	{mso-style-type:export-only;
-	mso-default-props:yes;
-	font-size:10.0pt;
-	mso-ansi-font-size:10.0pt;
-	mso-bidi-font-size:10.0pt;
-	mso-ascii-font-family:Calibri;
-	mso-fareast-font-family:宋体;
-	mso-hansi-font-family:Calibri;
-	mso-font-kerning:0pt;}
- /* Page Definitions */
- @page
-	{mso-page-border-surround-header:no;
-	mso-page-border-surround-footer:no;}
-@page Section1
-	{size:612.0pt 792.0pt;
-	margin:72.0pt 90.0pt 72.0pt 90.0pt;
-	mso-header-margin:36.0pt;
-	mso-footer-margin:36.0pt;
-	mso-paper-source:0;}
-div.Section1
-	{page:Section1;}
- /* List Definitions */
- @list l0
-	{mso-list-id:170995965;
-	mso-list-type:hybrid;
-	mso-list-template-ids:-1083421606 1103162782 67698713 67698715 67698703 67698713 67698715 67698703 67698713 67698715;}
-@list l0:level1
-	{mso-level-number-format:japanese-counting;
-	mso-level-text:%1．;
-	mso-level-tab-stop:none;
-	mso-level-number-position:left;
-	margin-left:22.5pt;
-	text-indent:-22.5pt;}
-ol
-	{margin-bottom:0cm;}
-ul
-	{margin-bottom:0cm;}
---><!-- [if gte mso 10]&gt;
-&lt;mce:style&gt;&lt;!--
- /* Style Definitions */
- table.MsoNormalTable
-	{mso-style-name:普通表格;
-	mso-tstyle-rowband-size:0;
-	mso-tstyle-colband-size:0;
-	mso-style-noshow:yes;
-	mso-style-priority:99;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
-	mso-para-margin:0cm;
-	mso-para-margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:10.0pt;
-	font-family:"Calibri","sans-serif";}
--->
-<!-- [endif]-->
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: -22.5pt;"><!-- [if !supportLists]--><strong><span lang="EN-US"><span>三．</span>
+<p>上面是rename的man手册，针对上面重命名html文件的问题，解决如下：</p>
+<p>rename &#8216;s/.html$/.htm/&#8217; *.html</p>
+<p>简单来说就是重命名所有html文件（*.html），将文件名结尾处.html替换为.htm(&#8217;s/.html$/.htm/&#8217;)，其实更简单的表达式可以为&#8217;s/l$//&#8217;</p>
+<p>2.printf</p>
+<p>使用shell命令中的prinf打印出需要的文件名，然后在使用mv重命名</p>
+<p>for i in *.html</p>
+<p>do</p>
+<p>newname=&quot;`printf &quot;%s&quot; ${i/html}`&quot;htm</p>
+<p>mv $i $newname</p>
+<p>done</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/06/21/post/">查询外网IP并发送邮件的脚本</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2010</time>
+        
+         | <a href="/blog/2010/06/21/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
 </span>
-</strong>
-<!-- [endif]--><strong><span style="font-family: 宋体;">什么时候执行</span>
-<span lang="EN-US">GC</span>
-</strong>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>泡论坛时发现的小问题，自己做了下，记录如下：</p>
+<p>问题：如何查询服务器的外网IP并发送到指定邮箱？</p>
+<p>解决办法：</p>
+<p><pre class="brush: c-sharp">  1 #!/bin/sh
+  2 
+  3 
+  4 ip=`curl -s 'http://checkip.dyndns.org' | sed 's/.*Current IP Address: /([0-    9/.]*/).*//1/g'`
+  5 echo &quot;Sending ip $ip...&quot;
+  6 
+  7 to=&quot;yourmail@yourdomain.com&quot;
+  8 subject=&quot;IP&quot;
+  9 message=&quot;IP is $ip&quot;
+ 10 headers=&quot;From:server@serverdomain&quot;
+ 11 echo $message | mail -s $subject $to -- -f $headers
+ 12 echo &quot;Send OK!&quot;
+</pre></p>
+<p>&nbsp;</p>
+<p>大概思路：</p>
+<p>首先通过查询&nbsp; http://checkip.dyndns.org获取外网IP，得到一个HTML页，sed过滤道多余的HTML标签，获得准确的IP</p>
+<p>然后通过sendmail发送邮件到指定邮箱</p>
+<p>需要安装curl和sendmail</p>
+<p>&nbsp;</p>
+<p><pre class="brush: c-sharp:nogutter">sudo apt-get install curl
+sudo apt-get install sendmail</pre>
 </p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span style="font-family: 宋体;">下面来说一下什么时候</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">会执行？</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">受</span>
-<span lang="EN-US">JVM</span>
-<span style="font-family: 宋体;">控制，由</span>
-<span lang="EN-US">JVM</span>
-<span style="font-family: 宋体;">决定什么时候运行</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">。但是</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">规范并没有规定什么时侯执行</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">，尽管我们可以请求执行</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">，但是只是提建议，最终执行与否，完全看</span>
-<span lang="EN-US">JVM</span>
-<span style="font-family: 宋体;">，人家心情好，说不定会立即相应你，心情不好时，那你就等着吧。因此，绝对不能依赖于</span>
-<span lang="EN-US">JVM</span>
-<span style="font-family: 宋体;">请求</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">来完成某种行为。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span style="font-family: 宋体;">下面写个简单的请求</span>
-<span lang="EN-US">GC</span>
-<span style="font-family: 宋体;">的例子：</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span style="font-family: 宋体;"><pre class="brush: java">public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		Runtime rt = Runtime.getRuntime();//获得Runtime
-		System.out.println(rt.totalMemory());//全部内存
-		System.out.println(rt.freeMemory());//空余内存
-		Date[] sa = new Date[100000];
-		for(int i=0; i&lt;100000; i++){
-			sa[i] = new Date();
-		}
-		System.out.println(rt.freeMemory());
-		for(int i=0; i&lt;100000; i++){
-			sa[i] = null;
-		}
-		sa = null;
-		System.out.println(rt.freeMemory());
-		System.gc();//请求GC
-		System.out.println(rt.freeMemory());
-	}
-</pre>
+<p>sendmail的配置比较复杂，不过可以使用默认的配置也能够发送邮件。</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/04/24/post/">maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-04-24T00:00:00+08:00" pubdate data-updated="true">Apr 24<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/04/24/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
+  
 </span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span style="font-family: 宋体;"><br />
-</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:WordDocument&gt;
-  &lt;w:View&gt;Normal&lt;/w:View&gt;
-  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
-  &lt;w:TrackMoves /&gt;
-  &lt;w:TrackFormatting /&gt;
-  &lt;w:PunctuationKerning /&gt;
-  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
-  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
-  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
-  &lt;w:ValidateAgainstSchemas /&gt;
-  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
-  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
-  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
-  &lt;w:DoNotPromoteQF /&gt;
-  &lt;w:LidThemeOther&gt;EN-US&lt;/w:LidThemeOther&gt;
-  &lt;w:LidThemeAsian&gt;ZH-CN&lt;/w:LidThemeAsian&gt;
-  &lt;w:LidThemeComplexScript&gt;X-NONE&lt;/w:LidThemeComplexScript&gt;
-  &lt;w:Compatibility&gt;
-   &lt;w:SpaceForUL /&gt;
-   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
-   &lt;w:DoNotLeaveBackslashAlone /&gt;
-   &lt;w:ULTrailSpace /&gt;
-   &lt;w:DoNotExpandShiftReturn /&gt;
-   &lt;w:AdjustLineHeightInTable /&gt;
-   &lt;w:BreakWrappedTables /&gt;
-   &lt;w:SnapToGridInCell /&gt;
-   &lt;w:WrapTextWithPunct /&gt;
-   &lt;w:UseAsianBreakRules /&gt;
-   &lt;w:DontGrowAutofit /&gt;
-   &lt;w:SplitPgBreakAndParaMark /&gt;
-   &lt;w:DontVertAlignCellWithSp /&gt;
-   &lt;w:DontBreakConstrainedForcedTables /&gt;
-   &lt;w:DontVertAlignInTxbx /&gt;
-   &lt;w:Word11KerningPairs /&gt;
-   &lt;w:CachedColBalance /&gt;
-   &lt;w:UseFELayout /&gt;
-  &lt;/w:Compatibility&gt;
-  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
-  &lt;m:mathPr&gt;
-   &lt;m:mathFont m:val="Cambria Math" /&gt;
-   &lt;m:brkBin m:val="before" /&gt;
-   &lt;m:brkBinSub m:val="&#45;-" /&gt;
-   &lt;m:smallFrac m:val="off" /&gt;
-   &lt;m:dispDef /&gt;
-   &lt;m:lMargin m:val="0" /&gt;
-   &lt;m:rMargin m:val="0" /&gt;
-   &lt;m:defJc m:val="centerGroup" /&gt;
-   &lt;m:wrapIndent m:val="1440" /&gt;
-   &lt;m:intLim m:val="subSup" /&gt;
-   &lt;m:naryLim m:val="undOvr" /&gt;
-  &lt;/m:mathPr&gt;&lt;/w:WordDocument&gt;
-&lt;/xml&gt;&lt;![endif]--><!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:LatentStyles DefLockedState="false" DefUnhideWhenUsed="true"
-  DefSemiHidden="true" DefQFormat="false" DefPriority="99"
-  LatentStyleCount="267"&gt;
-  &lt;w:LsdException Locked="false" Priority="0" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Normal" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="heading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="35" QFormat="true" Name="caption" /&gt;
-  &lt;w:LsdException Locked="false" Priority="10" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" Name="Default Paragraph Font" /&gt;
-  &lt;w:LsdException Locked="false" Priority="11" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtitle" /&gt;
-  &lt;w:LsdException Locked="false" Priority="22" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Strong" /&gt;
-  &lt;w:LsdException Locked="false" Priority="20" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="59" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Table Grid" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Placeholder Text" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="No Spacing" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Revision" /&gt;
-  &lt;w:LsdException Locked="false" Priority="34" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="List Paragraph" /&gt;
-  &lt;w:LsdException Locked="false" Priority="29" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="30" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="19" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="21" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="31" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="32" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="33" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Book Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="37" Name="Bibliography" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" QFormat="true" Name="TOC Heading" /&gt;
- &lt;/w:LatentStyles&gt;
-&lt;/xml&gt;&lt;![endif]--><!-- 
- /* Font Definitions */
- @font-face
-	{font-family:宋体;
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-alt:SimSun;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
-@font-face
-	{font-family:"Cambria Math";
-	panose-1:2 4 5 3 5 4 6 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:roman;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1107304683 0 0 159 0;}
-@font-face
-	{font-family:Calibri;
-	panose-1:2 15 5 2 2 2 4 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:swiss;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1073750139 0 0 159 0;}
-@font-face
-	{font-family:"/@宋体";
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{mso-style-unhide:no;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
-	{mso-style-priority:34;
-	mso-style-unhide:no;
-	mso-style-qformat:yes;
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	text-indent:21.0pt;
-	mso-char-indent-count:2.0;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-.MsoChpDefault
-	{mso-style-type:export-only;
-	mso-default-props:yes;
-	font-size:10.0pt;
-	mso-ansi-font-size:10.0pt;
-	mso-bidi-font-size:10.0pt;
-	mso-ascii-font-family:Calibri;
-	mso-fareast-font-family:宋体;
-	mso-hansi-font-family:Calibri;
-	mso-font-kerning:0pt;}
- /* Page Definitions */
- @page
-	{mso-page-border-surround-header:no;
-	mso-page-border-surround-footer:no;}
-@page Section1
-	{size:612.0pt 792.0pt;
-	margin:72.0pt 90.0pt 72.0pt 90.0pt;
-	mso-header-margin:36.0pt;
-	mso-footer-margin:36.0pt;
-	mso-paper-source:0;}
-div.Section1
-	{page:Section1;}
---><!-- [if gte mso 10]&gt;
-&lt;mce:style&gt;&lt;!--
- /* Style Definitions */
- table.MsoNormalTable
-	{mso-style-name:普通表格;
-	mso-tstyle-rowband-size:0;
-	mso-tstyle-colband-size:0;
-	mso-style-noshow:yes;
-	mso-style-priority:99;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
-	mso-para-margin:0cm;
-	mso-para-margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:10.0pt;
-	font-family:"Calibri","sans-serif";}
--->
-<!-- [endif]--><span style="font-family: 宋体;">该程序的输出结果为：</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span style="font-family: 宋体;"><pre class="brush: java">5177344
-4935344
-2221696
-2221696
-5033840
-</pre>
-</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:WordDocument&gt;
-  &lt;w:View&gt;Normal&lt;/w:View&gt;
-  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
-  &lt;w:TrackMoves /&gt;
-  &lt;w:TrackFormatting /&gt;
-  &lt;w:PunctuationKerning /&gt;
-  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
-  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
-  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
-  &lt;w:ValidateAgainstSchemas /&gt;
-  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
-  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
-  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
-  &lt;w:DoNotPromoteQF /&gt;
-  &lt;w:LidThemeOther&gt;EN-US&lt;/w:LidThemeOther&gt;
-  &lt;w:LidThemeAsian&gt;ZH-CN&lt;/w:LidThemeAsian&gt;
-  &lt;w:LidThemeComplexScript&gt;X-NONE&lt;/w:LidThemeComplexScript&gt;
-  &lt;w:Compatibility&gt;
-   &lt;w:SpaceForUL /&gt;
-   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
-   &lt;w:DoNotLeaveBackslashAlone /&gt;
-   &lt;w:ULTrailSpace /&gt;
-   &lt;w:DoNotExpandShiftReturn /&gt;
-   &lt;w:AdjustLineHeightInTable /&gt;
-   &lt;w:BreakWrappedTables /&gt;
-   &lt;w:SnapToGridInCell /&gt;
-   &lt;w:WrapTextWithPunct /&gt;
-   &lt;w:UseAsianBreakRules /&gt;
-   &lt;w:DontGrowAutofit /&gt;
-   &lt;w:SplitPgBreakAndParaMark /&gt;
-   &lt;w:DontVertAlignCellWithSp /&gt;
-   &lt;w:DontBreakConstrainedForcedTables /&gt;
-   &lt;w:DontVertAlignInTxbx /&gt;
-   &lt;w:Word11KerningPairs /&gt;
-   &lt;w:CachedColBalance /&gt;
-   &lt;w:UseFELayout /&gt;
-  &lt;/w:Compatibility&gt;
-  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
-  &lt;m:mathPr&gt;
-   &lt;m:mathFont m:val="Cambria Math" /&gt;
-   &lt;m:brkBin m:val="before" /&gt;
-   &lt;m:brkBinSub m:val="&#45;-" /&gt;
-   &lt;m:smallFrac m:val="off" /&gt;
-   &lt;m:dispDef /&gt;
-   &lt;m:lMargin m:val="0" /&gt;
-   &lt;m:rMargin m:val="0" /&gt;
-   &lt;m:defJc m:val="centerGroup" /&gt;
-   &lt;m:wrapIndent m:val="1440" /&gt;
-   &lt;m:intLim m:val="subSup" /&gt;
-   &lt;m:naryLim m:val="undOvr" /&gt;
-  &lt;/m:mathPr&gt;&lt;/w:WordDocument&gt;
-&lt;/xml&gt;&lt;![endif]--><!-- [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:LatentStyles DefLockedState="false" DefUnhideWhenUsed="true"
-  DefSemiHidden="true" DefQFormat="false" DefPriority="99"
-  LatentStyleCount="267"&gt;
-  &lt;w:LsdException Locked="false" Priority="0" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Normal" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="heading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="9" QFormat="true" Name="heading 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 7" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 8" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" Name="toc 9" /&gt;
-  &lt;w:LsdException Locked="false" Priority="35" QFormat="true" Name="caption" /&gt;
-  &lt;w:LsdException Locked="false" Priority="10" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" Name="Default Paragraph Font" /&gt;
-  &lt;w:LsdException Locked="false" Priority="11" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtitle" /&gt;
-  &lt;w:LsdException Locked="false" Priority="22" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Strong" /&gt;
-  &lt;w:LsdException Locked="false" Priority="20" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="59" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Table Grid" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Placeholder Text" /&gt;
-  &lt;w:LsdException Locked="false" Priority="1" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="No Spacing" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" UnhideWhenUsed="false" Name="Revision" /&gt;
-  &lt;w:LsdException Locked="false" Priority="34" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="List Paragraph" /&gt;
-  &lt;w:LsdException Locked="false" Priority="29" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="30" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Quote" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 1" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 2" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 3" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 4" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 5" /&gt;
-  &lt;w:LsdException Locked="false" Priority="60" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="61" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="62" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Light Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="63" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="64" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Shading 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="65" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="66" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium List 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="67" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 1 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="68" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 2 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="69" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Medium Grid 3 Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="70" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Dark List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="71" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Shading Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="72" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful List Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="73" SemiHidden="false"
-   UnhideWhenUsed="false" Name="Colorful Grid Accent 6" /&gt;
-  &lt;w:LsdException Locked="false" Priority="19" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="21" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Emphasis" /&gt;
-  &lt;w:LsdException Locked="false" Priority="31" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Subtle Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="32" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Intense Reference" /&gt;
-  &lt;w:LsdException Locked="false" Priority="33" SemiHidden="false"
-   UnhideWhenUsed="false" QFormat="true" Name="Book Title" /&gt;
-  &lt;w:LsdException Locked="false" Priority="37" Name="Bibliography" /&gt;
-  &lt;w:LsdException Locked="false" Priority="39" QFormat="true" Name="TOC Heading" /&gt;
- &lt;/w:LatentStyles&gt;
-&lt;/xml&gt;&lt;![endif]--><!-- 
- /* Font Definitions */
- @font-face
-	{font-family:宋体;
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-alt:SimSun;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
-@font-face
-	{font-family:"Cambria Math";
-	panose-1:2 4 5 3 5 4 6 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:roman;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1107304683 0 0 159 0;}
-@font-face
-	{font-family:Calibri;
-	panose-1:2 15 5 2 2 2 4 3 2 4;
-	mso-font-charset:0;
-	mso-generic-font-family:swiss;
-	mso-font-pitch:variable;
-	mso-font-signature:-1610611985 1073750139 0 0 159 0;}
-@font-face
-	{font-family:"/@宋体";
-	panose-1:2 1 6 0 3 1 1 1 1 1;
-	mso-font-charset:134;
-	mso-generic-font-family:auto;
-	mso-font-pitch:variable;
-	mso-font-signature:3 135135232 16 0 262145 0;}
- /* Style Definitions */
- p.MsoNormal, li.MsoNormal, div.MsoNormal
-	{mso-style-unhide:no;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-p.MsoListParagraph, li.MsoListParagraph, div.MsoListParagraph
-	{mso-style-priority:34;
-	mso-style-unhide:no;
-	mso-style-qformat:yes;
-	margin:0cm;
-	margin-bottom:.0001pt;
-	text-align:justify;
-	text-justify:inter-ideograph;
-	text-indent:21.0pt;
-	mso-char-indent-count:2.0;
-	mso-pagination:none;
-	font-size:10.5pt;
-	mso-bidi-font-size:11.0pt;
-	font-family:"Calibri","sans-serif";
-	mso-fareast-font-family:宋体;
-	mso-bidi-font-family:"Times New Roman";
-	mso-font-kerning:1.0pt;}
-.MsoChpDefault
-	{mso-style-type:export-only;
-	mso-default-props:yes;
-	font-size:10.0pt;
-	mso-ansi-font-size:10.0pt;
-	mso-bidi-font-size:10.0pt;
-	mso-ascii-font-family:Calibri;
-	mso-fareast-font-family:宋体;
-	mso-hansi-font-family:Calibri;
-	mso-font-kerning:0pt;}
- /* Page Definitions */
- @page
-	{mso-page-border-surround-header:no;
-	mso-page-border-surround-footer:no;}
-@page Section1
-	{size:595.3pt 841.9pt;
-	margin:72.0pt 90.0pt 72.0pt 90.0pt;
-	mso-header-margin:42.55pt;
-	mso-footer-margin:49.6pt;
-	mso-paper-source:0;
-	layout-grid:15.6pt;}
-div.Section1
-	{page:Section1;}
---><!-- [if gte mso 10]&gt;
-&lt;mce:style&gt;&lt;!--
- /* Style Definitions */
- table.MsoNormalTable
-	{mso-style-name:普通表格;
-	mso-tstyle-rowband-size:0;
-	mso-tstyle-colband-size:0;
-	mso-style-noshow:yes;
-	mso-style-priority:99;
-	mso-style-qformat:yes;
-	mso-style-parent:"";
-	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
-	mso-para-margin:0cm;
-	mso-para-margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:10.0pt;
-	font-family:"Calibri","sans-serif";}
--->
-<!-- [endif]-->
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span style="font-family: 宋体;">尽管这里显示的是</span>
-<span lang="EN-US">JVM</span>
-<span style="font-family: 宋体;">确实响应了请求，但是，再次强调，这是没有保证的。</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span lang="EN-US">&nbsp;</span>
-</p>
-<p class="MsoListParagraph" style="margin-left: 22.5pt; text-indent: 0cm;"><span lang="EN-US">OK</span>
-<span style="font-family: 宋体;">，就这些，继续努力</span>
-<span lang="EN-US">~</span>
-</p>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /</p>
+<p>-DartifactId=simple /</p>
+<p>-DpackageName=org.sonatype.mavenbook</p>
+<p>结果报错Build Error：</p>
+<p>Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</p>
+<p>查了半天也不知道为什么，明明存在archetypes插件，却说找不到，最后决定把本地库全部都删除，然后重新创建项目，没问题了&hellip;&hellip;</p>
+<p>神奇~</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/04/07/post/">Error: No &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-04-07T00:00:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/04/07/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天第一次使用JBoss，解压运行时出现了如下错误：</p>
+<p>Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/server/jvm.dll&#8217;</p>
+<p>原因是JAVA_HOME设置的不对</p>
+<p>临时解决办法是重新设置下JAVA_HOME，set JAVA_HOME=&#8221;C:/Program Files/Java/jdk1.6.0_19&#8221;就行了，最好是在环境变量里添加一个。</p>
 <p>&nbsp;</p>
 <p>&nbsp;</p></div>
   
@@ -2738,43 +420,43 @@ div.Section1
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
       </li>
     
   </ul>

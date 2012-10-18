@@ -9,7 +9,10 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="main() public static void main(String argv[]) throws Exception { try { StringUtils.startupShutdownMessage(NameNode.class, argv, LOG); //创建nameNode &hellip;">
+  <meta name="description" content="NameNode和DataNode间的通信分为四种场景： 初始时DataNode注册：
+周期性心跳检测：
+周期性blockreport：
+完成一个副本的写入： 一、初始时DataNode注册 DataNode在启动时会向NameNode注册， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -84,7 +87,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a></h1>
     
     
       <p class="meta">
@@ -100,9 +103,9 @@
   
 
 
-<time datetime="2012-10-18T21:35:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:54:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/10/18/hdfs-namenode-startup/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/#disqus_thread">Comments</a>
         
         
           | 
@@ -120,351 +123,225 @@
   </header>
 
 
-  <div class="entry-content"><h2>main()</h2>
+  <div class="entry-content"><p>NameNode和DataNode间的通信分为四种场景：</p>
 
-<pre><code>  public static void main(String argv[]) throws Exception {
-    try {
-      StringUtils.startupShutdownMessage(NameNode.class, argv, LOG);
-      //创建nameNode
-      NameNode namenode = createNameNode(argv, null);
-      if (namenode != null)
-        namenode.join();
-    } catch (Throwable e) {
-      LOG.error(StringUtils.stringifyException(e));
-      System.exit(-1);
-    }
-  }
-</code></pre>
+<ol>
+<li>初始时DataNode注册：</li>
+<li>周期性心跳检测：</li>
+<li>周期性blockreport：</li>
+<li>完成一个副本的写入：</li>
+</ol>
 
-<h3>createNameNode()</h3>
 
-<pre><code>  public static NameNode createNameNode(String argv[], 
-                                 Configuration conf) throws IOException {
-    if (conf == null)
-      conf = new Configuration();
-      //从命令行参数中提取启动配置项数据
-    StartupOption startOpt = parseArguments(argv);
-    if (startOpt == null) {
-      printUsage();
-      return null;
-    }
-    //设置启动参数
-    setStartupOption(conf, startOpt);
+<h2>一、初始时DataNode注册</h2>
 
-    switch (startOpt) {
-      case FORMAT:
-        boolean aborted = format(conf, true);
-        System.exit(aborted ? 1 : 0);
-      case FINALIZE:
-        aborted = finalize(conf, true);
-        System.exit(aborted ? 1 : 0);
-      default:
-    }
+<p>DataNode在启动时会向NameNode注册，注册时需要提交的信息有DatanodeRegistration表示。结构如下：</p>
 
-    //新建NameNode
-    NameNode namenode = new NameNode(conf);
-    return namenode;
-  }
-</code></pre>
+<p><img src="/images/hdfs/DatanodeRegistration.png" alt="DatanodeRegistration" /></p>
 
-<h3>NameNode()</h3>
+<p>主要包括：</p>
 
-<pre><code>  public NameNode(Configuration conf) throws IOException {
-    super(conf);
-    try {
-    //初始化
-      initialize(getConf());
-    } catch (IOException e) {
-      this.stop();
-      throw e;
-    }
-  }
-</code></pre>
+<ol>
+<li>name：机器名（主机名+服务端口号）</li>
+<li>infoPort: 状态信息服务端口好</li>
+<li>ipcPort： 提供ipc服务的端口号</li>
+</ol>
 
-<h3>initialize()</h3>
 
-<pre><code>  private void initialize(Configuration conf) throws IOException {
-    InetSocketAddress socAddr = NameNode.getAddress(conf);
-    int handlerCount = conf.getInt("dfs.namenode.handler.count", 10);
-    // 关键-&gt;创建一个RPC Server
-    this.server = RPC.getServer(this, socAddr.getHostName(), socAddr.getPort(),
-                                handlerCount, false, conf);
+<p>此外，该类中的storageID是该datanode在集群中的唯一id，在注册时有NameNode分配</p>
 
-    // The rpc-server port can be ephemeral... ensure we have the correct info
-    this.serverAddress = this.server.getListenerAddress(); 
-    FileSystem.setDefaultUri(conf, getUri(serverAddress));
-    LOG.info("Namenode up at: " + this.serverAddress);
+<p>注册的主要流程如下：
+<img src="/images/hdfs/register.png" alt="DataNodeRegister" /></p>
 
-    myMetrics = new NameNodeMetrics(conf, this);
+<h2>二、心跳检测（heartbeat）</h2>
 
-    //关键-&gt;创建一个FSNameSystem
-    this.namesystem = new FSNamesystem(this, conf);
-    //启动HTTP Server
-    startHttpServer(conf);
-    //启动RPC Server
-    this.server.start();  //start RPC server   
+<p>DataNode通过周期性调用namenode.sendHeartbeat()来完成心跳检测.主要流程如下：</p>
 
-    startTrashEmptier(conf);
-  }
-</code></pre>
+<p><img src="/images/hdfs/sendHeartbeat.png" alt="sendHeartbeat" /></p>
 
-<h2>FSNameSystem()</h2>
+<h2>三、blockReport</h2>
 
-<pre><code>  FSNamesystem(NameNode nn, Configuration conf) throws IOException {
-    try {
-      //初始化FSNameSystem
-      initialize(nn, conf);
-      userPasswordInformation = new UserPasswordInformation(conf);
-      extendAccessControlList = new ExtendAccessControlList(conf);
-    } catch(IOException e) {
-      LOG.error(getClass().getSimpleName() + " initialization failed.", e);
-      close();
-      throw e;
-    }
-  }
-</code></pre>
+<p>DataNode周期性向NameNode发送blockReport，告知自己最新的block信息：
+<img src="/images/hdfs/blockReport.png" alt="blockReport" /></p>
 
-<h3>FSNameSystem.initialize()</h3>
+<h2>四、完成副本写入</h2>
+</div>
+  
+  
 
-<pre><code>  private void initialize(NameNode nn, Configuration conf) throws IOException {
-    this.systemStart = now();
-    this.fsLock = new ReentrantReadWriteLock(); // non-fair locking
-    setConfigurationParameters(conf);
 
-    this.nameNodeAddress = nn.getNameNodeAddress();
-    this.registerMBean(conf); // register the MBean for the FSNamesystemStutus
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a></h1>
+    
+    
+      <p class="meta">
+        
 
-    //创建FSDirectory
-    this.dir = new FSDirectory(this, conf);
-    StartupOption startOpt = NameNode.getStartupOption(conf);
 
-    //加载FSImage
-    this.dir.loadFSImage(getNamespaceDirs(conf),
-                         getNamespaceEditsDirs(conf), startOpt);
-    long timeTakenToLoadFSImage = now() - systemStart;
-    LOG.info("Finished loading FSImage in " + timeTakenToLoadFSImage + " msecs");
-    NameNode.getNameNodeMetrics().fsImageLoadTime.set(
-                              (int) timeTakenToLoadFSImage);
-    this.safeMode = new SafeModeInfo(conf);
-    setBlockTotal();
-    //创建PendingReplicationBlocks
-    pendingReplications = new PendingReplicationBlocks(
-                            conf.getInt("dfs.replication.pending.timeout.sec", 
-                                        -1) * 1000L);
-    //创建心跳检查线程                                          
-    this.hbthread = new Daemon(new HeartbeatMonitor());
-    //创建租约管理线程
-    this.lmthread = new Daemon(leaseManager.new Monitor());
-    //创建副本管理线程
-    this.replthread = new Daemon(new ReplicationMonitor());
-    hbthread.start();
-    lmthread.start();
-    replthread.start();
 
-    // 副本超额block管理线程
-    this.overreplthread = new Daemon(new OverReplicationMonitor());
-    overreplthread.start();
 
-    this.hostsReader = new HostsFileReader(conf.get("dfs.hosts",""),
-                                           conf.get("dfs.hosts.exclude",""));
-    //创建退役节点管理线程
-    this.dnthread = new Daemon(new DecommissionManager(this).new Monitor(
-        conf.getInt("dfs.namenode.decommission.interval", 30),
-        conf.getInt("dfs.namenode.decommission.nodes.per.interval", 5)));
-    dnthread.start();
 
-    this.dnsToSwitchMapping = ReflectionUtils.newInstance(
-        conf.getClass("topology.node.switch.mapping.impl", ScriptBasedMapping.class,
-            DNSToSwitchMapping.class), conf);
 
-    /* If the dns to swith mapping supports cache, resolve network 
-     * locations of those hosts in the include list, 
-     * and store the mapping in the cache; so future calls to resolve
-     * will be fast.
+
+
+  
+
+
+<time datetime="2012-10-18T21:52:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>一、SafeModeInfo</h2>
+
+<p>SafeModeInfo维护了系统安全模式下的状态信息，每当系统进入安全模式时都会创建一个SafeModeInfo实例维护状态信息，离开时会销毁这个实例。
+该类结构如下</p>
+
+<p><img src="/images/hdfs/SafeModeInfo.png" alt="SafeModeInfo" /></p>
+
+<p>其中threshold和extension为可配置项：</p>
+
+<ol>
+<li>threshold表示离开安全模式时打到最低备份数的block的比例</li>
+<li>extension表示进入安全模式的最低时长</li>
+</ol>
+
+
+<h2>二、SafeModeMonitor</h2>
+
+<p>FSNameSystem中SafeModeMonitor代码结构如下：</p>
+
+<pre><code>  class SafeModeMonitor implements Runnable {
+    /** interval in msec for checking safe mode: {@value} */
+    private static final long recheckInterval = 1000;
+
+    /**
      */
-    if (dnsToSwitchMapping instanceof CachedDNSToSwitchMapping) {
-      dnsToSwitchMapping.resolve(new ArrayList&lt;String&gt;(hostsReader.getHosts()));
-    }
-    //创建副本定位器用于定位副本存放位置
-    this.replicator = BlockPlacementPolicy.getInstance(
-        conf,
-        this,
-        this.clusterMap,
-        this.hostsReader,
-        this.dnsToSwitchMapping,
-        this);
-  }
-</code></pre>
-
-<h2>FSDirectory(this, conf)</h2>
-
-<p>新建FSDirecotry</p>
-
-<pre><code> FSDirectory(FSNamesystem ns, Configuration conf) {
-    //创建一个FSImage，并实例化构建FSDirectory
-    this(new FSImage(), ns, conf);
-    fsImage.setCheckpointDirectories(FSImage.getCheckpointDirs(conf, null),
-                                FSImage.getCheckpointEditsDirs(conf, null));
-  }
-</code></pre>
-
-<h3>this(new FSImage(), ns, conf);</h3>
-
-<pre><code>FSDirectory(FSImage fsImage, FSNamesystem ns, Configuration conf) {
-    this.bLock = new ReentrantReadWriteLock(); // non-fair
-    this.cond = bLock.writeLock().newCondition();
-    //创建根目录
-    rootDir = new INodeDirectoryWithQuota(INodeDirectory.ROOT_NAME,
-        ns.createFsOwnerPermissions(new FsPermission((short)0755)),
-        Integer.MAX_VALUE, -1);
-    this.fsImage = fsImage;
-    namesystem = ns;
-    initialize(conf);
-  }
-</code></pre>
-
-<h3>FSDirectory.initialize()</h3>
-
-<pre><code>  private void initialize(Configuration conf) {
-    MetricsContext metricsContext = MetricsUtil.getContext("dfs");
-    directoryMetrics = MetricsUtil.createRecord(metricsContext, "FSDirectory");
-    directoryMetrics.setTag("sessionId", conf.get("session.id"));
-  }
-</code></pre>
-
-<h3>FSDirectory.loadFSImage()</h3>
-
-<pre><code>  void loadFSImage(Collection&lt;File&gt; dataDirs,
-                   Collection&lt;File&gt; editsDirs,
-                   StartupOption startOpt) throws IOException {
-    // format before starting up if requested
-    if (startOpt == StartupOption.FORMAT) {
-      fsImage.setStorageDirectories(dataDirs, editsDirs);
-      fsImage.format();
-      startOpt = StartupOption.REGULAR;
-    }
-    try {
-      //从datadir和editdirs加载FSImage
-      if (fsImage.recoverTransitionRead(dataDirs, editsDirs, startOpt)) {
-        fsImage.saveNamespace(true);
+    public void run() {
+      while (fsRunning &amp;&amp; (safeMode != null &amp;&amp; !safeMode.canLeave())) {
+        try {
+          Thread.sleep(recheckInterval);
+        } catch (InterruptedException ie) {
+        }
       }
-      //初始化Editlog
-      FSEditLog editLog = fsImage.getEditLog();
-      assert editLog != null : "editLog must be initialized";
-      if (!editLog.isOpen())
-        editLog.open();
-      fsImage.setCheckpointDirectories(null, null);
-    } catch(IOException e) {
-      fsImage.close();
-      throw e;
+      // leave safe mode and stop the monitor
+      try {
+        leaveSafeMode(true);
+      } catch(SafeModeException es) { // should never happen
+        String msg = "SafeModeMonitor may not run during distributed upgrade.";
+        assert false : msg;
+        throw new RuntimeException(msg, es);
+      }
+      smmthread = null;
     }
+  }
+</code></pre>
+
+<p>其核心就是每个1秒检测一次是否能够离开模式（safeMode.canLeave()），如果可以，则尝试离开并停止SafeModeMonitor线程（leaveSafeMode(true)）</p>
+
+<h3>1.1. 是否能离开 —— safeMode.canLeave()</h3>
+
+<p>能够离开安全模式的标准是：
+1. 已进入安全模式的时长大于等于 extension
+2. 安全的block数比例打到门槛值</p>
+
+<pre><code>synchronized boolean canLeave() {
+  if (reached == 0)
+    return false;
+  if (now() - reached &lt; extension) {
+    reportStatus("STATE* Safe mode ON.", false);
+    return false;
+  }
+  return !needEnter();
+}
+
+/** 
+ * There is no need to enter safe mode 
+ * if DFS is empty or {@link #threshold} == 0
+ */
+boolean needEnter() {
+  return getSafeBlockRatio() &lt; threshold;
+}
+</code></pre>
+
+<h3>1.2. 离开安全模式 —— leaveSafeMode(true);</h3>
+
+<pre><code>  public void leaveSafeMode(boolean checkForUpgrades) throws SafeModeException {
     writeLock();
     try {
-      this.ready = true;
-      cond.signalAll();
+    if (!isInSafeMode()) {
+      NameNode.stateChangeLog.info("STATE* Safe mode is already OFF."); 
+      return;
+    }
+    //获取升级状态，如在升级中，不能离开安全模式
+    if(getDistributedUpgradeState())
+      throw new SafeModeException("Distributed upgrade is in progress",
+                                  safeMode);
+    //调用SafeModeInfo.leave()离开安全模式
+    safeMode.leave(checkForUpgrades);
     } finally {
       writeUnlock();
     }
   }
 </code></pre>
 
-<h3>FSImage.recoverTransitionRead（）</h3>
+<h3>1.2.1 SafeModeInfo.leave()</h3>
 
-<pre><code>  boolean recoverTransitionRead(Collection&lt;File&gt; dataDirs,
-                             Collection&lt;File&gt; editsDirs,
-                                StartupOption startOpt
-                                ) throws IOException {
-    assert startOpt != StartupOption.FORMAT : 
-      "NameNode formatting should be performed before reading the image";
-
-    // none of the data dirs exist
-    if (dataDirs.size() == 0 || editsDirs.size() == 0)  
-      throw new IOException(
-        "All specified directories are not accessible or do not exist.");
-
-    if(startOpt == StartupOption.IMPORT 
-        &amp;&amp; (checkpointDirs == null || checkpointDirs.isEmpty()))
-      throw new IOException("Cannot import image from a checkpoint. "
-                          + "\"fs.checkpoint.dir\" is not set." );
-
-    if(startOpt == StartupOption.IMPORT 
-        &amp;&amp; (checkpointEditsDirs == null || checkpointEditsDirs.isEmpty()))
-      throw new IOException("Cannot import image from a checkpoint. "
-                          + "\"fs.checkpoint.edits.dir\" is not set." );
-
-    setStorageDirectories(dataDirs, editsDirs);
-    // 1.检查所有目录的状态和一致性
-    Map&lt;StorageDirectory, StorageState&gt; dataDirStates = 
-             new HashMap&lt;StorageDirectory, StorageState&gt;();
-    boolean isFormatted = false;
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                      dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      StorageState curState;
-      try {
-        curState = sd.analyzeStorage(startOpt);
-        // sd is locked but not opened
-        switch(curState) {
-        case NON_EXISTENT:
-          // name-node fails if any of the configured storage dirs are missing
-          throw new InconsistentFSStateException(sd.getRoot(),
-                                                 "storage directory does not exist or is not accessible.");
-        case NOT_FORMATTED:
-          break;
-        case NORMAL:
-          break;
-        default:  // recovery is possible
-          sd.doRecover(curState);      
+<pre><code>    synchronized void leave(boolean checkForUpgrades) {
+      if(checkForUpgrades) {
+        // 验证是否需要升级
+        boolean needUpgrade = false;
+        try {
+          needUpgrade = startDistributedUpgradeIfNeeded();
+        } catch(IOException e) {
+          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
         }
-        if (curState != StorageState.NOT_FORMATTED 
-            &amp;&amp; startOpt != StartupOption.ROLLBACK) {
-          sd.read(); // read and verify consistency with other directories
-          isFormatted = true;
+        if(needUpgrade) {
+          //如果需要升级，进入手动安全模式
+          safeMode = new SafeModeInfo();
+          return;
         }
-        if (startOpt == StartupOption.IMPORT &amp;&amp; isFormatted)
-          // import of a checkpoint is allowed only into empty image directories
-          throw new IOException("Cannot import image from a checkpoint. " 
-              + " NameNode already contains an image in " + sd.getRoot());
-      } catch (IOException ioe) {
-        sd.unlock();
-        throw ioe;
       }
-      dataDirStates.put(sd,curState);
-    }
-
-    if (!isFormatted &amp;&amp; startOpt != StartupOption.ROLLBACK 
-                     &amp;&amp; startOpt != StartupOption.IMPORT)
-      throw new IOException("NameNode is not formatted.");
-    if (layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION) {
-      checkVersionUpgradable(layoutVersion);
-    }
-    if (startOpt != StartupOption.UPGRADE
-          &amp;&amp; layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION
-          &amp;&amp; layoutVersion != FSConstants.LAYOUT_VERSION)
-        throw new IOException(
-                          "\nFile system image contains an old layout version " + layoutVersion
-                          + ".\nAn upgrade to version " + FSConstants.LAYOUT_VERSION
-                          + " is required.\nPlease restart NameNode with -upgrade option.");
-    // check whether distributed upgrade is reguired and/or should be continued
-    verifyDistributedUpgradeProgress(startOpt);
-
-    // 2. Format unformatted dirs.
-    this.checkpointTime = 0L;
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                     dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      StorageState curState = dataDirStates.get(sd);
-      switch(curState) {
-      case NON_EXISTENT:
-        assert false : StorageState.NON_EXISTENT + " state cannot be here";
-      case NOT_FORMATTED:
-        LOG.info("Storage directory " + sd.getRoot() + " is not formatted.");
-        LOG.info("Formatting ...");
-        sd.clearDirectory(); // create empty currrent dir
-        break;
-      default:
-        break;
+      // 如果备份队列未初始化完，继续初始化该队列
+      if (!isPopulatingReplQueues()) {
+        initializeReplQueues();
       }
+      long timeInSafemode = now() - systemStart;
+      NameNode.stateChangeLog.info("STATE* Leaving safe mode after " 
+                                    + timeInSafemode/1000 + " secs.");
+      NameNode.getNameNodeMetrics().safeModeTime.set((int) timeInSafemode);
+
+      if (reached &gt;= 0) {
+        NameNode.stateChangeLog.info("STATE* Safe mode is OFF."); 
+      }
+      reached = -1;
+      safeMode = null;
+      NameNode.stateChangeLog.info("STATE* Network topology has "
+                                   +clusterMap.getNumOfRacks()+" racks and "
+                                   +clusterMap.getNumOfLeaves()+ " datanodes");
+      NameNode.stateChangeLog.info("STATE* UnderReplicatedBlocks has "
+                                   +neededReplications.size()+" blocks");
     }
 </code></pre>
 </div>
@@ -479,7 +356,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a></h1>
     
     
       <p class="meta">
@@ -495,9 +372,9 @@
   
 
 
-<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:51:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/10/18/hdfs-namenode-datastructure/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/#disqus_thread">Comments</a>
         
         
           | 
@@ -515,180 +392,291 @@
   </header>
 
 
-  <div class="entry-content"><h2>FSNameSystem</h2>
-
-<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
-
-<ol>
-<li>fsname->block列表的映射</li>
-<li>所有有效blocks集合</li>
-<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
-<li>每个datanode与其上的blocklist的映射</li>
-<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
-</ol>
-
-
-<h3>FSDirectory</h3>
-
-<p>FSDirectory用于维护当前系统中的文件树。</p>
-
-<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
-
-<h4>INode</h4>
-
-<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
-
-<p><img src="/images/hdfs/INode.png" alt="INode" /></p>
-
-<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
-
-<h3>BlocksMap</h3>
-
-<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
-<img src="/images/hdfs/BlocksMap.png" alt="BlocksMap" />
-BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
-
-<h4>Block</h4>
-
-<p>Block是HDFS中的基本读写单元，主要包括：</p>
-
-<ol>
-<li>blockId: 一个long类型的块id</li>
-<li>numBytes: 块大小</li>
-<li>generationStamp: 块更新的时间戳</li>
-</ol>
-
-
-<h4>BlockInfo</h4>
-
-<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
-
-<p><img src="/images/hdfs/triplets.png" alt="triplets" /></p>
-
-<ol>
-<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
-<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
-<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
-</ol>
-
-
-<p>DN2,DN3的prev-blk和next-blk类似。
-HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
-
-<h4>FSImage</h4>
-
-<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
-HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
-FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
-
-<p><img src="/images/hdfs/FSImage.png" alt="FSImage" /></p>
-
-<h5>FSImage头部信息</h5>
-
-<ol>
-<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
-<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
-<li>numberItemOfTree(long): 系统中的文件总数</li>
-<li>generationTimeStamp: 生成image的时间戳</li>
-</ol>
-
-
-<h5>INode信息</h5>
-
-<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
-
-<p><strong>INode头</strong></p>
-
-<ol>
-<li>nameLen(short): 文件名长度</li>
-<li>filename(String): 文件名</li>
-<li>replication(short): 备份数量</li>
-<li>modificationTime(long): 最近修改时间</li>
-<li>accessTime(long): 最近访问时间</li>
-<li>preferedBlockSize(long): 块大小（目录为0）</li>
-<li>block num(int): 块数量（目录为-1）</li>
-</ol>
-
-
-<p><strong>Blocks区</strong></p>
-
-<ol>
-<li>blockId(long)</li>
-<li>numBytes(long,block大小)</li>
-<li>generationTimeStamp(long, 更新时间戳）</li>
-</ol>
-
-
-<p><strong>文件权限</strong></p>
-
-<ol>
-<li>username(String): 文件用户名</li>
-<li>group(String): 所属组</li>
-<li>fileperm(short): 文件权限</li>
-</ol>
-
-
-<h5>underconstructionFile区</h5>
-
-<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
-
-<p><strong>client信息</strong></p>
-
-<ol>
-<li>clientName：client明</li>
-<li>clientMachine： client机器名</li>
-</ol>
-
-
-<p><strong>已分配的datanode信息</strong></p>
-
-<ol>
-<li>ipcport： 服务端口</li>
-<li>capacity: 容量</li>
-<li>dfsuse： 已使用的空间</li>
-<li>remaining： 剩余空间</li>
-<li>lastupdate： 最新更新时间</li>
-<li>xceiverCount</li>
-<li>location： datanode位置</li>
-<li>hostName：主机名</li>
-<li>state： admin管理状态</li>
-</ol>
-
-
-<h2>其他结构</h2>
-
-<h3>CorruptReplicasMap</h3>
-
-<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
-
-<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
-
-<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
-
-<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
-
-<p>datanodeMap用于维护datanode->block的映射</p>
-
-<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
-
-<p>维护多有当前活着的节点</p>
-
-<h3>UnderReplicatedBlocks neededReplications</h3>
-
-<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
-
-<h3>PendingReplicationBlocks pendingReplications;</h3>
-
-<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
-<img src="/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
-
-<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
-
-<p>当前需要检查是否备份过多的block集合</p>
-
-<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
-
-<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
+  <div class="entry-content"><h2>元数据的持久化</h2>
+
+<p>HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。NameNode启动时会从本地磁盘加载FSImage和FSEditLog，并将EditLog中的日志信息合并到FSImage中进行之持久化（该合并过程称为一个检查点：checkpoint），并构建文件系统的元信息。</p>
+
+<p>但是持久化的数据中不包括block<->datanode的映射信息，该信息由每个datanode向NameNode发起blockReport()请求时报告其所拥有的block信息。</p>
+
+<h3>Editlog记录修改日志</h3>
+
+<p>EditLog的持久化文件是一个二进制文件，大体结构如下：</p>
+
+<p><img src="/images/hdfs/EditLogFile.png" alt="EditLogFile" /></p>
+
+<p>EditLog文件开始是一个日志版本号，0.19版本的hdfs中该version为-18。
+随后是每一条操作的事务日志，每条日志的起始为一个操作类型位，随后是该操作的详细信息，不同的操作类型所带的详细信息也不同。加载EditLog是根据layoutVersion和edit_op位采取不同的方式解析后面的详细信息。
+EditLog能够记录如下17中操作：</p>
+
+<p><img src="/images/hdfs/EditLogOp.png" alt="EditLogOp" /></p>
+
+<p>EditLog为每种操作都提供了相应的log方法，当系统中发生文件修改时，会调用相应的log方法记录日志</p>
+
+<h2>元数据加载与恢复</h2>
+
+<p>NameNode启动过程中最终会通过FSImage.loadFSImage()来从fsimage目录中加载最新的fsimage镜像和editslog，并合并构建命名空间。
+代码结构如下：</p>
+
+<pre><code>  boolean loadFSImage() throws IOException {
+    // 根据checkpointtime查找最新的fsimage
+    long latestNameCheckpointTime = Long.MIN_VALUE;
+    long latestEditsCheckpointTime = Long.MIN_VALUE;
+    StorageDirectory latestNameSD = null;
+    StorageDirectory latestEditsSD = null;
+    boolean needToSave = false;
+    isUpgradeFinalized = true;
+    Collection&lt;String&gt; imageDirs = new ArrayList&lt;String&gt;();
+    Collection&lt;String&gt; editsDirs = new ArrayList&lt;String&gt;();
+    for (Iterator&lt;StorageDirectory&gt; it = dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      if (!sd.getVersionFile().exists()) {
+        needToSave |= true;
+        continue; // some of them might have just been formatted
+      }
+      boolean imageExists = false, editsExists = false;
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        imageExists = getImageFile(sd, NameNodeFile.IMAGE).exists();
+        imageDirs.add(sd.getRoot().getCanonicalPath());
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        editsExists = getImageFile(sd, NameNodeFile.EDITS).exists();
+        editsDirs.add(sd.getRoot().getCanonicalPath());
+      }
+
+      checkpointTime = readCheckpointTime(sd);
+      if ((checkpointTime != Long.MIN_VALUE) &amp;&amp; 
+          ((checkpointTime != latestNameCheckpointTime) || 
+           (checkpointTime != latestEditsCheckpointTime))) {
+        // Force saving of new image if checkpoint time
+        // is not same in all of the storage directories.
+        needToSave |= true;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE) &amp;&amp; 
+         (latestNameCheckpointTime &lt; checkpointTime) &amp;&amp; imageExists) {
+        latestNameCheckpointTime = checkpointTime;
+        latestNameSD = sd;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS) &amp;&amp; 
+           (latestEditsCheckpointTime &lt; checkpointTime) &amp;&amp; editsExists) {
+        latestEditsCheckpointTime = checkpointTime;
+        latestEditsSD = sd;
+      }
+      if (checkpointTime &lt;= 0L)
+        needToSave |= true;
+      // set finalized flag
+      isUpgradeFinalized = isUpgradeFinalized &amp;&amp; !sd.getPreviousDir().exists();
+    }
+
+    // 确保至少有一个fsimage和一个edits目录
+    if (latestNameSD == null)
+      throw new IOException("Image file is not found in " + imageDirs);
+    if (latestEditsSD == null)
+      throw new IOException("Edits file is not found in " + editsDirs);
+
+    // 确保获得的fsimage和edits是同一个检查点
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime
+        &amp;&amp; latestNameSD != latestEditsSD
+        &amp;&amp; latestNameSD.getStorageDirType() == NameNodeDirType.IMAGE
+        &amp;&amp; latestEditsSD.getStorageDirType() == NameNodeDirType.EDITS) {
+      // This is a rare failure when NN has image-only and edits-only
+      // storage directories, and fails right after saving images,
+      // in some of the storage directories, but before purging edits.
+      // See -NOTE- in saveNamespace().
+      LOG.error("This is a rare failure scenario!!!");
+      LOG.error("Image checkpoint time " + latestNameCheckpointTime +
+          " &gt; edits checkpoint time " + latestEditsCheckpointTime);
+      LOG.error("Name-node will treat the image as the latest state of " +
+          "the namespace. Old edits will be discarded.");
+    } else if (latestNameCheckpointTime != latestEditsCheckpointTime)
+      throw new IOException("Inconsitent storage detected, " +
+          "image and edits checkpoint times do not match. " +
+          "image checkpoint time = " + latestNameCheckpointTime +
+          "edits checkpoint time = " + latestEditsCheckpointTime);
+
+    // 如果上次检查点中断了，则恢复该检查点
+    needToSave |= recoverInterruptedCheckpoint(latestNameSD, latestEditsSD);
+
+    long startTime = FSNamesystem.now();
+    long imageSize = getImageFile(latestNameSD, NameNodeFile.IMAGE).length();
+
+    //
+    // 加载fsimage文件
+    //
+    latestNameSD.read();
+    needToSave |= loadFSImage(getImageFile(latestNameSD, NameNodeFile.IMAGE));
+    LOG.info("Image file of size " + imageSize + " loaded in " 
+        + (FSNamesystem.now() - startTime)/1000 + " seconds.");
+
+    // 加载最新的edits并作用于fsimage上
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime)
+      // the image is already current, discard edits
+      needToSave |= true;
+    else // latestNameCheckpointTime == latestEditsCheckpointTime
+      needToSave |= (loadFSEdits(latestEditsSD) &gt; 0);
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其中FSImage.loadFSImage(File curFile) 代码如下：</p>
+
+<pre><code>  boolean loadFSImage(File curFile) throws IOException {
+    assert this.getLayoutVersion() &lt; 0 : "Negative layout version is expected.";
+    assert curFile != null : "curFile is null";
+
+    FSNamesystem fsNamesys = FSNamesystem.getFSNamesystem();
+    FSDirectory fsDir = fsNamesys.dir;
+
+    //
+    // Load in bits
+    //
+    boolean needToSave = true;
+    DataInputStream in = new DataInputStream(new BufferedInputStream(
+                              new FileInputStream(curFile)));
+    try {
+      /*
+       * Note: Remove any checks for version earlier than 
+       * Storage.LAST_UPGRADABLE_LAYOUT_VERSION since we should never get 
+       * to here with older images.
+       */
+
+      /*
+       * TODO we need to change format of the image file
+       * it should not contain version and namespace fields
+       */
+      // 读取imageversion
+      int imgVersion = in.readInt();
+      // 读取namespaceid
+      this.namespaceID = in.readInt();
+
+      // 读取镜像中的文件数
+      long numFiles;
+      if (imgVersion &lt;= -16) {
+        numFiles = in.readLong();
+      } else {
+        numFiles = in.readInt();
+      }
+
+      this.layoutVersion = imgVersion;
+      // 读取镜像时间戳
+      if (imgVersion &lt;= -12) {
+        long genstamp = in.readLong();
+        fsNamesys.setGenerationStamp(genstamp); 
+      }
+
+      needToSave = (imgVersion != FSConstants.LAYOUT_VERSION);
+
+      // 读取每个文件的信息
+      short replication = FSNamesystem.getFSNamesystem().getDefaultReplication();
+
+      LOG.info("Number of files = " + numFiles);
+
+      byte[][] pathComponents;
+      byte[][] parentPath = ;
+      INodeDirectory parentINode = fsDir.rootDir;
+      for (long i = 0; i &lt; numFiles; i++) {
+        long modificationTime = 0;
+        long atime = 0;
+        long blockSize = 0;
+        //读取文件名(path)
+        pathComponents = readPathComponents(in);
+        //读取副本数
+        replication = in.readShort();
+        //调整副本数，使其不超过系统的最大和最小副本数限制
+        replication = FSEditLog.adjustReplication(replication);
+        //读取文件修改时间
+        modificationTime = in.readLong();
+        if (imgVersion &lt;= -17) {
+        //读取最近访问时间
+          atime = in.readLong();
+        }
+        if (imgVersion &lt;= -8) {
+        //读取block块大小
+          blockSize = in.readLong();
+        }
+        //读取block数
+        int numBlocks = in.readInt();
+        //构建blocks
+        Block blocks[] = null;
+
+        // 老版本hdfs中，numBlocks=0表示目录，新版本中numBlocks=-1表示目录
+        if ((-9 &lt;= imgVersion &amp;&amp; numBlocks &gt; 0) ||
+            (imgVersion &lt; -9 &amp;&amp; numBlocks &gt;= 0)) {
+           //构建文件block信息
+          blocks = new Block[numBlocks];
+          for (int j = 0; j &lt; numBlocks; j++) {
+            blocks[j] = new Block();
+            if (-14 &lt; imgVersion) {
+              blocks[j].set(in.readLong(), in.readLong(), 
+                            Block.GRANDFATHER_GENERATION_STAMP);
+            } else {
+              // 读取block信息
+              blocks[j].readFields(in);
+            }
+          }
+        }
+        // 老版本inode中不维护blocksize，如果存在多个block，blocksize选取第一个block的大小，如果只有一个block，则选该block大小和默认大小中较大的，如果没有block，则选用默认大小
+        if (-8 &lt;= imgVersion &amp;&amp; blockSize == 0) {
+          if (numBlocks &gt; 1) {
+            blockSize = blocks[0].getNumBytes();
+          } else {
+            long first = ((numBlocks == 1) ? blocks[0].getNumBytes(): 0);
+            blockSize = Math.max(fsNamesys.getDefaultBlockSize(), first);
+          }
+        }
+
+        // 如果是目录（blocks=null），读取该目录的配额
+        long nsQuota = -1L;
+        if (imgVersion &lt;= -16 &amp;&amp; blocks == null) {
+          nsQuota = in.readLong();
+        }
+        long dsQuota = -1L;
+        if (imgVersion &lt;= -18 &amp;&amp; blocks == null) {
+          dsQuota = in.readLong();
+        }
+
+        //获取权限信息
+        PermissionStatus permissions = fsNamesys.getUpgradePermission();
+        if (imgVersion &lt;= -11) {
+          permissions = PermissionStatus.read(in);
+        }
+
+        //如果该path为root，且设置了配额信息，则更新根目录的配额
+        if (isRoot(pathComponents)) { // it is the root
+          // update the root's attributes
+          if (nsQuota != -1 || dsQuota != -1) {
+            fsDir.rootDir.setQuota(nsQuota, dsQuota);
+          }
+          fsDir.rootDir.setModificationTime(modificationTime);
+          fsDir.rootDir.setPermissionStatus(permissions);
+          continue;
+        }
+        //如果该inode的parent与当前路径不一至，获取新的parentPaht
+        if(!isParent(pathComponents, parentPath)) {
+          parentINode = null;
+          parentPath = getParent(pathComponents);
+        }
+        // 将该inode添加到inode树中
+        parentINode = fsDir.addToParent(pathComponents, parentINode, permissions,
+                                        blocks, replication, modificationTime, 
+                                        atime, nsQuota, dsQuota, blockSize);
+      }
+
+      // 加载datanode信息，imgVersion&lt;-12的版本事实上啥都不做，datanode信息已经不保存在fsimage中
+      this.loadDatanodes(imgVersion, in);
+
+      // 加载正在构建中的文件
+      this.loadFilesUnderConstruction(imgVersion, in, fsNamesys);
+
+    } finally {
+      in.close();
+    }
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其核心就是加载并解析fsimage文件，构建命名空间，fsimage文件的结构参见《NameNode中主要数据结构》</p>
 </div>
   
   
@@ -701,7 +689,7 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a></h1>
     
     
       <p class="meta">
@@ -717,16 +705,16 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
   
 
 
-<time datetime="2012-09-24T15:28:00+08:00" pubdate data-updated="true">Sep 24<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:46:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/09/24/compile-hadoop/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-block-management/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/hadoop/'>Hadoop</a>
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
   
 </span>
 
@@ -737,49 +725,52 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
   </header>
 
 
-  <div class="entry-content"><h2>Git源码</h2>
+  <div class="entry-content"><p>HDFS通过一个BlockManager管理集群中所有的block信息</p>
 
-<pre><code>git clone git://git.apache.org/hadoop-common.git
-</code></pre>
+<h2>主要数据结构</h2>
 
-<p>视网速不通，略慢</p>
+<h3>Block</h3>
 
-<h2>编译</h2>
+<p>Block是HDFS读写的基本单元，集群中每个block通过一个long id来唯一标示。</p>
 
-<pre><code>cd hadoop-common
-mvn install -DskipTests
-</code></pre>
+<h3>BlockInfo</h3>
 
-<p>抛异常：</p>
+<p>维护一个block的元信息，主要通过</p>
 
-<pre><code>[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127 -&gt; [Help 1]
-org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127
-    at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:217)
-    at... 
-    Caused by: /Users/Shared/Workspace/hadoop/hadoop-common/hadoop-common-project/hadoop-common/target/antrun/build-main.xml:23: exec returned: 127
-    at org.apache.tools.ant.taskdefs.ExecTask.runExecute(ExecTask.java:650)
-    at org.apache.tools.ant.taskdefs.ExecTask.runExec(ExecTask.java:676)
-    at org.apache.tools.ant.taskdefs.ExecTask.execute(ExecTask.java:502)
-    at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
-    at sun.reflect.GeneratedMethodAccessor16.invoke(Unknown Source)
-    ... 21 more
-</code></pre>
+<h3>BlockMap</h3>
 
-<p>原因是缺少protocol buffer， 找不到protoc命令。</p>
+<p>通过一个GSet&lt;Block, BlockInfo>维护一个block与其元数据信息的映射关系，元信息包括其所属的BlockCollection和存储该block的datanode节点，每个BlockMap有个初始容量capacity</p>
 
-<h3>安装protocol buffer</h3>
+<h3>BlockCollection</h3>
 
-<pre><code>wget https://protobuf.googlecode.com/files/protobuf-2.4.1.tar.bz2
-tar -xvf protobuf-2.4.1.tar.bz2
-cd protobuf-2.4.1
-./configure &amp;&amp; make
-make install
-</code></pre>
+<h2>Block和副本管理</h2>
 
-<h3>导入Eclipse</h3>
+<h3>Block和副本状态</h3>
 
-<pre><code>mvn eclipse:eclipse -DdownloadSources=true -DdownloadJavadocs=true
-</code></pre>
+<p>Block有如下状态：</p>
+
+<ol>
+<li>committed：所有的副本已经被创建且更新至最新</li>
+<li>Under construction: 需要创建一个或多个副本</li>
+<li>To be deleted: 所有副本需要被删除。发生在文件被删除或者block被重写</li>
+<li>Over-replicated: 过多的副本存在。此时副本中的一个需要设置为无效并删除。</li>
+</ol>
+
+
+<p>副本有如下状态：</p>
+
+<ol>
+<li>Current: 正常状态，该副本正确反应block内容</li>
+<li>Conrrupt: 某个副本损坏。副本损坏是由client报告给namenode的。client通过checksum检查副本是否损坏，如果损坏了，通过BlockManager.invalidateBlock()处理</li>
+<li>On a faild DataNode: DataNode Heartbeat发现有DataNode失效时，即将在改datanode上创建的副本将被删除</li>
+<li>Out of Date: 当Datanode失效，且副本所属的block发生更新后，Datanode恢复正常。过期的block将通过blockreport报告给namenode，并将其删除</li>
+<li>Under construction: 副本尚未被写入并在Datanode上被验证。在NameNode看来，只有当收到blockReport并且报告中timestamp正确时，猜人物副本写入正常。</li>
+</ol>
+
+
+<h2>Block分配</h2>
+
+<h2>Block查询</h2>
 </div>
   
   
@@ -792,7 +783,7 @@ make install
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease Management)</a></h1>
     
     
       <p class="meta">
@@ -808,289 +799,16 @@ make install
   
 
 
-<time datetime="2012-08-31T07:52:00+08:00" pubdate data-updated="true">Aug 31<span>st</span>, 2012</time>
+<time datetime="2012-10-18T21:44:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/08/31/something-about-memcache-internal/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><script async class="speakerdeck-embed" data-id="504049be5ec53c000202daa6" data-ratio="1.299492385786802" src="//speakerdeck.com/assets/embed.js"></script>
-
-
-<h2>说在前面</h2>
-
-<p>本文不包含为什么使用memcache，以及如何使用memcache等基础知识。相关知识请查阅各类手册。
-另，为便于理解，最好手头准备一份memcache的源码，本文使用的是目前最新的1.4.4版本源码，可自行到github上clone。</p>
-
-<h2>Item、Chunk、Page、Slab</h2>
-
-<h3>Data Item</h3>
-
-<pre><code>+---------------------------------------+
-|  key-value | cas | suffix | item head |  
-+---------------------------------------+
-</code></pre>
-
-<p>Item指实际存放到memcache中的数据对象结构，除key-value数据外，还包括memcache自身对数据对象的描述信息（Item=key+value+后缀长+32byte结构体）</p>
-
-<h3>Chunk</h3>
-
-<p>Chunk指Memcache用来存放Data Item的最小单元，同一个Slab中的chunk大小是固定的。</p>
-
-<pre><code>+------------------------------+
-|   data item    | empty space |
-+------------------------------+
-</code></pre>
-
-<h2>Page</h2>
-
-<pre><code>+-------------------------------------+
-|  chunk1 | chunk2 | chunk3 | chunk4  |
-+-------------------------------------+
-</code></pre>
-
-<p>每个Slab中按照Page来申请内存，Page的大小默认为1M，可以通过-l参数调整，最小1k，最大128m.</p>
-
-<h3>Slab</h3>
-
-<pre><code>+--------------------------------+
-|  Page1 | Page2 | Page3 | Page4 |
-+--------------------------------+
-</code></pre>
-
-<p>Memcache将分配给它的内存（-m 参数指定，默认64m）按照Chunk大小不同，划分为多个slab。</p>
-
-<p>他们三者的关系如下图所示:</p>
-
-<pre><code>                 Chunk
-                   ^                                                         
-+------------------|------------------------------------------------------------+
-|   Memory         |                                                            | 
-|  +---------------|---------------------------------------------------------+  |
-|  |      +--------|---------------------+  +------------------------------+ |  |
-|  |      |Page1 +-|---+ +-----+ +-----+ |  |Page2 +-----+ +-----+ +-----+ | |  |
-|  | Slab |(1M)  | 96B | | 68B | | 72B | |  |(1M)  | 92B | | 76B | | 84B | | |  | 
-|  |  1   |      +-----+ +-----+ +-----+ |  |      +-----+ +-----+ +-----+ | |  |
-|  |      +------------------------------+  +------------------------------+ |  |
-|  +-------------------------------------------------------------------------+  |
-|                                                                               |
-|  +-------------------------------------------------------------------------+  |
-|  |      +------------------------------+  +------------------------------+ |  |
-|  |      |Page1 +------+    +------+    |  |Page2 +------+    +-------+   | |  |
-|  | Slab | (1M) | 128B |    | 120B |    |  |(1M)  | 128B |    | 97B   |   | |  |
-|  |   2  |      +------+    +------+    |  |      +------+    +-------+   | |  |
-|  |      +------------------------------+  +------------------------------+ |  |
-|  +-------------------------------------------------------------------------+  |
-+-------------------------------------------------------------------------------+
-</code></pre>
-
-<h2>Slab内存分配</h2>
-
-<h3>slab初始化</h3>
-
-<p>Memcache启动时会进行slab初始化（参见slabs.c中slabs_init()函数），默认最小的chunksize为80（查看源码会发现settings中chunk_size默认为48，但是实际还需要加上一个32bytes的item结构体），可以通过-n参数调整，按照然后按照factor（默认为1.25，可以通过-f参数调整）(<em>关于参数更多的memcache默认参数可以参考memcache.c中settings的设置</em>)比例递增，划分出多个不同chunk大小的slab空间，即slab1的chunk大小=80，slab2的chunk大小为80*1.25=100，slab3的chunk大小为80*1.25*1.25=125，但最大一个一个chunk不会大于一个Page的大小（默认1M）。</p>
-
-<pre><code>一下代码节选自 slabs.c
- 95 void slabs_init(const size_t limit, const double factor, const bool prealloc) {
- 96     int i = POWER_SMALLEST - 1;
- 97     unsigned int size = sizeof(item) + settings.chunk_size;
- 98  
- 99     mem_limit = limit;
-100  
-101     if (prealloc) {
-102         /* Allocate everything in a big chunk with malloc */
-103         mem_base = malloc(mem_limit);
-104         if (mem_base != NULL) {
-105             mem_current = mem_base;
-106             mem_avail = mem_limit;
-107         } else {
-108             fprintf(stderr, "Warning: Failed to allocate requested memory in"
-109                     " one large chunk.\nWill allocate in smaller chunks\n");
-110         }
-111     }
-112  
-113     memset(slabclass, 0, sizeof(slabclass));
-114  
-115     while (++i &lt; POWER_LARGEST &amp;&amp; size &lt;= settings.item_size_max / factor) {
-116         /* Make sure items are always n-byte aligned */
-117         if (size % CHUNK_ALIGN_BYTES)
-118             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
-119  
-120         slabclass[i].size = size;
-121         slabclass[i].perslab = settings.item_size_max / slabclass[i].size;
-122         size *= factor;
-123         if (settings.verbose &gt; 1) {
-124             fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
-125                     i, slabclass[i].size, slabclass[i].perslab);
-126         }
-127     }
-128  
-129     power_largest = i;
-130     slabclass[power_largest].size = settings.item_size_max;
-131     slabclass[power_largest].perslab = 1;
-132     if (settings.verbose &gt; 1) {
-133         fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
-134                 i, slabclass[i].size, slabclass[i].perslab);
-135     }
-136  
-137     /* for the test suite:  faking of how much we've already malloc'd */
-138     {
-139         char *t_initial_malloc = getenv("T_MEMD_INITIAL_MALLOC");
-140         if (t_initial_malloc) {
-141             mem_malloced = (size_t)atol(t_initial_malloc);
-142         }
-143  
-144     }
-145  
-146     if (prealloc) {
-147         slabs_preallocate(power_largest);
-148     }
-149 }                             
-</code></pre>
-
-<p>PS：prealloc指的是直接申请一个大的chunk存放所有数据，默认是不采用这种方式的。</p>
-
-<h3>数据存储过程</h3>
-
-<p>一个数据项的大致存储量过程可以理解为（完整代码较长，不在粘贴，具体可参见items.c中do_item_alloc()方法）：</p>
-
-<ol>
-<li>构造一个数据项结构体，计算数据项的大小，（假设默认配置下，数据项大小为102B）</li>
-<li>根据数据项的大小，找到最合适的slab，（100&lt;102&lt;125，所以存储在slab3中）</li>
-<li>检查该slab中是否有过期的数据，如有清理掉</li>
-<li>如果没有过期的数据项，则从当前slab中申请空间，参见slabs.c中slab_alloc()方法。</li>
-<li>如果当前slab中申请失败，则尝试根据LRU算法逐出一个数据项，默认memcache是允许逐出的，如果被设置为禁止逐出，那么这是会反生悲剧的oom了</li>
-<li>获取到item空间后将数据存储到改空间中，并追加到该slab的item列表中</li>
-</ol>
-
-
-<p>一个slab的申请一个chunk空间的过程大致如下（以下代码节选自slabs.c）：</p>
-
-<pre><code>195 static int do_slabs_newslab(const unsigned int id) { 
-196     slabclass_t *p = &amp;slabclass[id];
-197     int len = settings.slab_reassign ? settings.item_size_max
-198         : p-&gt;size * p-&gt;perslab;
-199     char *ptr;             
-200            
-201     if ((mem_limit &amp;&amp; mem_malloced + len &gt; mem_limit &amp;&amp; p-&gt;slabs &gt; 0) ||
-202         (grow_slab_list(id) == 0) ||    
-203         ((ptr = memory_allocate((size_t)len)) == 0)) {
-204            
-205         MEMCACHED_SLABS_SLABCLASS_ALLOCATE_FAILED(id);
-206         return 0;          
-207     }      
-208            
-209     memset(ptr, 0, (size_t)len);    
-210     split_slab_page_into_freelist(ptr, id);
-211            
-212     p-&gt;slab_list[p-&gt;slabs++] = ptr; 
-213     mem_malloced += len;   
-214     MEMCACHED_SLABS_SLABCLASS_ALLOCATE(id);
-215            
-216     return 1;              
-217 }
-218  
-219 /*@null@*/ 
-220 static void *do_slabs_alloc(const size_t size, unsigned int id) {
-221     slabclass_t *p;        
-222     void *ret = NULL;      
-223     item *it = NULL;       
-224  
-225     if (id &lt; POWER_SMALLEST || id &gt; power_largest) {
-226         MEMCACHED_SLABS_ALLOCATE_FAILED(size, 0);
-227         return NULL;
-228     }
-229  
-230     p = &amp;slabclass[id];
-231     assert(p-&gt;sl_curr == 0 || ((item *)p-&gt;slots)-&gt;slabs_clsid == 0);
-232  
-233     /* fail unless we have space at the end of a recently allocated page,
-234        we have something on our freelist, or we could allocate a new page */
-235     if (! (p-&gt;sl_curr != 0 || do_slabs_newslab(id) != 0)) {
-236         /* We don't have more memory available */
-237         ret = NULL;
-238     } else if (p-&gt;sl_curr != 0) {
-239         /* return off our freelist */
-240         it = (item *)p-&gt;slots;
-241         p-&gt;slots = it-&gt;next;
-242         if (it-&gt;next) it-&gt;next-&gt;prev = 0;
-243         p-&gt;sl_curr--;
-244         ret = (void *)it;
-245     }
-246  
-247     if (ret) {
-248         p-&gt;requested += size;
-249         MEMCACHED_SLABS_ALLOCATE(size, id, p-&gt;size, ret);
-250     } else {
-251         MEMCACHED_SLABS_ALLOCATE_FAILED(size, id);
-252     }
-253  
-254     return ret;
-255 }
-</code></pre>
-
-<p>slab优先从slots（空闲chunk空间列表）中申请空间，如果没有则尝试申请一个Page的新空间（do_slab_newslab()），申请新slab是会先判断是否进行slab_reasgin（重新分配slab空间，默认不开启）。</p>
-
-<h2>内存浪费</h2>
-
-<p>根据上述描述，Memcache使用Slab预分配的方式进行内存管理提升了性能（减少分配内存的消耗），但是带来了内存浪费，主要体现在：</p>
-
-<ol>
-<li><p>Data Item Size &lt;= Chunk Size，Chunk是存储数据项的最小单元，数据项的大小必须不大于其所在的Chunk大小。也就是说76B的数据对象存入96B的Chunk中，将带来96B-76B=20B的空间浪费。</p></li>
-<li><p>Memcache是按照Page申请和使用内存的，当Page大小不是Chunk的整数倍时，余下的空间将被浪费。即如果PageSize=1M，ChunkSize=1000B,那么将有1024*1024%1000=576B的空间浪费。</p></li>
-<li><p>Memcache默认是不开启slab reasign的，也就是说分配已经分配给一个slab的内存空间，即使该slab不用，默认也不会分配给其他slab的</p></li>
-</ol>
-
-
-<h2>案例分析：定长问题导致逐出</h2>
-
-<p>memcache的chunk分布是均匀的，这是为了通用性考虑，但是现实中一些场景chunk的分布是不均运的，例如为了减小对数据库的压力，对数据进行了全量缓存，为标识数据库中不存在的记录，向缓存中放置了一个stupidObject。这个对象大小是固定的，且该数据的量很大，导致该数据类型所在的slab占用了大量缓存空间。再一次调整对象结构时，修改了这个StupidObject大小，使其分布在另一个slab中，但是这个原分配的slab空间不会回收，空闲空间不足，导致大量逐出。</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-04-08T11:23:00+08:00" pubdate data-updated="true">Apr 8<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-lease-management/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/java/'>Java</a>
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
   
 </span>
 
@@ -1101,127 +819,269 @@ make install
   </header>
 
 
-  <div class="entry-content"><h3>问题现象</h3>
+  <div class="entry-content"><p>LeaseManagement是HDFS中的一个同步机制，用于保证同一时刻只有一个client对一个文件进行写或创建操作。如当新建一个文件f时，client向NameNode发起一个create请求，那么leaseManager会想该client分配一个f文件的lease。client凭借该lease完成文件的创建操作。此时其他client无法获得f的当client长时间（默认为超过1min）不进行操作时，发放的lease将被收回。</p>
 
-<p>现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例：</p>
+<p>LeaseManager主要完成两部分工作：</p>
 
-<pre><code>public class VasViewVO {
+<ol>
+<li>文件create，write，complete操作时，创建lease、更新时间戳、回收lease</li>
+<li>一个后台线程定期检查是否有过期的lease</li>
+</ol>
 
-    private String description;
 
-    private Date gmtOpen;
+<p>LeaseManager的代码结构如下</p>
 
-    private Date gmtClose;
+<p><img src="/images/hdfs/LeaseManager.png" alt="LeaseManager" /></p>
 
-    private CreditVasType serviceType;
+<p>其中Lease表示一个租约，包括一个client(holder)所拥有的所有文件锁(paths)。</p>
 
-    private CreditVasMemberStatus creditVasMemberStatus;
-    ...//此处省略getter和setter方法
+<p>Monitor是检查是否有过期租约的线程。</p>
+
+<p>LeaseManager中有几个主要数据结构：</p>
+
+<ol>
+<li>leases（TreeMap&lt;String, Lease>）：维护holder -> leased的映射集合</li>
+<li>sortedLeases (TreeSet<Lease>): lease集合</li>
+<li>sortedLeaseByPath(TreeMap&lt;String, Lease>): 维护paths->lease的映射集合</li>
+</ol>
+
+
+<h2>一、创建lease</h2>
+
+<p>当client向NameNode发起create操作时，NameNode.create()调用FSNameSystem.startFile()->FSNameSystem.startFileInternal()，该方法最终会调用leaseManager.addLease(cons.clientName, src)来创建lease。</p>
+
+<p>LeaseManager.addLease()方法如下：</p>
+
+<pre><code>  synchronized Lease addLease(String holder, String src
+      ) throws IOException {
+    Lease lease = getLease(holder);
+    if (lease == null) {
+      lease = new Lease(holder);
+      leases.put(holder, lease);
+      sortedLeases.add(lease);
+    } else {
+      renewLease(lease);
+    }
+    sortedLeasesByPath.put(src, lease);
+    lease.paths.add(src);
+    return lease;
+  }
+</code></pre>
+
+<p>代码结构简单：判断该client是否有lease，没有则新建一个lease，并将起加到leases集合中。否则更新lease。更新sortedLeasesByPath，将filepath加入到该lease的paths集合中</p>
+
+<h2>二、更新时间戳</h2>
+
+<p>针对已经存在的lease，通过LeasemManager.renewLease()来更新该lease的时间戳。代码如下：</p>
+
+<pre><code>  synchronized void renewLease(Lease lease) {
+    if (lease != null) {
+      sortedLeases.remove(lease);
+      lease.renew();
+      sortedLeases.add(lease);
+    }
+  }
+</code></pre>
+
+<p>lease.renew()代码如下：</p>
+
+<pre><code>/** Only LeaseManager object can renew a lease */
+private void renew() {
+  this.lastUpdate = FSNamesystem.now();
 }
 </code></pre>
 
-<p>通常按照如下方式构造一个VasViewVO实例：</p>
+<h2>三、compelete时回收lease</h2>
 
-<pre><code>    VasViewVO vasViewVO = new VasViewVO();
-    vasViewVO.setCreditVasMemberStatus(CreditVasMemberStatus.OPEN);
-    vasViewVO.setGmtOpen(new Date());
-    vasViewVO.setServiceType(CreditVasType.fastpay);
-    vasViewVO.setDescription("open fastpay");
-    //do something with vasViewVO
+<p>当client调用NameNode.complete()方法时，最终会调用FSNameSystem.completeFileInternal()方法。其中执行finalizeINodeFileUnderConstruction()是调用leaseManager.removeLease()释放lease。</p>
+
+<p>代码结构如下：</p>
+
+<pre><code>  synchronized void removeLease(String holder, String src) {
+    Lease lease = getLease(holder);
+    if (lease != null) {
+      removeLease(lease, src);
+    }
+  }
 </code></pre>
 
-<p>如此构造VasViewVO的实例并非有严重的逻辑错误或者其他的问题，只是不够简洁易懂（贴近自然语言）。
-最近学习过jQuery的都知道，jQuery中可以按如下方式连续调用api</p>
+<p> removeLease(lease, src);代码如下：</p>
 
-<pre><code>    $("p").hide().fadeIn("slow").slideUp("slow").slideDown("slow");
+<pre><code>  /**
+   * Remove the specified lease and src.
+   */
+  synchronized void removeLease(Lease lease, String src) {
+    sortedLeasesByPath.remove(src);
+    if (!lease.removePath(src)) {
+      LOG.error(src + " not found in lease.paths (=" + lease.paths + ")");
+    }
+
+    if (!lease.hasPath()) {
+      leases.remove(lease.holder);
+      if (!sortedLeases.remove(lease)) {
+        LOG.error(lease + " not found in sortedLeases");
+      }
+    }
+  }
 </code></pre>
 
-<p>如果Java程序中也可以使用类似的方式将会简洁许多。</p>
+<h2>四、后台线程回收过期lease</h2>
 
-<h3>解决方法</h3>
+<p>Monitor回收lease线程代码结构如下：</p>
 
-<h4>使用方法链</h4>
+<pre><code> class Monitor implements Runnable {
+    final String name = getClass().getSimpleName();
 
-<p>jQuery中之所以能够连续调用api，主要是因为每个方法返回的都是一个jQuery对象。Java本身也可这样做，即返回一个this(自身引用)，也就是常说的<a href="http://en.wikipedia.org/wiki/Method_chaining">方法链</a>。
-方法链的实现非常简单，通常的setter方法返回void，方法链返回的是this引用，如下：</p>
+    /** Check leases periodically. */
+    public void run() {
+      for(; fsnamesystem.isRunning(); ) {
+        fsnamesystem.writeLock();
+        try {
+          checkLeases();
+        } finally {
+          fsnamesystem.writeUnlock();
+        }
 
-<pre><code>    public VasViewVO description(String description) {
-        this.description = description;
-        return this;
+        try {
+          Thread.sleep(2000);
+        } catch(InterruptedException ie) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug(name + " is interrupted", ie);
+          }
+        }
+      }
     }
-
-    public VasViewVO gmtOpen(Date gmtOpen) {
-        this.gmtOpen = gmtOpen;
-        return this;
-    }
-
-    public VasViewVO gmtClose(Date gmtClose) {
-        this.gmtClose = gmtClose;
-        return this;
-    }
-
-    public VasViewVO serviceType(CreditVasType serviceType) {
-        this.serviceType = serviceType;
-        return this;
-    }
+  }
 </code></pre>
 
-<p>如此一来在调用时只需要新建一个对象，连续调用赋值方法即可：</p>
+<p>代码结构简单，每个2s周期性执行checkLeases()。</p>
 
-<pre><code>    VasViewVO vasView = new VasViewVO();
-    vasView.creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
-            .description("Commoent cxxx").gmtClose(new Date())
-            .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
-</code></pre>
+<h3>4.1 checkLeases()</h3>
 
-<p>如此相比连续调用5次setter方法简洁的多。</p>
+<pre><code>  /** Check the leases beginning from the oldest. */
+  synchronized void checkLeases() {
+    for(; sortedLeases.size() &gt; 0; ) {
+      final Lease oldest = sortedLeases.first();
+      if (!oldest.expiredHardLimit()) {
+        return;
+      }
 
-<h4>使用静态工厂和static import优化</h4>
+      LOG.info("Lease " + oldest + " has expired hard limit");
 
-<p>使用方法链之后简化了setter调用，但是每次还必须要先new一个实例，略显繁琐。这个问题可以通过Effectvie Java的第一条静态工厂来解决，即在VasViewVO内部实现一个静态工厂方法。</p>
+      final List&lt;String&gt; removing = new ArrayList&lt;String&gt;();
+      // need to create a copy of the oldest lease paths, becuase 
+      // internalReleaseLease() removes paths corresponding to empty files,
+      // i.e. it needs to modify the collection being iterated over
+      // causing ConcurrentModificationException
+      String[] leasePaths = new String[oldest.getPaths().size()];
+      oldest.getPaths().toArray(leasePaths);
+      for(String p : leasePaths) {
+        try {
+          fsnamesystem.internalReleaseLeaseOne(oldest, p);
+        } catch (IOException e) {
+          LOG.error("Cannot release the path "+p+" in the lease "+oldest, e);
+          removing.add(p);
+        }
+      }
 
-<pre><code>    public static VasViewVO with() {
-        return new VasViewVO();
+      for(String p : removing) {
+        removeLease(oldest, p);
+      }
     }
+  }
 </code></pre>
 
-<p>这个with的方法名与一般的静态工厂所用的getInstance，newInstance不同，主要时为了更加贴近自然语言。
-如此，构造一个VasViewVO实例就可简化为</p>
+<h2>Lease Recovery ——租约回收</h2>
 
-<pre><code>    VasViewVO vasViewVO = VasViewVO.with()
-                .creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
-                .description("Commoent cxxx").gmtClose(new Date())
-                .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
-</code></pre>
+<h3>lease recovery时机</h3>
 
-<p>代码已经很简洁，不过每次都是用枚举类长长的类名，感觉很是不雅，可以通过static import解决，最终的到的简化后构造一个VasViewVO实例的代码如下：</p>
+<p>lease发放之后，在不用时会被回收，回收的产经除上述Monitor线程检测lease过期是回收外，还有：</p>
 
-<pre><code>import static  com.alibaba.china.credit.common.constants.CreditVasType.*;
-import static com.alibaba.china.credit.vas.dal.constant.CreditVasMemberStatus.*;
-public class Test{
-    public static void main(String[] args) {
-        . . .
+<ol>
+<li>NameNode收到DataNode的Sync block command时</li>
+<li>DFSClient主动关闭一个流时</li>
+<li>创建文件时，如果该DFSClient的lease超过soft limit时</li>
+</ol>
 
-        VasViewVO vasViewVO = VasViewVO.with()
-            .creditVasMemberStatus(CLOSE)
-            .description("Commoent cxxx").gmtClose(new Date())
-            .gmtOpen(new Date()).serviceType(fastpay);
-        . . .
+
+<h3>lease recovery 算法</h3>
+
+<p>1) NameNode查找lease信息</p>
+
+<p>2) 对于lease中的每个文件f，令b为f的最后一个block，作如下操作：</p>
+
+<p>2.1) 获取b所在的datanode列表</p>
+
+<p>2.2) 令其中一个datanode作为primary datanode p</p>
+
+<p>2.3) p 从NameNode获取最新的时间戳</p>
+
+<p>2.4) p 从每个DataNode获取block信息</p>
+
+<p>2.5) p 计算最小的block长度</p>
+
+<p>2.6) p 用最小的block长度和最新的时间戳来更新具有有效时间戳的datanode</p>
+
+<p>2.7) p 通知NameNode更新结果</p>
+
+<p>2.8) NameNode更新BlockInfo</p>
+
+<p>2.9) NameNode从lease中删除f，如果此时该lease中所有文件都已被删除，将删除该lease</p>
+
+<p>2.10) Name提交修改的EditLog</p>
+
+<h2>Client续约 —— DFSClient.LeaseChecker</h2>
+
+<p>在NameNode上的LeaseManager.Monitor线程负责检查过期的lease，那么client为了防止尚在使用的lease过期，需要定期想NameNode发起续约请求。该任务有DFSClient中的LeaseChecker完成。</p>
+
+<p>LeaseChecker结构如下：</p>
+
+<p><img src="/images/hdfs/LeaseChecker.png" alt="LeaseChecker" /></p>
+
+<p>其中pendingCreates是一个TreeMap&lt;String, OutputStream>用来维护src->当前正在写入的文件的DFSOutputStream的映射。</p>
+
+<p>其核心是周期性（每个1s）调用run()方法来对租约过半的lease进行续约</p>
+
+<pre><code>public void run() {
+  long lastRenewed = 0;
+  while (clientRunning &amp;&amp; !Thread.interrupted()) {
+    //当租约周期过半时需要进行续约
+    if (System.currentTimeMillis() - lastRenewed &gt; (LEASE_SOFTLIMIT_PERIOD / 2)) {
+      try {
+        renew();
+        lastRenewed = System.currentTimeMillis();
+      } catch (IOException ie) {
+        LOG.warn("Problem renewing lease for " + clientName, ie);
+      }
     }
+
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException ie) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(this + " is interrupted.", ie);
+      }
+      return;
+    }
+  }
 }
 </code></pre>
 
-<h3>进阶总结</h3>
+<p>其中renew()方法如下：</p>
 
-<p>程序设计要解决的是讲现实世界中的问题描述转化为计算机可识别的计算机语言（二进制码），因此编程语言必须为这一转化过程提供有效的抽像机制。现有编程语言提供的抽象机制侧重各有不同，在C，C++，JAVA等通用语言中更关注语言的基本语义，离实际的问题域描述较远；SQL，CSS等特定领域语言更关注特定问题域问题的抽象，更贴近实际的问题描述。</p>
-
-<p>站在人的角度，语言越是贴近实际问题的描述越是容易理解，对问题的描述也更加准确。但现有的特定领域语言又不具备通用变成语言解决问题的的通用性，因此我们更希望能够在通用语言上进行更高层次的抽象，使其更加贴近具体的问题域。某种程度上讲语言提供的API或者方法库就是对基本问题的更高层次抽象，但离具体的问题域还是太远，有时我们更渴望更加贴近具体问题的语言来解决问题并兼具通用语言的通用性，因此诞生了通用语言的内部DSL。
-<a href="http://www.martinfowler.com/bliki/FluentInterface.html">流畅接口（Fluent Interface）</a>是实现内部DSL的重要手段，<a href="http://en.wikipedia.org/wiki/Fluent_interface">wikipedia上如此描述</a>Fluent Interface：</p>
-
-<pre><code>A fluent interface (as first coined by Eric Evans and Martin Fowler) is an implementation of an object oriented API that aims to provide for more readable code. A fluent interface is normally implemented by using method chaining to relay the instruction context of a subsequent call (but a fluent interface entails more than just method chaining)。
+<pre><code>    private void renew() throws IOException {
+      synchronized(this) {
+        //如果当前创建中的文件列表为空，则不需要续约
+        if (pendingCreates.isEmpty()) {
+          return;
+        }
+      }
+      //向NameNode发起续约请求
+      namenode.renewLease(clientName);
+    }
 </code></pre>
 
-<p>方法链（method chain）是实现Fluent Interface的重要手段（注意，method chain!= Fluent Interface!=DSL）。但仅仅有方法链是不足够构建有效的DSL的，除此之外还需要一些且他编程技巧，比如static factory和static import等，具体请参见<a href="http://www.infoq.com/articles/internal-dsls-java">《An Approach to Internal Domain－Specific Languages in Java》</a></p>
+<p>NameNode接收到renewLease请求后，调用FSNameSystem.renewLease()并最终调用LeaseManager.renewLease()完成续约。</p>
 </div>
   
   
@@ -1246,43 +1106,43 @@ public class Test{
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
       </li>
     
   </ul>

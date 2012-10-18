@@ -1,0 +1,645 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS源码学习（11）——SecondaryNameNode - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="概述 SecondaryNameNode在HDFS中的主要作用是帮助master NameNode周期性执行checkpoint操作。 NameNode将运行过程中对文件的修改记录保存在EditLog中。当NameNode重新启动时会从FSImage中加载命名空间镜像， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/18/hdfs-secondary-namenode">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS源码学习（11）——SecondaryNameNode</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:55:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>概述</h2>
+
+<p>SecondaryNameNode在HDFS中的主要作用是帮助master NameNode周期性执行checkpoint操作。</p>
+
+<p>NameNode将运行过程中对文件的修改记录保存在EditLog中。当NameNode重新启动时会从FSImage中加载命名空间镜像，并将EditLog中的内容合并到FSImage中，将合并后的FSImage写入到磁盘，同时清空EditLog，共后续使用。但如果NameNode长时间不重启，随时间增长，EditLog将会越来越大（每次文件操作都要记录），大量占用NameNode磁盘空间，且会导致下一次重启花费大量时间在合并Editlog上。</p>
+
+<p>为了解决这个问题，SecondaryNameNode会定期从NameNode下载最新的FSImage和EditLog，合并editLog日志到FSImage，将合并后的FSImage上传到NameNode，并清空NameNode上的Editlog，将EditLog日志大小控制在一定限度下。</p>
+
+<h2>代码解析</h2>
+
+<p>SecondaryNameNode代码结构如下：</p>
+
+<p><img src="/images/hdfs/SecondaryNameNode.png" alt="SecondaryNameNode" /></p>
+
+<p>SecondaryNameNode本身就是实现了Runnable接口，即一个可执行线程。</p>
+
+<p>checkpointImage表示当前SecondNameNode上的FsImage镜像，该类CheckpointStorage扩展自FSImage。</p>
+
+<p>其中有两个主要的可配置属性：</p>
+
+<ol>
+<li>checkpointPeriod: 两次检查点的间隔时间，可通过fs.checkpoint.period配置</li>
+<li>checkpointSize: EditLog文件的最大值，当EditLog超过这个最大值时会强制之行checkpoint，可通过fs.checkpoint.size配置，默认是64M</li>
+</ol>
+
+
+<h3>run()</h3>
+
+<p>run方法代码如下：</p>
+
+<pre><code>  public void run() {
+
+    //
+    // Poll the Namenode (once every 5 minutes) to find the size of the
+    // pending edit log.
+    //
+    long period = 5 * 60;              // 5 minutes
+    long lastCheckpointTime = 0;
+    if (checkpointPeriod &lt; period) {
+      period = checkpointPeriod;
+    }
+
+    while (shouldRun) {
+      try {
+        Thread.sleep(1000 * period);
+      } catch (InterruptedException ie) {
+        // do nothing
+      }
+      if (!shouldRun) {
+        break;
+      }
+      try {
+        long now = System.currentTimeMillis();
+
+        long size = namenode.getEditLogSize();
+        if (size &gt;= checkpointSize || 
+            now &gt;= lastCheckpointTime + 1000 * checkpointPeriod) {
+          doCheckpoint();
+          lastCheckpointTime = now;
+        }
+      } catch (IOException e) {
+        LOG.error("Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+      } catch (Throwable e) {
+        LOG.error("Throwable Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+        Runtime.getRuntime().exit(-1);
+      }
+    }
+  }
+</code></pre>
+
+<p>其核心就是周期性（默认每个5分钟)调用doCheckpoint().</p>
+
+<h3>doCheckpoint()</h3>
+
+<pre><code>  void doCheckpoint() throws IOException {
+
+    // 准备合并所需的空间
+    startCheckpoint();
+
+    // 通知NameNode将修改信息记录到新的editlog中，并获取一个用于上传合并后的fsimage的token
+    CheckpointSignature sig = (CheckpointSignature)namenode.rollEditLog();
+
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(0)) {
+      throw new IOException("Simulating error0 " +
+                            "after creating edits.new");
+    }
+    //从NameNode获取fsimage和editslog
+    downloadCheckpointFiles(sig);   // Fetch fsimage and edits
+    //合并editlog到fsimage
+    doMerge(sig);                   // Do the merge
+
+    //上传合并后的fsimage到NameNode
+    putFSImage(sig);
+
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(1)) {
+      throw new IOException("Simulating error1 " +
+                            "after uploading new image to NameNode");
+    }
+    // 通知NameNode使用该fsimage作为最新的镜像
+    namenode.rollFsImage();
+    checkpointImage.endCheckpoint();
+
+    LOG.warn("Checkpoint done. New Image Size: " 
+              + checkpointImage.getFsImageName().length());
+  }
+</code></pre>
+
+<h4>1. startCheckpoint()</h4>
+
+<p>该方法主要用于准备合并所需的磁盘空间，代码如下：</p>
+
+<pre><code>  private void startCheckpoint() throws IOException {
+    checkpointImage.unlockAll();
+    // 关闭当前Editlog
+    checkpointImage.getEditLog().close();
+    // 检查当前checkpoints目录，如果不存在则创建一个新目录，如果目录中存在异常，则尝试恢复该目录
+    checkpointImage.recoverCreate(checkpointDirs, checkpointEditsDirs);
+    // 为新的checkpoint准备目录空间，将当前的目录空间更名为lastcheckpoint.™p，新建一个current目录 
+    checkpointImage.startCheckpoint();
+  }
+</code></pre>
+
+<h4>2. namenode.rollEditLog();</h4>
+
+<p>namenode.rollEditLog()实际通过NameNodeProtocol调用NameNode.rollEditLog()方法，并最终调用FSImage.rollEditLog()，该方法主要完成：</p>
+
+<ol>
+<li>调用FSEditLog.rollEditLog()关闭当前editLog，新建一个editLog：edits.new</li>
+<li>返回一个CheckpointSignature做为上传合并后镜像的token</li>
+</ol>
+
+
+<h5>2.1. FSEditLog.rollEditLog()</h5>
+
+<p>该方法主要完成：</p>
+
+<ol>
+<li>关闭当前editlog， 打开一个新的editlog： edit.new</li>
+<li>返回editlog的最新更新时间</li>
+</ol>
+
+
+<p>代码结构如下</p>
+
+<pre><code>  synchronized void rollEditLog() throws IOException {
+    //检查edit.new是否已经存在，如果存在，检查是否所有目录都存在，如果是则认为edits.new已经建好了，直接返回
+    //
+    if (existsNew()) {
+      for (Iterator&lt;StorageDirectory&gt; it = 
+               fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+        File editsNew = getEditNewFile(it.next());
+     if (!editsNew.exists()) { 
+          throw new IOException("Inconsistent existance of edits.new " +
+                                editsNew);
+        }
+      }
+      return; // nothing to do, edits.new exists!
+    }
+
+    //关闭当前的editLog
+    close();                     // close existing edit log
+
+    //
+    // 新建一个editLog： edits.new
+    //
+    for (Iterator&lt;StorageDirectory&gt; it = 
+           fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      try {
+        EditLogFileOutputStream eStream = 
+             new EditLogFileOutputStream(getEditNewFile(sd));
+        eStream.create();
+        editStreams.add(eStream);
+      } catch (IOException e) {
+        // remove stream and this storage directory from list
+        processIOError(sd);
+       it.remove();
+      }
+    }
+  }
+</code></pre>
+
+<h4>3. downloadCheckpointFiles()</h4>
+
+<p>该方法用于从NameNode下载FSImage和FSEditLog，代码结构如下：</p>
+
+<pre><code>  private void downloadCheckpointFiles(CheckpointSignature sig
+                                      ) throws IOException {
+
+    checkpointImage.cTime = sig.cTime;
+    checkpointImage.checkpointTime = sig.checkpointTime;
+
+    // 获取fsimage
+    String fileid = "getimage=1";
+    File[] srcNames = checkpointImage.getImageFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+             srcNames[0].length() + " bytes.");
+
+    // 获取editlog
+    fileid = "getedit=1";
+    srcNames = checkpointImage.getEditsFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+        srcNames[0].length() + " bytes.");
+
+    // 标示checkpoint所需文件已经准备完成
+    checkpointImage.checkpointUploadDone();
+  }
+</code></pre>
+
+<h4>4. doMerge()</h4>
+
+<p>doMerge主要完成editLog与fsimage的合并，实际调用的checkpointImage.doMerge(sig);</p>
+
+<pre><code>private void doMerge(CheckpointSignature sig) throws IOException {
+  getEditLog().open();
+  StorageDirectory sdName = null;
+  StorageDirectory sdEdits = null;
+  Iterator&lt;StorageDirectory&gt; it = null;
+  it = dirIterator(NameNodeDirType.IMAGE);
+  if (it.hasNext())
+    sdName = it.next();
+  it = dirIterator(NameNodeDirType.EDITS);
+  if (it.hasNext())
+    sdEdits = it.next();
+  if ((sdName == null) || (sdEdits == null))
+    throw new IOException("Could not locate checkpoint directories");
+  // 加载fsimage
+  loadFSImage(FSImage.getImageFile(sdName, NameNodeFile.IMAGE));
+  // 加载editlog，并合并到fsimage
+
+  loadFSEdits(sdEdits);
+  // 校验新fsimage的一致性，主要包括版本，更新时间，namespaceId
+  sig.validateStorageInfo(this);
+  // 将fsImage存储到本地，并创建新edits
+  saveFSImage();
+}
+</code></pre>
+
+<p>该方法与NameNode启动时类似:</p>
+
+<ol>
+<li>加载fsiamge</li>
+<li>加载editslog，并作用到fsimage中</li>
+<li>校验合并后的fsimage</li>
+<li>将新fsimage存储到本地，并新建空的edit是目录</li>
+</ol>
+
+
+<h4>5. putFSImage(sig);</h4>
+
+<p>该方法比较简单，主要通过TransferFsImage工具类将合并后的fsimage上传到NameNode</p>
+
+<pre><code>  private void putFSImage(CheckpointSignature sig) throws IOException {
+    String fileid = "putimage=1&amp;port=" + infoPort +
+      "&amp;machine=" +
+      InetAddress.getLocalHost().getHostAddress() +
+      "&amp;token=" + sig.toString();
+    LOG.info("Posted URL " + fsName + fileid);
+    TransferFsImage.getFileClient(fsName, fileid, (File[])null);
+  }
+</code></pre>
+
+<h4>6. namenode.rollFsImage();</h4>
+
+<p>上传完新fsiamge之后，SecondaryNameNode通过namenode.rollFsImage()通知NameNode使用新的fsimage.ckpt作为最新镜像，并清空editslog。该请求最终由NameNode上的FsImage.rollFsImage()处理，代码如下：</p>
+
+<pre><code> void rollFSImage() throws IOException {
+    if (ckptState != CheckpointStates.UPLOAD_DONE) {
+      throw new IOException("Cannot roll fsImage before rolling edits log.");
+    }
+    //
+    // 校验fsimage.ckpt和edits.new是否存在于所有目录
+    if (!editLog.existsNew()) {
+      throw new IOException("New Edits file does not exist");
+    }
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      if (!ckpt.exists()) {
+        throw new IOException("Checkpoint file " + ckpt +
+                              " does not exist");
+      }
+    }
+    //删除旧的edits，并将edits.new重命名为edits
+    editLog.purgeEditLog(); // renamed edits.new to edits
+
+    //
+    // 重命名fsimage
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      File curFile = getImageFile(sd, NameNodeFile.IMAGE);
+      // renameTo fails on Windows if the destination file 
+      // already exists.
+      if (!ckpt.renameTo(curFile)) {
+        curFile.delete();
+        if (!ckpt.renameTo(curFile)) {
+          // Close edit stream, if this directory is also used for edits
+          if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+            editLog.processIOError(sd);
+        // add storage to the removed list
+          removedStorageDirs.add(sd);
+          it.remove();
+        }
+      }
+    }
+
+    //
+    // 更新所有目录的fstime
+    //
+    this.layoutVersion = FSConstants.LAYOUT_VERSION;
+    this.checkpointTime = FSNamesystem.now();
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                           dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      // delete old edits if sd is the image only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        File editsFile = getImageFile(sd, NameNodeFile.EDITS);
+        editsFile.delete();
+      }
+      // delete old fsimage if sd is the edits only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        File imageFile = getImageFile(sd, NameNodeFile.IMAGE);
+        imageFile.delete();
+      }
+      try {
+        sd.write();
+      } catch (IOException e) {
+        LOG.error("Cannot write file " + sd.getRoot(), e);
+        // Close edit stream, if this directory is also used for edits
+        if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+          editLog.processIOError(sd);
+      //add storage to the removed list
+        removedStorageDirs.add(sd);
+        it.remove();
+      }
+    }
+    ckptState = FSImage.CheckpointStates.START;
+  }
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:55:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/" title="Previous Post: HDFS源码学习（10）——NameNode与DataNode间的通信">&laquo; HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/10/18/hdfs-datanode-structure/" title="Next Post: HDFS源码学习（12）——DataNode主要数据结构">HDFS源码学习（12）——DataNode主要数据结构 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/18/hdfs-secondary-namenode/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/18/hdfs-secondary-namenode/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

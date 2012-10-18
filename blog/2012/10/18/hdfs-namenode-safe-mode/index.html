@@ -1,0 +1,425 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS源码学习（9）——安全模式（SafeMode） - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="一、SafeModeInfo SafeModeInfo维护了系统安全模式下的状态信息，每当系统进入安全模式时都会创建一个SafeModeInfo实例维护状态信息，离开时会销毁这个实例。
+该类结构如下 其中threshold和extension为可配置项： &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-safe-mode">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS源码学习（9）——安全模式（SafeMode）</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:52:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>一、SafeModeInfo</h2>
+
+<p>SafeModeInfo维护了系统安全模式下的状态信息，每当系统进入安全模式时都会创建一个SafeModeInfo实例维护状态信息，离开时会销毁这个实例。
+该类结构如下</p>
+
+<p><img src="/images/hdfs/SafeModeInfo.png" alt="SafeModeInfo" /></p>
+
+<p>其中threshold和extension为可配置项：</p>
+
+<ol>
+<li>threshold表示离开安全模式时打到最低备份数的block的比例</li>
+<li>extension表示进入安全模式的最低时长</li>
+</ol>
+
+
+<h2>二、SafeModeMonitor</h2>
+
+<p>FSNameSystem中SafeModeMonitor代码结构如下：</p>
+
+<pre><code>  class SafeModeMonitor implements Runnable {
+    /** interval in msec for checking safe mode: {@value} */
+    private static final long recheckInterval = 1000;
+
+    /**
+     */
+    public void run() {
+      while (fsRunning &amp;&amp; (safeMode != null &amp;&amp; !safeMode.canLeave())) {
+        try {
+          Thread.sleep(recheckInterval);
+        } catch (InterruptedException ie) {
+        }
+      }
+      // leave safe mode and stop the monitor
+      try {
+        leaveSafeMode(true);
+      } catch(SafeModeException es) { // should never happen
+        String msg = "SafeModeMonitor may not run during distributed upgrade.";
+        assert false : msg;
+        throw new RuntimeException(msg, es);
+      }
+      smmthread = null;
+    }
+  }
+</code></pre>
+
+<p>其核心就是每个1秒检测一次是否能够离开模式（safeMode.canLeave()），如果可以，则尝试离开并停止SafeModeMonitor线程（leaveSafeMode(true)）</p>
+
+<h3>1.1. 是否能离开 —— safeMode.canLeave()</h3>
+
+<p>能够离开安全模式的标准是：
+1. 已进入安全模式的时长大于等于 extension
+2. 安全的block数比例打到门槛值</p>
+
+<pre><code>synchronized boolean canLeave() {
+  if (reached == 0)
+    return false;
+  if (now() - reached &lt; extension) {
+    reportStatus("STATE* Safe mode ON.", false);
+    return false;
+  }
+  return !needEnter();
+}
+
+/** 
+ * There is no need to enter safe mode 
+ * if DFS is empty or {@link #threshold} == 0
+ */
+boolean needEnter() {
+  return getSafeBlockRatio() &lt; threshold;
+}
+</code></pre>
+
+<h3>1.2. 离开安全模式 —— leaveSafeMode(true);</h3>
+
+<pre><code>  public void leaveSafeMode(boolean checkForUpgrades) throws SafeModeException {
+    writeLock();
+    try {
+    if (!isInSafeMode()) {
+      NameNode.stateChangeLog.info("STATE* Safe mode is already OFF."); 
+      return;
+    }
+    //获取升级状态，如在升级中，不能离开安全模式
+    if(getDistributedUpgradeState())
+      throw new SafeModeException("Distributed upgrade is in progress",
+                                  safeMode);
+    //调用SafeModeInfo.leave()离开安全模式
+    safeMode.leave(checkForUpgrades);
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h3>1.2.1 SafeModeInfo.leave()</h3>
+
+<pre><code>    synchronized void leave(boolean checkForUpgrades) {
+      if(checkForUpgrades) {
+        // 验证是否需要升级
+        boolean needUpgrade = false;
+        try {
+          needUpgrade = startDistributedUpgradeIfNeeded();
+        } catch(IOException e) {
+          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
+        }
+        if(needUpgrade) {
+          //如果需要升级，进入手动安全模式
+          safeMode = new SafeModeInfo();
+          return;
+        }
+      }
+      // 如果备份队列未初始化完，继续初始化该队列
+      if (!isPopulatingReplQueues()) {
+        initializeReplQueues();
+      }
+      long timeInSafemode = now() - systemStart;
+      NameNode.stateChangeLog.info("STATE* Leaving safe mode after " 
+                                    + timeInSafemode/1000 + " secs.");
+      NameNode.getNameNodeMetrics().safeModeTime.set((int) timeInSafemode);
+
+      if (reached &gt;= 0) {
+        NameNode.stateChangeLog.info("STATE* Safe mode is OFF."); 
+      }
+      reached = -1;
+      safeMode = null;
+      NameNode.stateChangeLog.info("STATE* Network topology has "
+                                   +clusterMap.getNumOfRacks()+" racks and "
+                                   +clusterMap.getNumOfLeaves()+ " datanodes");
+      NameNode.stateChangeLog.info("STATE* UnderReplicatedBlocks has "
+                                   +neededReplications.size()+" blocks");
+    }
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:52:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/10/18/hdfs-namenode-backup-mode/" title="Previous Post: HDFS源码学习（8）——Backup Mode">&laquo; HDFS源码学习（8）——Backup Mode</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/" title="Next Post: HDFS源码学习（10）——NameNode与DataNode间的通信">HDFS源码学习（10）——NameNode与DataNode间的通信 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/18/hdfs-namenode-safe-mode/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/18/hdfs-namenode-safe-mode/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

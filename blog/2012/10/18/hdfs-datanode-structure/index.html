@@ -1,0 +1,468 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS源码学习（12）——DataNode主要数据结构 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="HDFS中DataNode主要负责维护block->stream bytes的映射关系，即实际block数据的存储。
+一个datanode的磁盘上存储目录下实际的文件部署结构如下： data/
+├── blocksBeingWritten
+├── current
+│   ├── VERSION &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS源码学习（12）——DataNode主要数据结构</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:56:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>HDFS中DataNode主要负责维护block->stream bytes的映射关系，即实际block数据的存储。
+一个datanode的磁盘上存储目录下实际的文件部署结构如下：</p>
+
+<pre><code>data/
+├── blocksBeingWritten
+├── current
+│   ├── VERSION
+│   ├── blk_-1148021215131449924
+│   ├── blk_-1148021215131449924_1001.meta
+│   ├── blk_-8598609183581346893
+│   ├── blk_-8598609183581346893_1002.meta
+│   ├── blk_6693595845022390257
+│   ├── blk_6693595845022390257_1003.meta
+│   └── dncp_block_verification.log.curr
+├── detach
+├── storage
+└── tmp
+</code></pre>
+
+<p>data目录的路径是hdfs-site.xml中配置的dfs.data.dir的路径，表示每个datanode上数据存储的目录</p>
+
+<p>1) blocksBeingWritten：当前正在写入的block，写完之后会将block移至current目录</p>
+
+<p>2) current：当前已经写入的block文件目录</p>
+
+<p>2.1) VERSION为存储的VERSION文件，包括namespaceId，存储Id，存储版本，存储类型，创建时间戳等信息</p>
+
+<p>2.2）blk-*:文件为实际的block数据文件</p>
+
+<p>2.3）blk-*_xxx.meta: block的元信息文件</p>
+
+<p>2.4）dncp_*.log.curr: 当前copy文件</p>
+
+<p>3) detach：copy-on-write使用的目录</p>
+
+<p>4) tmp： 临时目录，DataNode启动时会检查 tmp的数据并删除。</p>
+
+<h2>Storage相关</h2>
+
+<p>Storage用于描述存储的类型，状态，目录等信息。
+其主要结构如下：
+<img src="/images/hdfs/Storage.png" alt="Storage" /></p>
+
+<h3>StorageInfo</h3>
+
+<p>StorageInfo表示一个存储的通用信息，包括：</p>
+
+<ol>
+<li>layoutVersion： 存储文件中的版本号</li>
+<li>namespaceId： 存储所属的命名空间ID</li>
+<li>ctime： 该存储创建的时间戳</li>
+</ol>
+
+
+<h3>Storage</h3>
+
+<p>存储信息的抽象类，管理一个server（NameNode或DataNode）上的存储目录。</p>
+
+<p>Storage有两个关键属性：</p>
+
+<ol>
+<li>storageType: 表示该存储所属的节点类型（NameNode或是DataNode）</li>
+<li>storageDirs: 该存储上存储目录的列表(ArrayList<StorageDirectory>),StorageDirectory表示一个存储目录。</li>
+</ol>
+
+
+<h4>StorageDirectory</h4>
+
+<p>表示一个存储目录，有三个属性：</p>
+
+<ol>
+<li>root：根目录</li>
+<li>lock：当前目录的文件锁</li>
+<li>dirType：目录类型</li>
+</ol>
+
+
+<h4>StorageSate</h4>
+
+<p>表示存储的状态：</p>
+
+<ol>
+<li>NON_EXISTENT: 目录不存在</li>
+<li>NOT_FORMATTED: 目录未格式化</li>
+<li>COMPLETE_UPGRADE: 升级完成</li>
+<li>RECOVER_UPGRADE: 撤销升级</li>
+<li>COMPLETE_FINALIZE: 提交完成</li>
+<li>COMPLETE_ROLLBACK: 回滚完成</li>
+<li>RECOVER_ROLLBACK: 撤销回滚</li>
+<li>COMPLETE_CHECKPOINT: checkpoint完成</li>
+<li>RECOVER_CHECKPOINT: 撤销checkpoint</li>
+<li>NORMAL: 正常</li>
+</ol>
+
+
+<h3>DataStorage</h3>
+
+<p>DataStorage是DataNode上使用的存储类，指定了datanode上各类存储文件的前缀：</p>
+
+<ol>
+<li>subdir：子目录前缀</li>
+<li>blk_：块文件前缀</li>
+<li>dncp_：拷贝文件前缀</li>
+</ol>
+
+
+<h2>DatanodeBlockInfo</h2>
+
+<p>DataNode使用DatanodeBlockInfo管理block和其元数据之间的映射关系，结构如下：</p>
+
+<p><img src="/images/hdfs/DatanodeBlockInfo.png" alt="DatanodeBlockInfo" /></p>
+
+<ol>
+<li>volmun：block所属的卷</li>
+<li>file：block文件</li>
+<li>detached：是否完成copy-on-write</li>
+</ol>
+
+
+<h2>FSDataSet相关</h2>
+
+<p>DataNode通过FSDataSet来完成数据的存储。FSDataset类结构如下：
+<img src="/images/hdfs/FSDataset.png" alt="FSDataset" /></p>
+
+<h3>FSVolume</h3>
+
+<p>FSVolumne用于进行block文件所属的卷管理，统计存储目录额使用情况，其中：</p>
+
+<ol>
+<li>currentDir： 当前数据目录, 对应data/current目录</li>
+<li>dataDir： 数据目录</li>
+<li>tmpDir： 临时目录, 对应data/tmp目录</li>
+<li>dtacheDir: 用于实现写时复制的文件，对应data/detach目录</li>
+<li>usage: 目录使用的空间</li>
+<li>dfsusage: dfs使用的空间</li>
+<li>reseved: 空余空间</li>
+<li>blocksBeingWritten: 正在写入的block，对应data/blocksBeingWritten目录</li>
+</ol>
+
+
+<h3>FSVolumeSet</h3>
+
+<p>FSVolumeSet是FSVolume的集合，提供了所有容量，剩余空间等方法。其中getNextVolume中提供了round-robin策略选取下一个volume，从而实现简单的IO负载均衡，提高IO处理能力。</p>
+
+<h3>FSDataSet</h3>
+
+<p>FSDataSet是在FSVolumeSet之上进行封装实现FSDatasetInterface借口，向外提供块查询和操作方法。</p>
+
+<p>其中有几个主要属性:</p>
+
+<ol>
+<li>volumes: 卷集合（FSVolumeSet）</li>
+<li>ongoingCreates: 当前活动的文件</li>
+<li>maxBlocksPerDir: 每个目录下最多能存放发block数，可通过dfs.datanode.numblocks配置</li>
+<li>volumeMap：块与块文件的映射信息(HashMap&lt;Block, DatanodeBlockInfo>)，当前集合中所有的块信息均维护在该map中</li>
+</ol>
+
+
+<h3>FSDir</h3>
+
+<p>用于构建block块在datanode磁盘上的层次结构，默认情况下每个目录下最多64个子目录，最多能存储64个块。目录初始化时会递归扫描目录下的所有子目录和文件，构建一个树形结构。</p>
+
+<p>addBlock时，首先尝试在当前目录新加块，如果当前目录没有空闲空间，则尝试在子目录中添加，如果没有子目录，则新建一个子目录。</p>
+
+<h3>BlockAndFile</h3>
+
+<p>Block与其文件名的封装</p>
+
+<h3>ActiveFile</h3>
+
+<p>表示一个当前活动中的文件</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:56:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/10/18/hdfs-secondary-namenode/" title="Previous Post: HDFS源码学习（11）——SecondaryNameNode">&laquo; HDFS源码学习（11）——SecondaryNameNode</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/10/18/hdfs-datanode-startup/" title="Next Post: HDFS源码学习（13）——DataNode启动过程">HDFS源码学习（13）——DataNode启动过程 &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

@@ -9,8 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="什么是Instrumentation？ java Instrumentation指的是可以用独立于应用程序之外的代理（agent）程序来监测和协助运行在JVM上的应用程序。这种监测和协助包括但不限于获取JVM运行时状态，替换和修改类定义等。
-Java SE5中使用JVM TI替代了JVM &hellip;">
+  <meta name="description" content="HDFS中的副本管理通过FSNameSystem.java中的ReplicationMonitor线程来完成。该线程代码结构较为简单。 class ReplicationMonitor implements Runnable { static final int &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -85,7 +84,7 @@ Java SE5中使用JVM TI替代了JVM &hellip;">
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a></h1>
     
     
       <p class="meta">
@@ -101,16 +100,16 @@ Java SE5中使用JVM TI替代了JVM &hellip;">
   
 
 
-<time datetime="2012-02-21T17:13:00+08:00" pubdate data-updated="true">Feb 21<span>st</span>, 2012</time>
+<time datetime="2012-10-18T21:43:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/02/21/java-lang-instrument/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-replica-management/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/jvm/'>JVM</a>
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
   
 </span>
 
@@ -121,305 +120,397 @@ Java SE5中使用JVM TI替代了JVM &hellip;">
   </header>
 
 
-  <div class="entry-content"><h2>什么是Instrumentation？</h2>
+  <div class="entry-content"><p>HDFS中的副本管理通过FSNameSystem.java中的ReplicationMonitor线程来完成。该线程代码结构较为简单。</p>
 
-<p>java Instrumentation指的是可以用独立于应用程序之外的代理（agent）程序来监测和协助运行在JVM上的应用程序。这种监测和协助包括但不限于获取JVM运行时状态，替换和修改类定义等。
-Java SE5中使用JVM TI替代了JVM PI和JVM DI。提供一套代理机制，支持独立于JVM应用程序之外的程序以代理的方式连接和访问JVM。java.lang.instrument是在JVM TI的基础上提供的Java版本的实现。
-Instrumentation提供的主要功能是修改jvm中类的行为。
-Java SE6中由两种应用Instrumentation的方式，premain（命令行）和agentmain（运行时）</p>
-
-<h2>premain方式</h2>
-
-<p>在Java SE5时代，Instrument只提供了premain一种方式，即在真正的应用程序（包含main方法的程序）main方法启动前启动一个代理程序。例如使用如下命令：</p>
-
-<pre><code>java -javaagent:agent_jar_path[=options] java_app_name
-</code></pre>
-
-<p>可以在启动名为java_app_name的应用之前启动一个agent_jar_path指定位置的agent jar。
-实现这样一个agent jar包，必须满足两个条件：</p>
-
-<ol>
-<li>在这个jar包的manifest文件中包含Premain-Class属性，并且改属性的值为代理类全路径名。</li>
-<li>代理类必须提供一个public static void premain(String args, Instrumentation inst)或 public static void premain(String args) 方法。</li>
-</ol>
-
-
-<p>当在命令行启动该代理jar时，VM会根据manifest中指定的代理类，使用于main类相同的系统类加载器（即ClassLoader.getSystemClassLoader()获得的加载器）加载代理类。在执行main方法前执行premain()方法。如果premain(String args, Instrumentation inst)和premain(String args)同时存在时，优先使用前者。其中方法参数args即命令中的options，类型为String（注意不是String[]），因此如果需要多个参数，需要在方法中自己处理（比如用&#8221;;&#8221;分割多个参数之类）；inst是运行时由VM自动传入的Instrumentation实例，可以用于获取VM信息。</p>
-
-<h2>premain实例-打印所有的方法调用</h2>
-
-<p>下面实现一个打印程序执行过程中所有方法调用的功能，这个功能可以通过AOP其他方式实现，这里只是尝试使用Instrumentation进行ClassFile的字节码转换实现：</p>
-
-<h3>构造agent类</h3>
-
-<p>premain方式的agent类必须提供premain方法，代码如下：</p>
-
-<pre><code>package test;
-
-import java.lang.instrument.Instrumentation;
-
-public class Agent {
-
-    public static void premain(String args, Instrumentation inst){
-        System.out.println("Hi, I'm agent!");
-        inst.addTransformer(new TestTransformer());
+<pre><code>  class ReplicationMonitor implements Runnable {
+    static final int INVALIDATE_WORK_PCT_PER_ITERATION = 32;
+    static final float REPLICATION_WORK_MULTIPLIER_PER_ITERATION = 2;
+    public void run() {
+      while (fsRunning) {
+        try {
+          computeDatanodeWork();
+          processPendingReplications();
+          Thread.sleep(replicationRecheckInterval);
+        } catch (InterruptedException ie) {
+          LOG.warn("ReplicationMonitor thread received InterruptedException.", ie);
+          break;
+        } catch (IOException ie) {
+          LOG.warn("ReplicationMonitor thread received exception. " + ie +  " " +
+              StringUtils.stringifyException(ie));
+        } catch (Throwable t) {
+          LOG.fatal("ReplicationMonitor thread received Runtime exception. " + t + " " +
+              StringUtils.stringifyException(t));
+          Runtime.getRuntime().exit(-1);
+        }
+      }
     }
-}
+  }
 </code></pre>
 
-<p>premain有两个参数，args为自定义传入的代理类参数，inst为VM自动传入的Instrumentation实例。 premain方法的内容很简单，除了标准输出外，只有</p>
+<p>该线程只是周期性调用computeDatanodeWork()和processPendingReplications()。</p>
 
-<pre><code>inst.addTransformer(new TestTransformer());
+<h2>一、computeDatanodeWork()</h2>
+
+<pre><code>  public int computeDatanodeWork() throws IOException {
+    int workFound = 0;
+    int blocksToProcess = 0;
+    int nodesToProcess = 0;
+    // blocks should not be replicated or removed if safe mode is on
+    if (isInSafeMode())
+      return workFound;
+    //计算需要备份的block数和节点数
+    synchronized(heartbeats) {
+      blocksToProcess = (int)(heartbeats.size() 
+          * ReplicationMonitor.REPLICATION_WORK_MULTIPLIER_PER_ITERATION);
+      nodesToProcess = (int)Math.ceil((double)heartbeats.size() 
+          * ReplicationMonitor.INVALIDATE_WORK_PCT_PER_ITERATION / 100);
+    }
+    //执行备份
+    workFound = computeReplicationWork(blocksToProcess); 
+
+    // Update FSNamesystemMetrics counters
+    pendingReplicationBlocksCount = pendingReplications.size();
+    underReplicatedBlocksCount = neededReplications.size();
+    scheduledReplicationBlocksCount = workFound;
+    corruptReplicaBlocksCount = corruptReplicas.size();
+
+    //HADOOP-5549 : Fix bug of schedule both replication and deletion work in one iteration
+    workFound += computeInvalidateWork(nodesToProcess);
+    return workFound;
+  }
 </code></pre>
 
-<p>这行代码的意思是向inst中添加一个类的转换器。用于转换类的行为。</p>
+<h3>1.1. computeReplicationWork()</h3>
 
-<h3>构造Transformer</h3>
+<pre><code>  private int computeReplicationWork(
+                                  int blocksToProcess) throws IOException {
+    // stall only useful for unit tests (see TestFileAppend4.java)
+    if (stallReplicationWork)  {
+      return 0;
+    }
 
-<p>下面来实现上述过程中的TestTransformer来完成打印调用方法的类定义转换。</p>
+    // 选取需要备份的block
+    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
+      chooseUnderReplicatedBlocks(blocksToProcess);
 
-<pre><code>package test;
+    // 执行备份
+    return computeReplicationWorkForBlocks(blocksToReplicate);
+  }
+</code></pre>
 
-import java.lang.instrument.ClassFileTransformer;
-import java.lang.instrument.IllegalClassFormatException;
-import java.security.ProtectionDomain;
+<h3>1.1.1 选取需要备份的block —— chooseUnderReplicatedBlocks()</h3>
 
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.LdcInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
+<pre><code>  List&lt;List&lt;Block&gt;&gt; chooseUnderReplicatedBlocks(int blocksToProcess) {
+    // 初始化返回值数据结构，返回值是一个二维优先级列表
+    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
+      new ArrayList&lt;List&lt;Block&gt;&gt;(UnderReplicatedBlocks.LEVEL);
+    for (int i = 0; i &lt; UnderReplicatedBlocks.LEVEL; i++) {
+      blocksToReplicate.add(new ArrayList&lt;Block&gt;());
+    }
 
-public class TestTransformer implements ClassFileTransformer {
+    writeLock();
+    try {
+      synchronized (neededReplications) {
+        if (neededReplications.size() == 0) {
+          return blocksToReplicate;
+        }
 
-    @Override
-    public byte[] transform(ClassLoader arg0, String arg1, Class&lt;?&gt; arg2,
-            ProtectionDomain arg3, byte[] arg4)
-            throws IllegalClassFormatException {
-        ClassReader cr = new ClassReader(arg4);
-        ClassNode cn = new ClassNode();
-        cr.accept(cn, 0);
-        for (Object obj : cn.methods) {
-            MethodNode md = (MethodNode) obj;
-            if ("&lt;init&gt;".endsWith(md.name) || "&lt;clinit&gt;".equals(md.name)) {
-                continue;
+        for (int priority = 0; priority&lt;UnderReplicatedBlocks.LEVEL; priority++) {
+        //遍历所有需要备份的block列表（UnderReplicatedBlocks结构）
+        BlockIterator neededReplicationsIterator = neededReplications.iterator(priority);
+        int numBlocks = neededReplications.size(priority);
+        //检查该优先级列表中是否已经开始备份（relIndex数组中保存的是当前每个优先级列表中已备份的block索引）
+        if (replIndex[priority] &gt; numBlocks) {
+          replIndex[priority] = 0;
+        }
+        // skip to the first unprocessed block, which is at replIndex
+        for (int i = 0; i &lt; replIndex[priority] &amp;&amp; neededReplicationsIterator.hasNext(); i++) {
+          neededReplicationsIterator.next();
+        }
+        // 计算该优先级下需要备份的block数，低优先级的block备份数不超过总配额的20%
+        int blocksToProcessIter = getQuotaForThisPriority(blocksToProcess,
+            numBlocks, neededReplications.getSize(priority+1));
+        blocksToProcess -= blocksToProcessIter;
+
+        //便利改优先级列表将该优先级下的block添加到返回值中
+        for (int blkCnt = 0; blkCnt &lt; blocksToProcessIter; blkCnt++, replIndex[priority]++) {
+          if (!neededReplicationsIterator.hasNext()) {
+            // start from the beginning
+            replIndex[priority] = 0;
+            neededReplicationsIterator = neededReplications.iterator(priority);
+            assert neededReplicationsIterator.hasNext() :
+              "neededReplications should not be empty.";
+          }
+
+          Block block = neededReplicationsIterator.next();
+          blocksToReplicate.get(priority).add(block);
+        } // end for
+        }
+      } // end try
+      return blocksToReplicate;
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h3>1.1.2. 备份blocks —— computeReplicationWorkForBlocks（）</h3>
+
+<pre><code>  int computeReplicationWorkForBlocks(List&lt;List&lt;Block&gt;&gt; blocksToReplicate) {
+    int requiredReplication, numEffectiveReplicas, priority;
+    List&lt;DatanodeDescriptor&gt; containingNodes;
+    DatanodeDescriptor srcNode;
+    INodeFile fileINode = null;
+
+    int scheduledWork = 0;
+    List&lt;ReplicationWork&gt; work = new LinkedList&lt;ReplicationWork&gt;();
+
+    writeLock();
+    try {
+      synchronized (neededReplications) {
+        for (priority = 0; priority &lt; blocksToReplicate.size(); priority++) {
+          for (Block block : blocksToReplicate.get(priority)) {
+            // block should belong to a file
+            //获取该block所属的INode
+            fileINode = blocksMap.getINode(block);
+            // abandoned block not belong to a file
+            if (fileINode == null ) {
+              neededReplications.remove(block, priority); // remove from neededReplications
+              replIndex[priority]--;
+              continue;
             }
-            InsnList insns = md.instructions;
-            InsnList il = new InsnList();
-            il.add(new FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System",
-                    "out", "Ljava/io/PrintStream;"));
-            il.add(new LdcInsnNode("Enter method-&gt; " + cn.name+"."+md.name));
-            il.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                    "java/io/PrintStream", "println", "(Ljava/lang/String;)V"));
-            insns.insert(il);
-            md.maxStack += 3;
+            //获取该文件需要的副本数
+            requiredReplication = fileINode.getReplication();
 
+            // 获取一个源datanode节点
+            containingNodes = new ArrayList&lt;DatanodeDescriptor&gt;();
+            NumberReplicas numReplicas = new NumberReplicas();
+            srcNode = chooseSourceDatanode(block, containingNodes, numReplicas);
+            if (srcNode == null) // block can not be replicated from any node
+            {
+              continue;
+            }
+
+          // 检查正在备份中的副本数是否满足备份需要，满足则不需要再备份
+            numEffectiveReplicas = numReplicas.liveReplicas() +
+              pendingReplications.getNumReplicas(block);
+            if (numEffectiveReplicas &gt;= requiredReplication) {
+              neededReplications.remove(block, priority); // remove from neededReplications
+              replIndex[priority]--;
+              continue;
+            }
+            //添加到待备份列表中
+            work.add(new ReplicationWork(block, fileINode, requiredReplication
+                - numEffectiveReplicas, srcNode, containingNodes, priority));
+          }
         }
-        ClassWriter cw = new ClassWriter(0);
-        cn.accept(cw);
-        return cw.toByteArray();
+      }
+    } finally {
+      writeUnlock();
     }
 
-}
-</code></pre>
-
-<p>TestTransformer实现了ClassFileTransformer接口，该接口只有一个transform方法，参数传入包括该类的类加载器，类名，原字节码字节流等，返回被转换后的字节码字节流。
-TestTransformer主要使用ASM实现在所有的类定义的方法中，在方法开始出添加了一段打印该类名和方法名的字节码。在转换完成后返回新的字节码字节流。详细的ASM使用请参考ASM手册。</p>
-
-<h3>设置MANIFEST.MF</h3>
-
-<p>设置MANIFEST.MF文件中的属性，文件内容如下：</p>
-
-<pre><code>Manifest-Version: 1.0
-Premain-Class: test.Agent
-Created-By: 1.6.0_29
-</code></pre>
-
-<h3>测试</h3>
-
-<p>代码编写完成后将代码编译打成agent.jar。
-编写测试代码：</p>
-
-<pre><code>public class TestAgent {
-
-    public static void main(String[] args) {
-        TestAgent ta = new TestAgent();
-        ta.test();
+    // 选取一个备份目标datanode
+    for(ReplicationWork rw : work){
+      DatanodeDescriptor targets[] = chooseTarget(rw);
+      rw.targets = targets;
     }
 
-    public void test() {
-        System.out.println("I'm TestAgent");
+    writeLock();
+    try {
+      for(ReplicationWork rw : work){
+        DatanodeDescriptor[] targets = rw.targets;
+        if(targets == null || targets.length == 0){
+          rw.targets = null;
+          continue;
+        }
+        synchronized (neededReplications) {
+          Block block = rw.block;
+          priority = rw.priority;
+          // 重新检查INode和备份数，因为全局锁已经释放
+          // block should belong to a file
+          fileINode = blocksMap.getINode(block);
+          // abandoned block not belong to a file
+          if (fileINode == null ) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            rw.targets = null;
+            replIndex[priority]--;
+            continue;
+          }
+          requiredReplication = fileINode.getReplication();
+
+
+          NumberReplicas numReplicas = countNodes(block);
+          numEffectiveReplicas = numReplicas.liveReplicas() +
+            pendingReplications.getNumReplicas(block);
+          if (numEffectiveReplicas &gt;= requiredReplication) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            replIndex[priority]--;
+            rw.targets = null;
+            continue;
+          }
+
+          // 将block添加到datanode的需要备份的block列表中
+          rw.srcNode.addBlockToBeReplicated(block, targets);
+
+          scheduledWork++;
+
+          //设置namenode的block调度计数器
+          for (DatanodeDescriptor dn : targets) {
+            dn.incBlocksScheduled();
+          }
+
+          // Move the block-replication into a "pending" state.
+          // The reason we use 'pending' is so we can retry
+          // replications that fail after an appropriate amount of time.
+          //将该block移至pendingReplications（PendingReplicationBlocks）中，表示该block的状态为'pending'(正在备份中)。'pending'表示如果失败了还可以重试
+          pendingReplications.add(block, targets.length);
+          NameNode.stateChangeLog.debug(
+            "BLOCK* block " + block
+              + " is moved from neededReplications to pendingReplications");
+
+          // remove from neededReplications
+          //从 neededReplication列表中移除该block
+          if (numEffectiveReplicas + targets.length &gt;= requiredReplication) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            replIndex[priority]--;
+          }
+        }
+      }
+    } finally {
+      writeUnlock();
     }
 
-}
+    // 更新 metrics
+    updateReplicationMetrics(work);
+
+    // 打印debug信息
+    if(NameNode.stateChangeLog.isInfoEnabled()){
+      // log which blocks have been scheduled for replication
+      for(ReplicationWork rw : work){
+        // report scheduled blocks
+        DatanodeDescriptor[] targets = rw.targets;
+        if (targets != null &amp;&amp; targets.length != 0) {
+          StringBuffer targetList = new StringBuffer("datanode(s)");
+          for (int k = 0; k &lt; targets.length; k++) {
+            targetList.append(' ');
+            targetList.append(targets[k].getName());
+          }
+          NameNode.stateChangeLog.info(
+            "BLOCK* ask "
+              + rw.srcNode.getName() + " to replicate "
+              + rw.block + " to " + targetList);
+        }
+      }
+    }
+
+    // 记录一次备份操作
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug("BLOCK* neededReplications = "
+          + neededReplications.size() + " pendingReplications = "
+          + pendingReplications.size());
+    }
+    return scheduledWork;
+  }
 </code></pre>
 
-<p>从命令行执行该类，并设置agent.jar</p>
+<h4>1.1.2.1. 选取源datanode —— chooseSourceDatanode（）</h4>
 
-<pre><code>java -javaagent:agent.jar TestAgent
+<p>获取一个源datanode节点</p>
+
+<pre><code>  private DatanodeDescriptor chooseSourceDatanode(
+                                    Block block,
+                                    List&lt;DatanodeDescriptor&gt; containingNodes,
+                                    NumberReplicas numReplicas) {
+    containingNodes.clear();
+    DatanodeDescriptor srcNode = null;
+    int live = 0;
+    int decommissioned = 0;
+    int corrupt = 0;
+    int excess = 0;
+    Iterator&lt;DatanodeDescriptor&gt; it = blocksMap.nodeIterator(block);
+    Collection&lt;DatanodeDescriptor&gt; nodesCorrupt = corruptReplicas.getNodes(block);
+    while(it.hasNext()) {
+      DatanodeDescriptor node = it.next();
+      Collection&lt;Block&gt; excessBlocks = 
+        excessReplicateMap.get(node.getStorageID());
+      if ((nodesCorrupt != null) &amp;&amp; (nodesCorrupt.contains(node)))
+        corrupt++;
+      else if (node.isDecommissionInProgress() || node.isDecommissioned())
+        decommissioned++;
+      else if (excessBlocks != null &amp;&amp; excessBlocks.contains(block)) {
+        excess++;
+      } else {
+        live++;
+      }
+      containingNodes.add(node);
+      // Check if this replica is corrupt
+      // If so, do not select the node as src node
+      if ((nodesCorrupt != null) &amp;&amp; nodesCorrupt.contains(node))
+        continue;
+      if(node.getNumberOfBlocksToBeReplicated() &gt;= maxReplicationStreams)
+        continue; // already reached replication limit
+      // the block must not be scheduled for removal on srcNode
+      if(excessBlocks != null &amp;&amp; excessBlocks.contains(block))
+        continue;
+      // never use already decommissioned nodes
+      if(node.isDecommissioned())
+        continue;
+      // we prefer nodes that are in DECOMMISSION_INPROGRESS state
+      if(node.isDecommissionInProgress() || srcNode == null) {
+        srcNode = node;
+        continue;
+      }
+      if(srcNode.isDecommissionInProgress())
+        continue;
+      // switch to a different node randomly
+      // this to prevent from deterministically selecting the same node even
+      // if the node failed to replicate the block on previous iterations
+      if(r.nextBoolean())
+        srcNode = node;
+    }
+    if(numReplicas != null)
+      numReplicas.initialize(live, decommissioned, corrupt, excess);
+    return srcNode;
+  }
 </code></pre>
 
-<p>将打印出程序运行过程中实际执行过的所有方法名：</p>
+<h4>1.1.2.2. 选取目标datanode —— chooseTarget(rw);</h4>
 
-<pre><code>Hi, I'm agent!
-Enter method-&gt; test/TestAgent.main
-Enter method-&gt; test/TestAgent.test
-I'm TestAgent
-Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
-Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
-Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
-Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
-Enter method-&gt; com/apple/java/Usage$3.run
-。。。
+<pre><code>  private DatanodeDescriptor[] chooseTarget(ReplicationWork work) {
+    if (!neededReplications.contains(work.block)) {
+      return null;
+    }
+    if (work.blockSize == BlockCommand.NO_ACK) {
+      LOG.warn("Block " + work.block.getBlockId() + 
+          " of the file " + work.fileINode.getFullPathName() + 
+          " is invalidated and cannot be replicated.");
+      return null;
+    }
+    if (work.blockSize == DFSUtil.DELETED) {
+      LOG.warn("Block " + work.block.getBlockId() + 
+          " of the file " + work.fileINode.getFullPathName() + 
+          " is a deleted block and cannot be replicated.");
+      return null;
+    }
+    //实际调用replicator(BlockPlacementPolicy)的chooseTarget方法选取target
+    return replicator.chooseTarget(work.fileINode,
+        work.numOfReplicas, work.srcNode,
+        work.containingNodes, null, work.blockSize);
+  }
 </code></pre>
 
-<p>从输出中可以看出，程序首先执行的是代理类中的premain方法（不过代理类自身不会被自己转换，所以不能打印出代理类的方法名），然后是应用程序中的main方法。</p>
+<h2>副本存放策略</h2>
 
-<h2>agentmain方式</h2>
+<p><img src="img/BlockAllocation.png" alt="BlockAllocation" /></p>
 
-<p>premain时Java SE5开始就提供的代理方式，给了开发者诸多惊喜，不过也有些须不变，由于其必须在命令行指定代理jar，并且代理类必须在main方法前启动。因此，要求开发者在应用前就必须确认代理的处理逻辑和参数内容等等，在有些场合下，这是比较苦难的。比如正常的生产环境下，一般不会开启代理功能，但是在发生问题时，我们不希望停止应用就能够动态的去修改一些类的行为，以帮助排查问题，这在应用启动前是无法确定的。
-为解决运行时启动代理类的问题，Java SE6开始，提供了在应用程序的VM启动后在动态添加代理的方式，即agentmain方式。
-与Permain类似，agent方式同样需要提供一个agent jar，并且这个jar需要满足：</p>
+<p>如图所示，HDFS默认的副本存放策略为：</p>
 
 <ol>
-<li>在manifest中指定Agent-Class属性，值为代理类全路径</li>
-<li>代理类需要提供public static void agentmain(String args, Instrumentation inst)或public static void agentmain(String args)方法。并且再二者同时存在时以前者优先。args和inst和premain中的一致。</li>
+<li>第一个副本存放在当前datanode的本地</li>
+<li>第二个副本存放在与第一个副本所在datanode不在同一机架上的一个datanode上</li>
+<li>第三个副本存放在与第二个副本同一机架但不同datanode上</li>
 </ol>
 
-
-<p>不过如此设计的再运行时进行代理有个问题——如何在应用程序启动之后再开启代理程序呢？
-JDK6中提供了Java Tools API，其中Attach API可以满足这个需求。</p>
-
-<p>Attach API中的VirtualMachine代表一个运行中的VM。其提供了loadAgent()方法，可以在运行时动态加载一个代理jar。具体需要参考<a href="">《Attach API》</a></p>
-
-<h2>agentmain实例-打印当前已加载的类</h2>
-
-<h3>构造agent类</h3>
-
-<p>agentmain方式的代理类必须提供agentmain方法：</p>
-
-<pre><code>package loaded;
-
-import java.lang.instrument.Instrumentation;
-
-public class LoadedAgent {
-    @SuppressWarnings("rawtypes")
-    public static void agentmain(String args, Instrumentation inst){
-        Class[] classes = inst.getAllLoadedClasses();
-        for(Class cls :classes){
-            System.out.println(cls.getName());
-        }
-    }
-}
-</code></pre>
-
-<p>agentmain方法通过传入的Instrumentation实例获取当前系统中已加载的类。</p>
-
-<h3>设置MANNIFEST.MF</h3>
-
-<p>设置MANIFEST.MF文件，指定Agent-Class:</p>
-
-<pre><code>Manifest-Version: 1.0
-Agent-Class: loaded.LoadedAgent
-Created-By: 1.6.0_29
-</code></pre>
-
-<h3>绑定到目标VM</h3>
-
-<p>将agent类和MANIFEST.MF文件编译打成loadagent.jar后，由于agent main方式无法向pre main方式那样在命令行指定代理jar，因此需要借助Attach Tools API。</p>
-
-<pre><code>package attach;
-
-import java.io.IOException;
-
-import com.sun.tools.attach.AgentInitializationException;
-import com.sun.tools.attach.AgentLoadException;
-import com.sun.tools.attach.AttachNotSupportedException;
-import com.sun.tools.attach.VirtualMachine;
-
-public class Test {
-    public static void main(String[] args) throws AttachNotSupportedException,
-            IOException, AgentLoadException, AgentInitializationException {
-        VirtualMachine vm = VirtualMachine.attach(args[0]);
-        vm.loadAgent("/Users/jiangbo/Workspace/code/java/javaagent/loadagent.jar");
-
-    }
-
-}
-</code></pre>
-
-<p>该程序接受一个参数为目标应用程序的进程id，通过Attach Tools API的VirtualMachine.attach方法绑定到目标VM，并向其中加载代理jar。</p>
-
-<h3>构造目标测试程序</h3>
-
-<p>构造一个测试用的目标应用程序：</p>
-
-<pre><code>package attach;
-
-public class TargetVM {
-    public static void main(String[] args) throws InterruptedException{
-        while(true){
-            Thread.sleep(1000);
-        }
-    }
-}
-</code></pre>
-
-<p>这个测试程序什么都不做，只是不停的sleep。:)
-运行该程序，获得进程ID=33902。
-运行上面绑定到VM的Test程序，将进程id作为参数传入：</p>
-
-<pre><code>java attach.Test 33902
-</code></pre>
-
-<p>观察输出，会打印出系统当前所有已经加载类名</p>
-
-<pre><code>java.lang.NoClassDefFoundError
-java.lang.StrictMath
-java.security.SignatureSpi
-java.lang.Runtime
-java.util.Hashtable$EmptyEnumerator
-sun.security.pkcs.PKCS7
-java.lang.InterruptedException
-java.io.FileDescriptor$1
-java.nio.HeapByteBuffer
-java.lang.ThreadGroup
-[Ljava.lang.ThreadGroup;
-java.io.FileSystem
-。。。
-</code></pre>
-
-<h2>参考文档</h2>
-
-<ul>
-<li><a href="http://docs.oracle.com/javase/6/docs/api/java/lang/instrument/package-summary.html">java.lang.instrument API docs</a></li>
-<li><a href="https://blogs.oracle.com/CoreJavaTechTips/entry/the_attach_api">The Attach API</a></li>
-<li><a href="http://www.ibm.com/developerworks/cn/java/j-lo-jse61/index.html">Java SE6新特性：Instrumentation新功能</a></li>
-</ul>
-
-
-<h2>附：agent jar中manifest的属性</h2>
-
-<ul>
-<li>Premain-Class: 当在VM启动时，在命令行中指定代理jar时，必须在manifest中设置Premain-Class属性，值为代理类全类名，并且该代理类必须提供premain方法。否则JVM会异常终止。</li>
-<li>Agent-Class: 当在VM启动之后，动态添加代理jar包时，代理jar包中manifest必须设置Agent-Class属性，值为代理类全类名，并且该代理类必须提供agentmain方法，否则无法启动该代理。</li>
-<li>Boot-Class-Path: Bootstrap class loader加载类时的搜索路径，可选。</li>
-<li>Can-Redefine-Classes: true/false；标示代理类是否能够重定义类。可选。</li>
-<li>Can-Retransform-Classes: true/false；标示代理类是否能够转换类定义。可选。</li>
-<li>Can-Set-Native-Prefix::true/false；标示代理类是否需要本地方法前缀，可选。</li>
-</ul>
-
-
-<p><strong> 当一个代理jar包中的manifest文件中既有Premain-Class又有Agent-Class时，如果以命令行方式在VM启动前指定代理jar，则使用Premain-Class；反之如果在VM启动后，动态添加代理jar，则使用Agent-Class </strong></p>
 </div>
   
   
@@ -432,7 +523,7 @@ java.io.FileSystem
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a></h1>
     
     
       <p class="meta">
@@ -448,16 +539,16 @@ java.io.FileSystem
   
 
 
-<time datetime="2012-02-14T00:26:00+08:00" pubdate data-updated="true">Feb 14<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:38:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/02/14/jetty-classloader/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-heartbeat/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/jvm/'>JVM</a>
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
   
 </span>
 
@@ -468,204 +559,359 @@ java.io.FileSystem
   </header>
 
 
-  <div class="entry-content"><h2>什么是类加载器？</h2>
+  <div class="entry-content"><p>HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下：</p>
 
-<p>类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。</p>
-
-<h2>类加载器分类</h2>
-
-<p>类加载器主要分为：</p>
-
-<ul>
-<li>启动类加载器(Bootstrap ClassLoader)：主要负责加载<JAVA_HOME>\lib目录中或者-Xbootclasspath中指定的，并且被虚拟机识别的类库加载到VM中。这个加载器是JVM自身的一部分，用本地代码实现的(openjdk中源码位于hotspot/src/share/vm/classfile/classLoader.cpp中)，无法直接被java代码引用。</li>
-<li>扩展类加载器(Extension ClassLoader)：主要负责加载jdk扩展类库<JAVA_HOME>\lib\ext或者java.ext.dirs系统属性指定的目录中jar文件，由sun.misc.Launcher$ExtClassLoader实现</li>
-<li>系统类加载器(System ClassLoader)：用于加载CLASSPATH中指定的类，由sun.misc.Launcher$AppClassLoader实现。该类即ClassLoader.getSystemLoader()的返回值，是应用程序默认的类加载器。</li>
-<li>自定义加载器(User ClassLoader)：用户可以自定义自己的类加载器</li>
-</ul>
-
-
-<h2>双亲委托模型</h2>
-
-<p>JDK中要求所有的自定义ClassLoader 必须扩展自抽象类java.lang.ClassLoader。该类的文档说名中有一个段关于delegate model的描述：</p>
-
-<blockquote><p>The ClassLoader class uses a <code>delegation model</code> to search for classes and resources. Each instance of ClassLoader has an associated parent class loader. When requested to find a class or resource, a ClassLoader instance will delegate the search for the class or resource to its parent class loader before attempting to find the class or resource itself. The virtual machine&#8217;s built-in class loader, called the &#8220;bootstrap class loader&#8221;, does not itself have a parent but may serve as the parent of a ClassLoader instance.</p></blockquote>
-
-<p>简单来说这个delegate model要求除了Bootstrap ClassLoader之外，其余ClassLoader都需要关联一个parent ClassLoader（这种关联方式采用的时组合而非继承），在执行加载class时，首先委托给parent ClassLoader加载，只有当parent ClassLoader无法加载时，再由自身加载。各加载器的关联关系如下：</p>
-
-<pre><code>        Bootstrap ClassLoader
-                 |
-        Extension ClassLoader
-                 |
-        System ClassLoader
-            /           \
-    User1 ClassLoader   User2 ClassLoader
+<pre><code>  class HeartbeatMonitor implements Runnable {
+    /**
+     */
+    public void run() {
+      while (fsRunning) {
+        try {
+          heartbeatCheck();
+        } catch (Exception e) {
+          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
+        }
+        try {
+          Thread.sleep(heartbeatRecheckInterval);
+        } catch (InterruptedException ie) {
+        }
+      }
+    }
+  }
 </code></pre>
 
-<p>Bootstrap ClassLoader是最根层的加载器，用户自定义加载器建议使用系统类加载器作为parent。
-这种委托模型的好处显而易见，它维护了类加载器之间的层次优先级关系。使所有的类加载优先由parent加载，这保证了java基础类库中的加载只会有一份。以java.lang.Object为例，委托模式保证了这个类最终只会由BootstrapClassLoader来加载，以此来保证所有环境中只有同一个类。否则由各加载器自由发挥，当用户自己定义各同名的java.lang.Object类时，系统会出现多分Objec类，最根基的行为出现混乱。（当然，你还是可以自定义出一个同名的java.lang.Object，并且顺利通过编译，但是它正常情况下永远不会被加载）。</p>
+<p>代码很简单，心跳检测线程周期性调用heartbeatCheck()。</p>
 
-<p><strong><em>这个委托模型并非jvm的强制规范，只是jdk中建议的一种模式，有时会发现不遵守这种模式的行为却能产生奇妙的效果，如热部署，OSGI等。</em></strong></p>
+<h2>一、心跳检查——heartbeatCheck()</h2>
 
-<h2>Jetty中的ClassLoader</h2>
+<p>该方法主要用于检测是否有过期的心跳检测，如有，检测其上的block是否已经进行过重新备份。该线程每次只处理一个datanode。</p>
 
-<p>jetty，tomcat等web容器通常都会对classloader做扩展，因为一个正常的容器至少要保证其内部运行的多个webapp之间：私有的类库不受影响，并且公有的类库可以共享。这正好发挥classloader的层级划分优势。
-jetty中有一个org.mortbay.jetty.webapp.WebAppClassLoader，负责加载一个webapp context中的应用类，WebAppClassLoader以系统类加载器作为parent，用于加载系统类。不过servlet规范使得web容器的classloader比正常的classloader委托模型稍稍复杂，servlet规范要求：</p>
+<pre><code>  void heartbeatCheck() {
+    if (isInSafeMode()) {
+      // 安全模式下不做心跳检测
+      return;
+    }
+    boolean allAlive = false;
+    while (!allAlive) {
+      boolean foundDead = false;
+      DatanodeID nodeID = null;
 
-<ol>
-<li>WEB-INF/lib 和 WEB-INF/classes优先于父容器中的类加载，比如WEB-INF/classes下有个XYZ类，CLASSPATH下也有个XYZ类，jetty中优先加载的是WEB-INF/classes下的，这与正常的父加载器优先相反。</li>
-<li>系统类比如java.lang.String不遵循第一条， WEB-INF/classes或WEB-INF/lib下的类不能替换系统类。不过规范中没有明确规定哪些是系统类，jetty中的实现是按照类的全路径名判断。</li>
-<li>Server的实现类不被应用中的类引用，即Server的实现类不能被人和应用类加载器加载。不过，同样的，规范里没有明确规定哪些是Server的实现类，jetty中同样是按照类的全路径名判断。</li>
-</ol>
+      // 获取第一个dead datanode
+      synchronized(heartbeats) {
+        for (Iterator&lt;DatanodeDescriptor&gt; it = heartbeats.iterator();
+             it.hasNext();) {
+          DatanodeDescriptor nodeInfo = it.next();
+          if (isDatanodeDead(nodeInfo)) {
+            foundDead = true;
+            nodeID = nodeInfo;
+            break;
+          }
+        }
+      }
 
-
-<p>为了处理上述三个问题，jetty的应用类加载器(org.mortbay.jetty.webapp.WebAppClassLoader)做了些特殊处理。</p>
-
-<h3>WebAppClassLoader的实现</h3>
-
-<p>首先看WebAppClassLoader的实现，WebAppClassLoader的构造器中有如下代码：</p>
-
-<pre><code>super(new URL[]{},parent!=null?parent
-            :(Thread.currentThread().getContextClassLoader()!=null?Thread.currentThread().getContextClassLoader()
-                    :(WebAppClassLoader.class.getClassLoader()!=null?WebAppClassLoader.class.getClassLoader()
-                            :ClassLoader.getSystemClassLoader())));
+      // 申请fsnamesystem锁，删除dead datanode
+      if (foundDead) {
+        writeLock();
+        try {
+          synchronized(heartbeats) {
+            synchronized (datanodeMap) {
+              DatanodeDescriptor nodeInfo = null;
+              try {
+                nodeInfo = getDatanode(nodeID);
+              } catch (IOException e) {
+                nodeInfo = null;
+              }
+              if (nodeInfo != null &amp;&amp; isDatanodeDead(nodeInfo)) {
+                NameNode.stateChangeLog.info("BLOCK* NameSystem.heartbeatCheck: "
+                                             + "lost heartbeat from " + nodeInfo.getName());
+                removeDatanode(nodeInfo);
+              }
+            }
+          }
+        } finally {
+          writeUnlock();
+        }
+      }
+      allAlive = !foundDead;
+    }
+  }
 </code></pre>
 
-<p>表明WebAppClassLoader还是按照正常的范式设置parent classloader
-然后看重要的loadclass方法实现：</p>
+<h3>1.1 判断是否已死 —— isDatanodeDead（）</h3>
 
-<pre><code>@Override
-protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException
-{
-    Class&lt;?&gt; c= findLoadedClass(name);
-    ClassNotFoundException ex= null;
-    boolean tried_parent= false;
+<p>判断一个datanode是否已经dead的标准很简单，当前距该节点最后的更新时间差是否已经超过心跳检测的过期时间限制</p>
 
-    boolean system_class=_context.isSystemClass(name);
-    boolean server_class=_context.isServerClass(name);
+<pre><code>private boolean isDatanodeDead(DatanodeDescriptor node) {
+    return (node.getLastUpdate() &lt;
+            (now() - heartbeatExpireInterval));
+  }
+</code></pre>
 
-    if (system_class &amp;&amp; server_class)
-    {
-        return null;
+<h3>1.2 删除datanode —— removeDatanode（）</h3>
+
+<pre><code>  private void removeDatanode(DatanodeDescriptor nodeInfo) {
+    synchronized (heartbeats) {
+      if (nodeInfo.isAlive) {
+        updateStats(nodeInfo, false);
+        //从heartbeats中移除
+        heartbeats.remove(nodeInfo);
+        //更新datanode状态
+        nodeInfo.isAlive = false;
+      }
     }
 
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; (_context.isParentLoaderPriority() || system_class) &amp;&amp; !server_class)
-    {
-        tried_parent= true;
-        try
-        {
-            c= _parent.loadClass(name);
-            if (LOG.isDebugEnabled())
-                LOG.debug("loaded " + c);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
+    nodeInfo.hasInitialBlockReport = false;
+    for (Iterator&lt;Block&gt; it = nodeInfo.getBlockIterator(); it.hasNext();) {
+      //移除该节点上的block
+      removeStoredBlock(it.next(), nodeInfo);
+    }
+    unprotectedRemoveDatanode(nodeInfo);
+    clusterMap.remove(nodeInfo);
+  }
+</code></pre>
+
+<h4>1.2.1 removeStoredBlock（）</h4>
+
+<p>该方法更新block->datanode的映射(blocksMap)，如果block还有效，有可能导致block备份发生</p>
+
+<pre><code>  void removeStoredBlock(Block block, DatanodeDescriptor node) {
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                    +block + " from "+node.getName());
+    }
+    assert (hasWriteLock());
+    if (!blocksMap.removeNode(block, node)) {
+      if (NameNode.stateChangeLog.isDebugEnabled()) {
+        NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                      +block+" has already been removed from node "+node);
+      }
+      return;
     }
 
-    if (c == null)
-    {
-        try
-        {
-            c= this.findClass(name);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
+    //
+    //检查是否需要备份删除的block
+    INode fileINode = blocksMap.getINode(block);
+    if (fileINode != null) {
+      //减小当前系统中安全block（备份数满足最小值的block）数量
+      decrementSafeBlockCount(block);
+      //更新需要备份的block数量
+      updateNeededReplications(block, -1, 0);
     }
 
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; !tried_parent &amp;&amp; !server_class )
-        c= _parent.loadClass(name);
+    //
+    // 从excessblocks中删除改block，并从excessReplicateMap删除改datanode
+    Collection&lt;Block&gt; excessBlocks = excessReplicateMap.get(node.getStorageID());
+    if (excessBlocks != null) {
+      if (excessBlocks.remove(block)) {
+        excessBlocksCount--;
+        if (NameNode.stateChangeLog.isDebugEnabled()) {
+          NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+              +block+" is removed from excessBlocks");
+        }
+        if (excessBlocks.size() == 0) {
+          excessReplicateMap.remove(node.getStorageID());
+        }
+      }
+    }
 
-    if (c == null)
-        throw ex;
+    // 从corruptReplicas中移除该block
+    corruptReplicas.removeFromCorruptReplicasMap(block, node);
+  }
+</code></pre>
 
-    if (resolve)
-        resolveClass(c);
+<h5>1.2.1.1  BlocksMap.removeNode（）</h5>
 
-    if (LOG.isDebugEnabled())
-        LOG.debug("loaded " + c+ " from "+c.getClassLoader());
+<p>其中BlocksMap.removeNode()方法如下：</p>
 
-    return c;
+<pre><code>  boolean removeNode(Block b, DatanodeDescriptor node) {
+    BlockInfo info = blocks.get(b);
+    if (info == null)
+      return false;
+
+    // 从datanode 的blocklist中移除block，并从block的datalist中移除datanode
+    boolean removed = node.removeBlock(info);
+
+    if (info.getDatanode(0) == null     // no datanodes left
+              &amp;&amp; info.inode == null) {  // does not belong to a file
+      //从blocksmap中移除该block
+      blocks.remove(b);  // remove block from the map
+    }
+    return removed;
+  }
+</code></pre>
+
+<h5>1.2.1.2 减小当前安全的block数 —— decrementSafeBlockCount()</h5>
+
+<p>减小当前副本数安全的的block数，此举有可能触发系统进入安全模式（safemode）</p>
+
+<pre><code>  void decrementSafeBlockCount(Block b) {
+    if (safeMode == null) // mostly true
+      return;
+
+    safeMode.decrementSafeBlockCount((short)countNodes(b).liveReplicas());
+  }
+</code></pre>
+
+<p>其中safeMode.decrementSafeBlockCount()代码如下：</p>
+
+<pre><code>synchronized void decrementSafeBlockCount(short replication) {
+
+  if (replication == safeReplication-1) {
+    //安全的block数减一
+    this.blockSafe--;
+    //检查是否需要进入到safemode
+    checkMode();
+  }
 }
 </code></pre>
 
-<p>loadclass按照：</p>
+<p>SafeModeInfo.checkMode()代码如下：</p>
 
-<ol>
-<li>findLoadedClass(name)-检查类是否已经加载</li>
-<li>判断该类是否为系统类或server类</li>
-<li>如果该类未加载且父加载器不为空且设置了父加载器优先或类类为系统类，且该类不是server类，则尝试使用父加载器加载该类</li>
-<li>如果不是父加载器优先或者父加载器未加载到该类，使用WebAppClassLoader加载该类</li>
-<li>如果是不是父加载器优先，并且WebAppClassLoader未加载到该类，尝试使用父加载器加载该类</li>
-<li>找到则返回，否则抛出ClassNotFoundException</li>
-</ol>
+<pre><code>    private void checkMode() {
+      //当安全的block数比例降至安全值以下，进入安全模式
+      if (needEnter()) {
+        enter();
+        // check if we are ready to initialize replication queues
+        if (canInitializeReplQueues() &amp;&amp; !isPopulatingReplQueues()) {
+          //初始化副本队列
+          initializeReplQueues();
+        }
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 如果安全模式已经关闭或者门槛小于0，则跳出安全模式
+      if (!isOn() ||                           // safe mode is off
+          extension &lt;= 0 || threshold &lt;= 0) {  // don't need to wait
+        this.leave(true); // leave safe mode
+        return;
+      }
 
-
-<h3>ClassLoader Priority</h3>
-
-<p>上述过程涉及一个加载器优先级的概念，这也是针对前述第一条规范中WEB-INF/lib和WEB-INF/classes类优先的处理。jetty中父加载器优先的配置项可以通过环境变量</p>
-
-<pre><code>org.eclipse.jetty.server.webapp.parentLoaderPriority=false(默认)/true来设置
+      //之前已经进入安全模式，直接返回
+      if (reached &gt; 0) {  // threshold has already been reached before
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 启动SafeModeMonitor线程
+      reached = now();
+      smmthread = new Daemon(new SafeModeMonitor());
+      smmthread.start();
+      reportStatus("STATE* Safe mode extension entered.", true);
+    }
 </code></pre>
 
-<p>也可以通过</p>
+<h5>1.2.1.3 更新需要备份的列表 —— updateNeededReplications（）</h5>
 
-<pre><code>org.eclipse.jetty.webapp.WebAppContext.setParentLoaderPriority(boolean)方法来设置
+<pre><code>  /* updates a block in under replication queue */
+  void updateNeededReplications(Block block,
+                        int curReplicasDelta, int expectedReplicasDelta) {
+    writeLock();
+    try {
+    //计算当前副本数
+    NumberReplicas repl = countNodes(block);
+    //期望的副本数
+    int curExpectedReplicas = getReplication(block);
+    //将该block更新到需要备份的列表中（neededReplications）
+    neededReplications.update(block, 
+                              repl.liveReplicas(), 
+                              repl.decommissionedReplicas(),
+                              curExpectedReplicas,
+                              curReplicasDelta, expectedReplicasDelta);
+    } finally {
+      writeUnlock();
+    }
+  }
 </code></pre>
 
-<p>优于该配置默认是false，因此在load class过程中优先使用WebAppClassLoader加载WEB-INF/lib和WEB-INF/classes中的类。
-当将该配置项设为true时需要确认类加载顺序没有问题。</p>
+<h4>1.2.2 移除datanode —— unprotectedRemoveDatanode</h4>
 
-<h3>设置系统类</h3>
-
-<p>规范2中约定系统类不能被应用类覆盖，但是没有明确规定哪些时系统类，jetty中以类的package路径名来区分，当类的package路径名位包含于</p>
-
-<pre><code>  public final static String[] __dftSystemClasses =
-    {
-        "java.",                            
-        "javax.",                           
-        "org.xml.",                         
-        "org.w3c.",                         
-        "org.apache.commons.logging.",      
-        "org.eclipse.jetty.continuation.",  
-        "org.eclipse.jetty.jndi.",          
-        "org.eclipse.jetty.plus.jaas.",     
-        "org.eclipse.jetty.websocket.WebSocket", 
-        "org.eclipse.jetty.websocket.WebSocketFactory", 
-        "org.eclipse.jetty.servlet.DefaultServlet" 
-    } ;
+<pre><code>  void unprotectedRemoveDatanode(DatanodeDescriptor nodeDescr) {
+    //重置清空datanode中block信息
+    nodeDescr.resetBlocks();
+    //从invlidateSet中移除datanode
+    removeFromInvalidates(nodeDescr.getStorageID());
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug(
+                                    "BLOCK* NameSystem.unprotectedRemoveDatanode: "
+                                    + nodeDescr.getName() + " is out of service now.");
+    }
+  }
 </code></pre>
 
-<p>时，会被认为是系统类。（该定义位于<a href="https://github.com/eclipse/jetty.project/blob/master/jetty-webapp/src/main/java/org/eclipse/jetty/webapp/WebAppContext.java">WebAppContext@github</a>中）</p>
+<h5>1.2.2.1 removeFromInvalidates()</h5>
 
-<p>因此，我们可以通过 org.eclipse.jetty.webapp.WebAppContext.setSystemClasses(String Array)或者org.eclipse.jetty.webapp.WebAppContext.addSystemClass(String)来设置系统类。
-再次提醒，系统类是对多有应用都可见。</p>
-
-<h3>设置Server类</h3>
-
-<p>规范3中约定Server类不对任何应用可见。jetty同样是用package路径名来区分哪些是Server类。Server类包括：</p>
-
-<pre><code>public final static String[] __dftServerClasses =
-{
-    "-org.eclipse.jetty.continuation.", 
-    "-org.eclipse.jetty.jndi.",         
-    "-org.eclipse.jetty.plus.jaas.",    
-    "-org.eclipse.jetty.websocket.WebSocket", 
-    "-org.eclipse.jetty.websocket.WebSocketFactory", 
-    "-org.eclipse.jetty.servlet.DefaultServlet", 
-    "-org.eclipse.jetty.servlet.listener.", 
-    "org.eclipse.jetty."                
-} ;
+<pre><code>  private void removeFromInvalidates(String storageID) {
+    //从recentInvalidateSet中移除该datanode
+    Collection&lt;Block&gt; blocks = recentInvalidateSets.remove(storageID);
+    if (blocks != null) {
+      //从正在删除的block总数中减去当前节点上的block总数
+      pendingDeletionBlocksCount -= blocks.size();
+    }
+  }
 </code></pre>
 
-<p>我们可以通过， org.eclipse.jetty.webapp.WebAppContext.setServerClasses(String Array) 或org.eclipse.jetty.webapp.WebAppContext.addServerClass(String)方法设置Server类。
-注意，Server类是对所有应用都不可见的，但是WEB-INF/lib下的类可以替换Server类。</p>
+<h2>二、 处理心跳检测请求 —— handleHeartbeat()</h2>
 
-<h3>自定义WebApp ClassLoader</h3>
+<p>NameNode只负责创建一个HeartbeatMonitor来通过每个datanode的最新更新时间周期性检查是否有过期的datanode，而每个datanode是否的最新更新时间是由datanode主动向namenode报告的，namenode通过handleHeartbeat()处理心跳请求。</p>
 
-<p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
+<pre><code>  DatanodeCommand[] handleHeartbeat(DatanodeRegistration nodeReg,
+      long capacity, long dfsUsed, long remaining,
+      int xceiverCount, int xmitsInProgress) throws IOException {
+    DatanodeCommand cmd = null;
+    synchronized (heartbeats) {
+      synchronized (datanodeMap) {
+        DatanodeDescriptor nodeinfo = null;
+        try {
+          nodeinfo = getDatanode(nodeReg);
+        } catch(UnregisteredDatanodeException e) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        // 检查该datanode是否需要被关闭，可以通过设置datanode的adminState为DECOMMISSIONED来关闭一个datanode
+        if (nodeinfo != null &amp;&amp; shouldNodeShutdown(nodeinfo)) {
+          setDatanodeDead(nodeinfo);
+          throw new DisallowedDatanodeException(nodeinfo);
+        }
+
+        if (nodeinfo == null || !nodeinfo.isAlive) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        updateStats(nodeinfo, false);
+        nodeinfo.updateHeartbeat(capacity, dfsUsed, remaining, xceiverCount);
+        updateStats(nodeinfo, true);
+
+        //检查租约恢复状态
+        cmd = nodeinfo.getLeaseRecoveryCommand(Integer.MAX_VALUE);
+        if (cmd != null) {
+          return new DatanodeCommand[] {cmd};
+        }
+
+        ArrayList&lt;DatanodeCommand&gt; cmds = new ArrayList&lt;DatanodeCommand&gt;(2);
+        //检查正在备份中的副本
+        cmd = nodeinfo.getReplicationCommand(
+              maxReplicationStreams - xmitsInProgress);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        //检查无效的block
+        cmd = nodeinfo.getInvalidateBlocks(blockInvalidateLimit);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        if (!cmds.isEmpty()) {
+          return cmds.toArray(new DatanodeCommand[cmds.size()]);
+        }
+      }
+    }
+
+    //检查是否需要升级系统
+    cmd = getDistributedUpgradeCommand();
+    if (cmd != null) {
+      return new DatanodeCommand[] {cmd};
+    }
+    return null;
+  }
+</code></pre>
 </div>
   
   
@@ -678,7 +924,7 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/02/13/unzip-file-from-win-to-mac/">解决Mac上解压Windows压缩包乱码问题</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a></h1>
     
     
       <p class="meta">
@@ -694,16 +940,16 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
   
 
 
-<time datetime="2012-02-13T16:53:00+08:00" pubdate data-updated="true">Feb 13<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:37:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/02/13/unzip-file-from-win-to-mac/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-thread/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/ruby/'>Ruby</a>
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
   
 </span>
 
@@ -714,44 +960,24 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
   </header>
 
 
-  <div class="entry-content"><p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
-下面是用ruby写的一个解决方法：</p>
+  <div class="entry-content"><p>NameNode存在三种运行模式：</p>
 
-<p><a href="https://github.com/jiang-bo/codingforfun/blob/master/ruby/utils/unzipFromWinToMac.rb">source@github</a></p>
+<ol>
+<li>Normal： NameNode正常服务的状态</li>
+<li>Safe mode：NameNode重启时进入Safe mode，该模式下整个系统是只读的，以便于NameNode手机DataNode信息</li>
+<li>Backup mode：备份NameNode处于Backup mode，被动的接收主NameNode的检查点信息</li>
+</ol>
 
-<pre><code>require 'zip/zip'
-require 'iconv'
 
-# To unzip zipfile which zip in GBK to UTF-8.
-#
-# When you zip a file on Windows, it will encode in GBK default.
-# Then you unzip it on Mac OSX which use unicode default, it will be wrong.
-# This code is used to fix this problem:)
-#
-# @Author: jiang-bo
-Zip::ZipInputStream::open(zipFile){
-  |io|
-  while(entry = io.get_next_entry)
-    name=Iconv.iconv("UTF-8","GBK", entry.name)[0]
+<p>在NameNode中存在如下几种线程：</p>
 
-    puts "Extracting #{name}"
-    if name.end_with?('/')
-      Dir.mkdir(name.to_s)
-    else
-      entry.extract(name.to_s)
-    end
-  end
-}
-</code></pre>
+<ol>
+<li>DataNode 健康检查管理线程</li>
+<li>副本管理线程</li>
+<li>租约管理（lease Management）</li>
+<li>IPC Handler 线程</li>
+</ol>
 
-<p>主要依赖rubyzip和iconv两个包：</p>
-
-<pre><code>gem install rubyzip
-gem install iconv
-</code></pre>
-
-<p>使用ruby zip中ZipInputStream打开压缩包，然后使用Iconv.iconv将其中的文件名由&#8217;GBK&#8217;转码为&#8217;UTF-8&#8217;。
-然后解压压缩包。</p>
 </div>
   
   
@@ -764,7 +990,7 @@ gem install iconv
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/02/10/jvm-luncher-lifecycle/">JVM Luncher Lifecycle</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a></h1>
     
     
       <p class="meta">
@@ -780,59 +1006,16 @@ gem install iconv
   
 
 
-<time datetime="2012-02-10T23:51:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:35:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/02/10/jvm-luncher-lifecycle/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h1>JVM运行时环境</h1>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-02-10T14:39:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-startup/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/jvm/'>JVM</a>
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
   
 </span>
 
@@ -843,169 +1026,575 @@ gem install iconv
   </header>
 
 
-  <div class="entry-content"><h2>一.环境准备</h2>
+  <div class="entry-content"><h2>main()</h2>
 
-<h3>1.jdk</h3>
-
-<p>在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:)</p>
-
-<h3>2.alsa包</h3>
-
-<p>linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装，CentOS可以通过如下命令检查：</p>
-
-<pre><code> rpm -qa |grep alsa
+<pre><code>  public static void main(String argv[]) throws Exception {
+    try {
+      StringUtils.startupShutdownMessage(NameNode.class, argv, LOG);
+      //创建nameNode
+      NameNode namenode = createNameNode(argv, null);
+      if (namenode != null)
+        namenode.join();
+    } catch (Throwable e) {
+      LOG.error(StringUtils.stringifyException(e));
+      System.exit(-1);
+    }
+  }
 </code></pre>
 
-<p>alsa-lib和alsa-lib-devel均需要。CentOS缺少alsa-lib-devel，通过如下命令安装：</p>
+<h3>createNameNode()</h3>
 
-<pre><code> yum install alsa-lib-devel
+<pre><code>  public static NameNode createNameNode(String argv[], 
+                                 Configuration conf) throws IOException {
+    if (conf == null)
+      conf = new Configuration();
+      //从命令行参数中提取启动配置项数据
+    StartupOption startOpt = parseArguments(argv);
+    if (startOpt == null) {
+      printUsage();
+      return null;
+    }
+    //设置启动参数
+    setStartupOption(conf, startOpt);
+
+    switch (startOpt) {
+      case FORMAT:
+        boolean aborted = format(conf, true);
+        System.exit(aborted ? 1 : 0);
+      case FINALIZE:
+        aborted = finalize(conf, true);
+        System.exit(aborted ? 1 : 0);
+      default:
+    }
+
+    //新建NameNode
+    NameNode namenode = new NameNode(conf);
+    return namenode;
+  }
 </code></pre>
 
-<h3>3.cups-devel</h3>
+<h3>NameNode()</h3>
 
-<pre><code>yum install cups-devel
+<pre><code>  public NameNode(Configuration conf) throws IOException {
+    super(conf);
+    try {
+    //初始化
+      initialize(getConf());
+    } catch (IOException e) {
+      this.stop();
+      throw e;
+    }
+  }
 </code></pre>
 
-<h3>4.libXi-devel</h3>
+<h3>initialize()</h3>
 
-<pre><code>yum install libXi-devel
+<pre><code>  private void initialize(Configuration conf) throws IOException {
+    InetSocketAddress socAddr = NameNode.getAddress(conf);
+    int handlerCount = conf.getInt("dfs.namenode.handler.count", 10);
+    // 关键-&gt;创建一个RPC Server
+    this.server = RPC.getServer(this, socAddr.getHostName(), socAddr.getPort(),
+                                handlerCount, false, conf);
+
+    // The rpc-server port can be ephemeral... ensure we have the correct info
+    this.serverAddress = this.server.getListenerAddress(); 
+    FileSystem.setDefaultUri(conf, getUri(serverAddress));
+    LOG.info("Namenode up at: " + this.serverAddress);
+
+    myMetrics = new NameNodeMetrics(conf, this);
+
+    //关键-&gt;创建一个FSNameSystem
+    this.namesystem = new FSNamesystem(this, conf);
+    //启动HTTP Server
+    startHttpServer(conf);
+    //启动RPC Server
+    this.server.start();  //start RPC server   
+
+    startTrashEmptier(conf);
+  }
 </code></pre>
 
-<h3>5.freetype2.3</h3>
+<h2>FSNameSystem()</h2>
 
-<pre><code>wget http://download.savannah.gnu.org/releases/freetype/freetype-2.3.12.tar.gz
-tar -xvf freetype-2.3.12.tar.gz
-cd freetype-2.3.12
-./configure &amp;&amp; make &amp;&amp; make install
+<pre><code>  FSNamesystem(NameNode nn, Configuration conf) throws IOException {
+    try {
+      //初始化FSNameSystem
+      initialize(nn, conf);
+      userPasswordInformation = new UserPasswordInformation(conf);
+      extendAccessControlList = new ExtendAccessControlList(conf);
+    } catch(IOException e) {
+      LOG.error(getClass().getSimpleName() + " initialization failed.", e);
+      close();
+      throw e;
+    }
+  }
 </code></pre>
 
-<h3>6. ant</h3>
+<h3>FSNameSystem.initialize()</h3>
 
-<pre><code>wget http://mirror.bit.edu.cn/apache//ant/binaries/apache-ant-1.8.2-bin.zip
-unzip apache-ant-1.8.2-bin.zip
+<pre><code>  private void initialize(NameNode nn, Configuration conf) throws IOException {
+    this.systemStart = now();
+    this.fsLock = new ReentrantReadWriteLock(); // non-fair locking
+    setConfigurationParameters(conf);
+
+    this.nameNodeAddress = nn.getNameNodeAddress();
+    this.registerMBean(conf); // register the MBean for the FSNamesystemStutus
+
+    //创建FSDirectory
+    this.dir = new FSDirectory(this, conf);
+    StartupOption startOpt = NameNode.getStartupOption(conf);
+
+    //加载FSImage
+    this.dir.loadFSImage(getNamespaceDirs(conf),
+                         getNamespaceEditsDirs(conf), startOpt);
+    long timeTakenToLoadFSImage = now() - systemStart;
+    LOG.info("Finished loading FSImage in " + timeTakenToLoadFSImage + " msecs");
+    NameNode.getNameNodeMetrics().fsImageLoadTime.set(
+                              (int) timeTakenToLoadFSImage);
+    this.safeMode = new SafeModeInfo(conf);
+    setBlockTotal();
+    //创建PendingReplicationBlocks
+    pendingReplications = new PendingReplicationBlocks(
+                            conf.getInt("dfs.replication.pending.timeout.sec", 
+                                        -1) * 1000L);
+    //创建心跳检查线程                                          
+    this.hbthread = new Daemon(new HeartbeatMonitor());
+    //创建租约管理线程
+    this.lmthread = new Daemon(leaseManager.new Monitor());
+    //创建副本管理线程
+    this.replthread = new Daemon(new ReplicationMonitor());
+    hbthread.start();
+    lmthread.start();
+    replthread.start();
+
+    // 副本超额block管理线程
+    this.overreplthread = new Daemon(new OverReplicationMonitor());
+    overreplthread.start();
+
+    this.hostsReader = new HostsFileReader(conf.get("dfs.hosts",""),
+                                           conf.get("dfs.hosts.exclude",""));
+    //创建退役节点管理线程
+    this.dnthread = new Daemon(new DecommissionManager(this).new Monitor(
+        conf.getInt("dfs.namenode.decommission.interval", 30),
+        conf.getInt("dfs.namenode.decommission.nodes.per.interval", 5)));
+    dnthread.start();
+
+    this.dnsToSwitchMapping = ReflectionUtils.newInstance(
+        conf.getClass("topology.node.switch.mapping.impl", ScriptBasedMapping.class,
+            DNSToSwitchMapping.class), conf);
+
+    /* If the dns to swith mapping supports cache, resolve network 
+     * locations of those hosts in the include list, 
+     * and store the mapping in the cache; so future calls to resolve
+     * will be fast.
+     */
+    if (dnsToSwitchMapping instanceof CachedDNSToSwitchMapping) {
+      dnsToSwitchMapping.resolve(new ArrayList&lt;String&gt;(hostsReader.getHosts()));
+    }
+    //创建副本定位器用于定位副本存放位置
+    this.replicator = BlockPlacementPolicy.getInstance(
+        conf,
+        this,
+        this.clusterMap,
+        this.hostsReader,
+        this.dnsToSwitchMapping,
+        this);
+  }
 </code></pre>
 
-<h3>7.g++</h3>
+<h2>FSDirectory(this, conf)</h2>
 
-<pre><code>yum install gcc gcc-c++
+<p>新建FSDirecotry</p>
+
+<pre><code> FSDirectory(FSNamesystem ns, Configuration conf) {
+    //创建一个FSImage，并实例化构建FSDirectory
+    this(new FSImage(), ns, conf);
+    fsImage.setCheckpointDirectories(FSImage.getCheckpointDirs(conf, null),
+                                FSImage.getCheckpointEditsDirs(conf, null));
+  }
 </code></pre>
 
-<h2>二、设置环境变量</h2>
+<h3>this(new FSImage(), ns, conf);</h3>
 
-<p>jdk编译过程中有一些环境变量需要设置，详细的请参考README-builds.html，下面写的只是一些必须设置的环境变量：</p>
-
-<pre><code>export ALT_BOOTDIR=/usr/opt/jdk # 预装的jdk7目录
-export ANT_HOME=ant安装目录
-export ALT_FREETYPE_HEADERS_PATH=/usr/local/include/freetype2 #freetype2头文件安装目录
-export ALT_FREETYPE_LIB_PATH=/usr/local/lib #freetype2 lib目录
+<pre><code>FSDirectory(FSImage fsImage, FSNamesystem ns, Configuration conf) {
+    this.bLock = new ReentrantReadWriteLock(); // non-fair
+    this.cond = bLock.writeLock().newCondition();
+    //创建根目录
+    rootDir = new INodeDirectoryWithQuota(INodeDirectory.ROOT_NAME,
+        ns.createFsOwnerPermissions(new FsPermission((short)0755)),
+        Integer.MAX_VALUE, -1);
+    this.fsImage = fsImage;
+    namesystem = ns;
+    initialize(conf);
+  }
 </code></pre>
 
-<h2>三、编译</h2>
+<h3>FSDirectory.initialize()</h3>
 
-<h3>1.健全检查</h3>
-
-<p>可以通过如下命令检查环境配置是否准备好：</p>
-
-<pre><code>make sanity ARCH_DATA_MODEL=64
+<pre><code>  private void initialize(Configuration conf) {
+    MetricsContext metricsContext = MetricsUtil.getContext("dfs");
+    directoryMetrics = MetricsUtil.createRecord(metricsContext, "FSDirectory");
+    directoryMetrics.setTag("sessionId", conf.get("session.id"));
+  }
 </code></pre>
 
-<p>如果最终输出：</p>
+<h3>FSDirectory.loadFSImage()</h3>
 
-<pre><code>Sanity check passed.
+<pre><code>  void loadFSImage(Collection&lt;File&gt; dataDirs,
+                   Collection&lt;File&gt; editsDirs,
+                   StartupOption startOpt) throws IOException {
+    // format before starting up if requested
+    if (startOpt == StartupOption.FORMAT) {
+      fsImage.setStorageDirectories(dataDirs, editsDirs);
+      fsImage.format();
+      startOpt = StartupOption.REGULAR;
+    }
+    try {
+      //从datadir和editdirs加载FSImage
+      if (fsImage.recoverTransitionRead(dataDirs, editsDirs, startOpt)) {
+        fsImage.saveNamespace(true);
+      }
+      //初始化Editlog
+      FSEditLog editLog = fsImage.getEditLog();
+      assert editLog != null : "editLog must be initialized";
+      if (!editLog.isOpen())
+        editLog.open();
+      fsImage.setCheckpointDirectories(null, null);
+    } catch(IOException e) {
+      fsImage.close();
+      throw e;
+    }
+    writeLock();
+    try {
+      this.ready = true;
+      cond.signalAll();
+    } finally {
+      writeUnlock();
+    }
+  }
 </code></pre>
 
-<p>则表示环境检查通过，否则需要根据提示信息排查问题。</p>
+<h3>FSImage.recoverTransitionRead（）</h3>
 
-<h3>2.执行编译</h3>
+<pre><code>  boolean recoverTransitionRead(Collection&lt;File&gt; dataDirs,
+                             Collection&lt;File&gt; editsDirs,
+                                StartupOption startOpt
+                                ) throws IOException {
+    assert startOpt != StartupOption.FORMAT : 
+      "NameNode formatting should be performed before reading the image";
 
-<p>通过如下命令开始编译：</p>
+    // none of the data dirs exist
+    if (dataDirs.size() == 0 || editsDirs.size() == 0)  
+      throw new IOException(
+        "All specified directories are not accessible or do not exist.");
 
-<pre><code>make ARCH_DATA_MODEL=64
-</code></pre>
+    if(startOpt == StartupOption.IMPORT 
+        &amp;&amp; (checkpointDirs == null || checkpointDirs.isEmpty()))
+      throw new IOException("Cannot import image from a checkpoint. "
+                          + "\"fs.checkpoint.dir\" is not set." );
 
-<h3>3.问题排查：</h3>
+    if(startOpt == StartupOption.IMPORT 
+        &amp;&amp; (checkpointEditsDirs == null || checkpointEditsDirs.isEmpty()))
+      throw new IOException("Cannot import image from a checkpoint. "
+                          + "\"fs.checkpoint.edits.dir\" is not set." );
 
-<p>编译过程中出现一些问题：</p>
-
-<h3>1)缺少jaxp和jaxws</h3>
-
-<p>错误信息</p>
-
-<pre><code>ERROR: Cannot find source for project jaxp
-</code></pre>
-
-<p>原因是现在jaxp源码分支和jdk源码分支分开了，但是jaxws是jdk中的一部分，所以完全编译需要jaxp源码，针对该问题的描述可以查看README-build.html中TroubleShooting部分。
-解决方式有两种：
-一种是先下载好源码包，以drops的方式安装，具体参考README-build.html
-另外一种是使用在线安装，在编译时加入允许下载源码的配置:</p>
-
-<pre><code>make ARCH_DATA_MODEL=64 ALLOW_DOWNLOADS=true
-</code></pre>
-
-<h3>2)缺少X＊库</h3>
-
-<p>编译过程中多次出现如下缺少X*, awt之类的错误，基本上都是因为缺乏图形相关的库</p>
-
-<pre><code>../../../src/solaris/native/sun/awt/img_util_md.h:32: ??:expected specifier-qualifier-list before 'XID'
-make[5]: *** [/home/jiangbo/Workspace/jdk/openjdk/build/linux-amd64/tmp/sun/sun.awt/awt/obj64/BufImgSurfaceData.o] Error 1
-make[5]: *** Waiting for unfinished jobs....
-make[5]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[4]: *** [library_parallel_compile] Error 2
-make[4]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[3]: *** [all] Error 1
-make[3]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun'
-make[2]: *** [all] Error 1
-make[2]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make'
-make[1]: *** [jdk-build] Error 2
-make[1]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk'
-make: *** [build_product_image] Error 2
-</code></pre>
-
-<p>解决方式时安装X相关的库</p>
-
-<pre><code>yum install libX*
-</code></pre>
-
-<p>这个有些暴力，不过比较有效:)</p>
-
-<h2>四、测试编译结果</h2>
-
-<p>漫长的编译之后直至出现如下类似内容时，表示编译完成了：</p>
-
-<pre><code>-- Build times ----------
-Target all_product_build
-Start 2012-02-09 10:38:39
-End   2012-02-09 11:14:37
-00:01:41 corba
-00:06:19 hotspot
-00:15:49 jaxp
-00:01:30 jaxws
-00:10:03 jdk
-00:00:36 langtools
-00:35:58 TOTAL
-</code></pre>
-
-<p>编译完成后，编译结果维语build/linux-amd64目录下，可以写个简单的Java程序测试编译结果</p>
-
-<p>Test.java</p>
-
-<pre><code>public class Test{
-        public static void main(String[] args){
-                System.out.println("Hello");
+    setStorageDirectories(dataDirs, editsDirs);
+    // 1.检查所有目录的状态和一致性
+    Map&lt;StorageDirectory, StorageState&gt; dataDirStates = 
+             new HashMap&lt;StorageDirectory, StorageState&gt;();
+    boolean isFormatted = false;
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                      dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      StorageState curState;
+      try {
+        curState = sd.analyzeStorage(startOpt);
+        // sd is locked but not opened
+        switch(curState) {
+        case NON_EXISTENT:
+          // name-node fails if any of the configured storage dirs are missing
+          throw new InconsistentFSStateException(sd.getRoot(),
+                                                 "storage directory does not exist or is not accessible.");
+        case NOT_FORMATTED:
+          break;
+        case NORMAL:
+          break;
+        default:  // recovery is possible
+          sd.doRecover(curState);      
         }
-}
+        if (curState != StorageState.NOT_FORMATTED 
+            &amp;&amp; startOpt != StartupOption.ROLLBACK) {
+          sd.read(); // read and verify consistency with other directories
+          isFormatted = true;
+        }
+        if (startOpt == StartupOption.IMPORT &amp;&amp; isFormatted)
+          // import of a checkpoint is allowed only into empty image directories
+          throw new IOException("Cannot import image from a checkpoint. " 
+              + " NameNode already contains an image in " + sd.getRoot());
+      } catch (IOException ioe) {
+        sd.unlock();
+        throw ioe;
+      }
+      dataDirStates.put(sd,curState);
+    }
+
+    if (!isFormatted &amp;&amp; startOpt != StartupOption.ROLLBACK 
+                     &amp;&amp; startOpt != StartupOption.IMPORT)
+      throw new IOException("NameNode is not formatted.");
+    if (layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION) {
+      checkVersionUpgradable(layoutVersion);
+    }
+    if (startOpt != StartupOption.UPGRADE
+          &amp;&amp; layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION
+          &amp;&amp; layoutVersion != FSConstants.LAYOUT_VERSION)
+        throw new IOException(
+                          "\nFile system image contains an old layout version " + layoutVersion
+                          + ".\nAn upgrade to version " + FSConstants.LAYOUT_VERSION
+                          + " is required.\nPlease restart NameNode with -upgrade option.");
+    // check whether distributed upgrade is reguired and/or should be continued
+    verifyDistributedUpgradeProgress(startOpt);
+
+    // 2. Format unformatted dirs.
+    this.checkpointTime = 0L;
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                     dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      StorageState curState = dataDirStates.get(sd);
+      switch(curState) {
+      case NON_EXISTENT:
+        assert false : StorageState.NON_EXISTENT + " state cannot be here";
+      case NOT_FORMATTED:
+        LOG.info("Storage directory " + sd.getRoot() + " is not formatted.");
+        LOG.info("Formatting ...");
+        sd.clearDirectory(); // create empty currrent dir
+        break;
+      default:
+        break;
+      }
+    }
 </code></pre>
+</div>
+  
+  
 
-<p>编译</p>
 
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test.java
-</code></pre>
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a></h1>
+    
+    
+      <p class="meta">
+        
 
-<p>执行</p>
 
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test
-Hello
-</code></pre>
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-datastructure/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>FSNameSystem</h2>
+
+<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
+
+<ol>
+<li>fsname->block列表的映射</li>
+<li>所有有效blocks集合</li>
+<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
+<li>每个datanode与其上的blocklist的映射</li>
+<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
+</ol>
+
+
+<h3>FSDirectory</h3>
+
+<p>FSDirectory用于维护当前系统中的文件树。</p>
+
+<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
+
+<h4>INode</h4>
+
+<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
+
+<p><img src="/images/hdfs/INode.png" alt="INode" /></p>
+
+<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
+
+<h3>BlocksMap</h3>
+
+<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
+<img src="/images/hdfs/BlocksMap.png" alt="BlocksMap" />
+BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
+
+<h4>Block</h4>
+
+<p>Block是HDFS中的基本读写单元，主要包括：</p>
+
+<ol>
+<li>blockId: 一个long类型的块id</li>
+<li>numBytes: 块大小</li>
+<li>generationStamp: 块更新的时间戳</li>
+</ol>
+
+
+<h4>BlockInfo</h4>
+
+<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
+
+<p><img src="/images/hdfs/triplets.png" alt="triplets" /></p>
+
+<ol>
+<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
+<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
+<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
+</ol>
+
+
+<p>DN2,DN3的prev-blk和next-blk类似。
+HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
+
+<h4>FSImage</h4>
+
+<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
+HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
+FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
+
+<p><img src="/images/hdfs/FSImage.png" alt="FSImage" /></p>
+
+<h5>FSImage头部信息</h5>
+
+<ol>
+<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
+<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
+<li>numberItemOfTree(long): 系统中的文件总数</li>
+<li>generationTimeStamp: 生成image的时间戳</li>
+</ol>
+
+
+<h5>INode信息</h5>
+
+<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
+
+<p><strong>INode头</strong></p>
+
+<ol>
+<li>nameLen(short): 文件名长度</li>
+<li>filename(String): 文件名</li>
+<li>replication(short): 备份数量</li>
+<li>modificationTime(long): 最近修改时间</li>
+<li>accessTime(long): 最近访问时间</li>
+<li>preferedBlockSize(long): 块大小（目录为0）</li>
+<li>block num(int): 块数量（目录为-1）</li>
+</ol>
+
+
+<p><strong>Blocks区</strong></p>
+
+<ol>
+<li>blockId(long)</li>
+<li>numBytes(long,block大小)</li>
+<li>generationTimeStamp(long, 更新时间戳）</li>
+</ol>
+
+
+<p><strong>文件权限</strong></p>
+
+<ol>
+<li>username(String): 文件用户名</li>
+<li>group(String): 所属组</li>
+<li>fileperm(short): 文件权限</li>
+</ol>
+
+
+<h5>underconstructionFile区</h5>
+
+<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
+
+<p><strong>client信息</strong></p>
+
+<ol>
+<li>clientName：client明</li>
+<li>clientMachine： client机器名</li>
+</ol>
+
+
+<p><strong>已分配的datanode信息</strong></p>
+
+<ol>
+<li>ipcport： 服务端口</li>
+<li>capacity: 容量</li>
+<li>dfsuse： 已使用的空间</li>
+<li>remaining： 剩余空间</li>
+<li>lastupdate： 最新更新时间</li>
+<li>xceiverCount</li>
+<li>location： datanode位置</li>
+<li>hostName：主机名</li>
+<li>state： admin管理状态</li>
+</ol>
+
+
+<h2>其他结构</h2>
+
+<h3>CorruptReplicasMap</h3>
+
+<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
+
+<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
+
+<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
+
+<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
+
+<p>datanodeMap用于维护datanode->block的映射</p>
+
+<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
+
+<p>维护多有当前活着的节点</p>
+
+<h3>UnderReplicatedBlocks neededReplications</h3>
+
+<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
+
+<h3>PendingReplicationBlocks pendingReplications;</h3>
+
+<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
+<img src="/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
+
+<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
+
+<p>当前需要检查是否备份过多的block集合</p>
+
+<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
+
+<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
 </div>
   
   
@@ -1030,43 +1619,43 @@ Hello
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
       </li>
     
   </ul>

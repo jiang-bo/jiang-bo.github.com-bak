@@ -279,6 +279,38 @@
         <lastmod>2012-10-18T21:47:11+08:00</lastmod>
     </url>
     <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-backup-mode/</loc>
+        <lastmod>2012-10-18T21:52:30+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-safe-mode/</loc>
+        <lastmod>2012-10-18T21:53:45+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-and-datanode-communication/</loc>
+        <lastmod>2012-10-18T21:55:02+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-secondary-namenode/</loc>
+        <lastmod>2012-10-18T21:57:36+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure/</loc>
+        <lastmod>2012-10-18T21:57:14+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-datanode-startup/</loc>
+        <lastmod>2012-10-18T21:58:39+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-client-code/</loc>
+        <lastmod>2012-10-18T21:59:39+08:00</lastmod>
+    </url>
+    <url>
+        <loc>http://jiangbo.me/blog/2012/10/18/hdfs-dataxceiver/</loc>
+        <lastmod>2012-10-18T22:00:46+08:00</lastmod>
+    </url>
+    <url>
         <loc>http://jiangbo.me/404.html</loc>
         <lastmod>2012-08-31T19:50:15+08:00</lastmod>
     </url>
@@ -288,10 +320,10 @@
     </url>
     <url>
         <loc>http://jiangbo.me/blog/archives/</loc>
-        <lastmod>2012-10-18T21:47:21+08:00</lastmod>
+        <lastmod>2012-10-18T22:00:46+08:00</lastmod>
     </url>
     <url>
         <loc>http://jiangbo.me/</loc>
-        <lastmod>2012-10-18T21:47:21+08:00</lastmod>
+        <lastmod>2012-10-18T22:00:46+08:00</lastmod>
     </url>
 </urlset>

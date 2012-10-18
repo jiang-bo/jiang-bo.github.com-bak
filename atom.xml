@@ -4,7 +4,7 @@
   <title><![CDATA[非纯种程序猿]]></title>
   <link href="http://jiangbo.me/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-10-18T21:48:31+08:00</updated>
+  <updated>2012-10-18T22:01:47+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -12,6 +12,1515 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（15）——DataXceiverServer]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-dataxceiver/"/>
+    <updated>2012-10-18T22:00:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-dataxceiver</id>
+    <content type="html"><![CDATA[<p>HDFS中有两种类型的通信机制，一种是进行消息传递的Hadoop IPC机制，一种是用于处理数据传输的DataXceiver机制。前者包括client<->namenode之间的通信，以及datanode<->namenode间通信，后者包括client<->datanode, datanode<->datanode间的数据传输。</p>
+
+<h2>DataXceiverServer</h2>
+
+<p>DataNode在启动时会通过DataXceiverServer开启一个Socket端口，负责block数据的读写。DataXceiverServer本身作为一个守护线程，监听dfs.datanode.address配置的数据读写服务端口。当有请求来时，新建一个DataXceiver线程处理请求。</p>
+
+<h2>DataXceiver</h2>
+
+<p>DataXceiver线程用于处理一个读/写数据流请求，其run方法入下主要是根据请求中不同的请求类型，调用响应的处理方法。</p>
+
+<p>请求操作类型定义在DataTransferProtocol中，主要有：</p>
+
+<ol>
+<li>OP_WRITE_BLOCK： 写入Block数据，对应writeBlock()方法</li>
+<li>OP_READ_BLOCK： 读取Block数据，对应readBlock()方法</li>
+<li>OP_READ_METADATA： 读取Block元数据，对应readMetadata()方法</li>
+<li>OP_REPLACE_BLOCK： 替换Block，将block发送到目标datanode上，用于IO负载均衡；对应replaceBlock()方法。</li>
+<li>OP_COPY_BLOCK：复制Block，将block发送到proxy source上，用于IO负载均衡；对应copyBlock()方法。</li>
+<li>OP_BLOCK_CHECKSUM：获取Block的checksum；对应getBlockChecksum()方法。</li>
+</ol>
+
+
+<p>请处理返回的状态也定义在该类中：</p>
+
+<ol>
+<li>OP_STATUS_SUCCESS： 成功</li>
+<li>OP_STATUS_ERROR： 请求出错</li>
+<li>OP_STATUS_ERROR_CHECKSUM： checksum校验出错</li>
+<li>OP_STATUS_ERROR_INVALID： 读取无效block</li>
+<li>OP_STATUS_ERROR_EXISTS：block不存在</li>
+<li>OP_STATUS_CHECKSUM_OK： checksum校验正常</li>
+</ol>
+
+
+<h3>1.读取block——readBlock()</h3>
+
+<p>OP_READ_BLOCK的请求数据格式如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/ReadBlock.png" alt="READ_BLOCK" /></p>
+
+<p>返回数据格式如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/ReadResponse.png" alt="READ_Response" /></p>
+
+<p>readBlock()主要从disk读取block数据，构建一个DataOutputStream数据流，并新建一个BlockSender将这个数据流发送出去（datanode或者client）。</p>
+
+<p>BlockSender.sendBlock()发送的Block的流程大体如下：</p>
+
+<ol>
+<li>读取block的meta信息，获得checksum并发送</li>
+<li>发送数据读取的偏移量</li>
+<li>将block数据切分为packet，发送给client</li>
+<li>所有packet发送完之后，关闭checksum文件和block文件</li>
+</ol>
+
+
+<h3>2.写入block——writeBlock()</h3>
+
+<p>OP_WRITE_BLOCK的请求数据格式如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/WriteRequest.png" alt="WRITE_BLOCK" /></p>
+
+<p>writeBlock()解析请求信息，构建一个BlockReceiver处理数据接收和写入，在client（或上一datanode节点）-当前datanode节点-下一datanode节点之间建立一个如下连接。</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/WriteBlock.png" alt="WRITE_BLOCK" /></p>
+
+<ol>
+<li>BlockReceiver从上按packet一节点读取数据，写入到本地disk</li>
+<li>如有下一备份节点，将该packet转发给下一节点</li>
+<li>将该packet加入到ackqueue队列中等待ack消息</li>
+<li>当下一节点完成该packet写入后会返回该packet对应的ack信息</li>
+<li>PakcetResponder接收到ack信息后，将ackqueue中该packet删除，并向前置节点发送ack信息</li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（14）——Client代码结构]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-client-code/"/>
+    <updated>2012-10-18T21:59:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-client-code</id>
+    <content type="html"><![CDATA[<p>Client核心代码有DistributedFileSystem和DFSClient。</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/Client.png" alt="Client" /></p>
+
+<p>DistributedFileSystem扩展子FileSystem，在为客户端提供一个文件系统接口实现。其内部使用DFSClient完成各类文件操作。</p>
+
+<p>DFSClient使用ClientProtocol与NameNode通信，完成文件元信息操作。并通过Socket连接完成与DataNode间的block读写操作。</p>
+
+<p>DFSClient代码结构如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/DFSClient.png" alt="DFSClient" /></p>
+
+<ol>
+<li>LeaseChecker主要用于lease检查和续约。</li>
+<li>DFSOutputStream用于提供带buffer的字节流写入功能。client在写入数据时先将数据缓存在本地。并将数据切分成多个packet（默认每个packet为64K）。每个packet又被拆分成多个chunk（默认512Byte），每个chunk都有一个checksum。client写满一个packet后会将该packet加入到一个dataqueue中。由DataStreamer线程负责将每个packet发送给datanode pipeline。发送完一个pakcet，streamer会将其从dataqueue移至ackqueue中。ResponseProcessor负责接收datanode发回的ack信息，每成功接收一个packet的ack信息，ResponseProcessor会将ackqueue中该packet删除。</li>
+<li>DFSInputStream用于提供字节流的读取，其内部封装了与NN和DN的交互</li>
+<li>DataStreamer: 负责向datanode pipeline发送packet。其本身是一个Daemon线程，从namenode获取blockId和block存放位置，将packet发送给pipeline中的datanode，每个packet都有一个seqId，每个packet发送完时都会收到datanode的ack信息。当收到所有packet的ack信息后（表示该block已发送完），streamer关闭该block。</li>
+<li>ResponseProcessor:用于接收datanode返回ack信息，并将响应ackqueue中的packet删除</li>
+</ol>
+
+
+<h2>创建文件</h2>
+
+<ol>
+<li>client向NameNode发起创建文件请求</li>
+<li>NameNode.create（）处理创建文件请求，检查是否有重名，当前是否处于Safe-mode，是否有权限创建文件， 校验通过后创建一个INode记录。</li>
+<li>NameNode将创建文件的事件记录到EditLog中</li>
+<li>INode被创建后，NameNode发放给Client一个lease，Client可以使用这个lease通过ClientProtocol访问，进行只读操作。（写操作需要等文件close）</li>
+</ol>
+
+
+<h2>写入流程</h2>
+
+<p>client写入流程如下图所示：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/ClientWrite.png" alt="ClientWrite" /></p>
+
+<ol>
+<li>Client向NameNode发起创建文件的RPC请求</li>
+<li>NameNode检查文件是否已经存在，是否有权创建等，成功则创建一个文件记录，并发放给Client一个lease</li>
+<li>Client获得lease之后开始进行数据写入，写入的数据首先被缓存本地，并被拆分为多个packet，放置到dataqueue队列中</li>
+<li>DataStreamer线程负责检查dataqueue队列，发现有数据时且没有可用block时，向NameNode发送addBlock()请求，申请一个分配一个block空间。NameNode返回给DataStreamer一个blockId和用于存放block的datanode list</li>
+<li>DataStreamer将每个packet数据发送给datanode pipeline，并将该packet移至ackqueue</li>
+<li>datanode pipeline中第一个datanode收到packet之后存储到本地block中并穿行备份至后续datanode中</li>
+<li>pipeline中datanode存储好packet之后会逆序返回ack信息，并最终返回给client.</li>
+<li>Client端ResponseProcessor捕获到每个packet的ack信息时会将响应ackqueue中的packet删除</li>
+<li>当所有数据都写入完成后，client会向NameNode发起一个complete RPC请求，告知文件最新的时间戳和已经发送给datanode的block长度。NameNode检查所有block的副本信息，只有所有block的副本数均满足最低要求时，complete会返回成功。</li>
+<li>最后，NameNode将收回client持有的lease。</li>
+</ol>
+
+
+<p>NameNode处理addBlock()请求的流程大致如下：</p>
+
+<ol>
+<li>校验client是否有该文件的lease</li>
+<li>清理上一次写入记录，包括：a.提交上一次写入，b.更新lease有效期；c.将完成的写入记录到EditLog中</li>
+<li>清理完毕之后，使用BlockManager分配指定副本数个block及其对应的datanode信息，返回给client</li>
+</ol>
+
+
+<p>DataNode处理block写入的流程大致如下：</p>
+
+<ol>
+<li>将block复制到本地磁盘</li>
+<li>发送block received消息给NameNode告知写入了一个新的block</li>
+<li>将block数据发送给datanode pipeline中下一个datanode，进行备份</li>
+<li>返回一个ack消息给前一个调用者</li>
+</ol>
+
+
+<p>后续的datanode收到上一个datanode的备份block请求是做类似的操作。</p>
+
+<h2>读取流程</h2>
+
+<p>读取流程相对简单写，如下所示 ：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/ClientRead.png" alt="ClientWrite" /></p>
+
+<ol>
+<li>client向NameNode发起RPC请求，获取文件的blockLocation信息</li>
+<li>NameNode返回一定长度（10*defaultBlockSize）block的datanode位置信息</li>
+<li>Client根据返回的blockLocation信息选取距自己最近（同一节点&lt;通一机架&lt;同一机房）的datanode读取数据，读完一个block会对该block进行checksum校验。如果校验正确则关闭与该datanode连接，去读下一个block；如果校验失败，则通知NameNode该block在当前datanode上的副本损坏了，并继续从datanode列表中获取一个datanode，重新读取该block。</li>
+<li>当本次获取的blockLocation中的block全部读完，且该文件还有block时，重复1，2，3过程，直至所有blcok全部读完。</li>
+</ol>
+
+
+<h2>关闭文件（complete）</h2>
+
+<ol>
+<li>当Client完成文件写入之后，会调用complete()通知NameNode文件写入完成了，该请求会提交文件写入的最后一个block信息并且告知NameNode写入的block总数以及最新时间戳。</li>
+<li>NameNode收到请求后会检查是否所有的block的事物都已经提交了，并且每个block的副本数都达到了最小值。如果是则返回true，否则返回false。</li>
+<li>Client收到返回值后如果失败则重试几次。</li>
+</ol>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（13）——DataNode启动过程]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-datanode-startup/"/>
+    <updated>2012-10-18T21:57:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-datanode-startup</id>
+    <content type="html"><![CDATA[<h2>main()</h2>
+
+<pre><code>  public static void main(String args[]) {
+    try {
+      StringUtils.startupShutdownMessage(DataNode.class, args, LOG);
+      DataNode datanode = createDataNode(args, null);
+      if (datanode != null)
+        datanode.join();
+    } catch (Throwable e) {
+      LOG.error(StringUtils.stringifyException(e));
+      System.exit(-1);
+    }
+  }
+</code></pre>
+
+<h2>createDataNode()</h2>
+
+<pre><code>  public static DataNode createDataNode(String args[],
+                                 Configuration conf) throws IOException {
+    // 初始化datanode
+    DataNode dn = instantiateDataNode(args, conf);
+    // 启动datanode后台线程
+    runDatanodeDaemon(dn);
+    return dn;
+  }
+</code></pre>
+
+<h3>1.instantiateDataNode（）</h3>
+
+<pre><code>  public static DataNode instantiateDataNode(String args[],
+                                      Configuration conf) throws IOException {
+    // 处理配置
+    if (conf == null)
+      conf = new Configuration();
+    if (!parseArguments(args, conf)) {
+      printUsage();
+      return null;
+    }
+    if (conf.get("dfs.network.script") != null) {
+      LOG.error("This configuration for rack identification is not supported" +
+          " anymore. RackID resolution is handled by the NameNode.");
+      System.exit(-1);
+    }
+    // 获取data目录配置
+    String[] dataDirs = conf.getStrings("dfs.data.dir");
+    dnThreadName = "DataNode: [" +
+                        StringUtils.arrayToString(dataDirs) + "]";
+    //创建datanode实例
+    return makeInstance(dataDirs, conf);
+  }
+</code></pre>
+
+<h4>1.1. makeInfstance()</h4>
+
+<p>该方法主要用于检查给定的data目录中至少有一个可以创建，并实例化DataNode</p>
+
+<pre><code>  public static DataNode makeInstance(String[] dataDirs, Configuration conf)
+    throws IOException {
+    ArrayList&lt;File&gt; dirs = new ArrayList&lt;File&gt;();
+    for (int i = 0; i &lt; dataDirs.length; i++) {
+      File data = new File(dataDirs[i]);
+      try {
+        DiskChecker.checkDir(data);
+        dirs.add(data);
+      } catch(DiskErrorException e) {
+        LOG.warn("Invalid directory in dfs.data.dir: " + e.getMessage());
+      }
+    }
+    if (dirs.size() &gt; 0) 
+      return new DataNode(conf, dirs);
+    LOG.error("All directories in dfs.data.dir are invalid.");
+    return null;
+  }
+</code></pre>
+
+<h4>1.2 new DataNode()</h4>
+
+<pre><code>  DataNode(Configuration conf, 
+           AbstractList&lt;File&gt; dataDirs) throws IOException {
+    // 设置配置信息
+    super(conf);
+    datanodeObject = this;
+    supportAppends = conf.getBoolean("dfs.support.append", false);
+    this.conf = conf;
+    try {
+      // 启动DataNode
+      startDataNode(conf, dataDirs);
+    } catch (IOException ie) {
+      shutdown();
+      throw ie;
+    }
+  }
+</code></pre>
+
+<h5>1.2.1 startDataNode()</h5>
+
+<p>代码较长，仅列出主要步骤：</p>
+
+<ol>
+<li>设置配置信息</li>
+<li>向NameNode发起RPC请求，获取版本和StorageID信息</li>
+<li>获取启动配置</li>
+<li>初始化存储信息，构建FSDataSet</li>
+<li>获取可用的端口号</li>
+<li>调整注册信息中的机器名，加上端口号</li>
+<li>初始化DataXceiverServer</li>
+<li>设置blockReport和heartbeat各自的时间间隔</li>
+<li>初始化blockScanner</li>
+<li>初始胡并启动servlet info server，提供内容查询的http服务</li>
+<li>初始化ipc server，该ipc server主要用于完成DataNode间的block recover。</li>
+</ol>
+
+
+<h3>runDatanodeDaemon()</h3>
+
+<pre><code>  public static void runDatanodeDaemon(DataNode dn) throws IOException {
+    if (dn != null) {
+      //register datanode
+      dn.register();
+      dn.dataNodeThread = new Thread(dn, dnThreadName);
+      dn.dataNodeThread.setDaemon(true); // needed for JUnit testing
+      dn.dataNodeThread.start();
+    }
+  }
+</code></pre>
+
+<h4>2.1 向NameNode注册 —— dn.register();</h4>
+
+<pre><code>  private void register() throws IOException {
+    if (dnRegistration.getStorageID().equals("")) {
+      setNewStorageID(dnRegistration);
+    }
+    while(shouldRun) {
+      try {
+        // reset name to machineName. Mainly for web interface.
+        dnRegistration.name = machineName + ":" + dnRegistration.getPort();
+        // 通过NameProtocal向NameNode注册
+        dnRegistration = namenode.register(dnRegistration);
+        break;
+      } catch(SocketTimeoutException e) {  // namenode is busy
+        LOG.info("Problem connecting to server: " + getNameNodeAddr());
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException ie) {}
+      }
+    }
+    assert ("".equals(storage.getStorageID()) 
+            &amp;&amp; !"".equals(dnRegistration.getStorageID()))
+            || storage.getStorageID().equals(dnRegistration.getStorageID()) :
+            "New storageID can be assigned only if data-node is not formatted";
+    if (storage.getStorageID().equals("")) {
+      storage.setStorageID(dnRegistration.getStorageID());
+      storage.writeAll();
+      LOG.info("New storage id " + dnRegistration.getStorageID()
+          + " is assigned to data-node " + dnRegistration.getName());
+    }
+    if(! storage.getStorageID().equals(dnRegistration.getStorageID())) {
+      throw new IOException("Inconsistent storage IDs. Name-node returned "
+          + dnRegistration.getStorageID() 
+          + ". Expecting " + storage.getStorageID());
+    }
+
+    if (supportAppends) {
+      Block[] bbwReport = data.getBlocksBeingWrittenReport();
+      long[] blocksBeingWritten = BlockListAsLongs.convertToArrayLongs(bbwReport);
+      //如果支持append，则报告正在写入的block信息
+      namenode.blocksBeingWrittenReport(dnRegistration, blocksBeingWritten);
+    }
+    // 调整下一次的BR时间，使其在下次heartbeat时进行
+    scheduleBlockReport(initialBlockReportDelay);
+  }
+</code></pre>
+
+<h4>2.2 启动datanode线程 —— dn.dataNodeThread.start();</h4>
+
+<p>datanode线程本身非常简单，不停调用offerSevice提供服务：</p>
+
+<pre><code>  public void run() {
+    LOG.info(dnRegistration + "In DataNode.run, data = " + data);
+
+    // start dataXceiveServer
+    dataXceiverServer.start();
+    new Thread(new CrashVolumeChecker()).start();//added by wukong
+
+    while (shouldRun) {
+      try {
+        startDistributedUpgradeIfNeeded();
+        offerService();
+      } catch (Exception ex) {
+        LOG.error("Exception: " + StringUtils.stringifyException(ex));
+        if (shouldRun) {
+          try {
+            Thread.sleep(5000);
+          } catch (InterruptedException ie) {
+          }
+        }
+      }
+    }
+
+    LOG.info(dnRegistration + ":Finishing DataNode in: "+data);
+    shutdown();
+  }
+</code></pre>
+
+<h5>2.2.1 offerService()</h5>
+
+<p>offerService的核心是周期性进行heartbeat和blockReport，主要流程如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/offerService.png" alt="offerService" /></p>
+
+<pre><code>  public void offerService() throws Exception {
+
+    LOG.info("using BLOCKREPORT_INTERVAL of " + blockReportInterval + "msec" + 
+       " Initial delay: " + initialBlockReportDelay + "msec");
+    LOG.info("using DELETEREPORT_INTERVAL of " + deletedReportInterval + "msec");
+    LOG.info("using HEARTBEAT_INTERVAL of " + heartBeatInterval + "msec");
+    LOG.info("using HEARTBEAT_EXPIRE_INTERVAL of " + heartbeatExpireInterval + "msec");
+
+    //
+    // Now loop for a long time....
+    //
+
+    while (shouldRun) {
+      try {
+        long startTime = now();
+
+        //
+        // Every so often, send heartbeat or block-report
+        //
+
+        if (startTime - lastHeartbeat &gt; heartBeatInterval /* 3 secs*/) {
+          //
+          // All heartbeat messages include following info:
+          // -- Datanode name
+          // -- data transfer port
+          // -- Total capacity
+          // -- Bytes remaining
+          //
+          lastHeartbeat = startTime;
+          DatanodeCommand[] cmds = namenode.sendHeartbeat(dnRegistration,
+                                                       data.getCapacity(),
+                                                       data.getDfsUsed(),
+                                                       data.getRemaining(),
+                                                       xmitsInProgress.get(),
+                                                       getXceiverCount());
+          myMetrics.heartbeats.inc(now() - startTime);
+          //LOG.info("Just sent heartbeat, with name " + localName);
+          if (!processCommand(cmds))
+            continue;
+        }
+
+        reportReceivedBlocks();
+
+        DatanodeCommand cmd = blockReport();
+        processCommand(cmd);
+
+        // start block scanner
+        if (blockScanner != null &amp;&amp; blockScannerThread == null &amp;&amp;
+            upgradeManager.isUpgradeCompleted()) {
+          LOG.info("Starting Periodic block scanner.");
+          blockScannerThread = new Daemon(blockScanner);
+          blockScannerThread.start();
+        }
+
+        //
+        // There is no work to do;  sleep until hearbeat timer elapses, 
+        // or work arrives, and then iterate again.
+        //
+        long waitTime = heartBeatInterval - (System.currentTimeMillis() - lastHeartbeat);
+        synchronized(receivedAndDeletedBlockList) {
+          if (waitTime &gt; 0 &amp;&amp; receivedAndDeletedBlockList.size() == 0) {
+            try {
+              receivedAndDeletedBlockList.wait(waitTime);
+            } catch (InterruptedException ie) {
+            }
+            delayBeforeBlockReceived();
+          }
+        } // synchronized
+
+      } catch(RemoteException re) {
+        String reClass = re.getClassName();
+        if (UnregisteredDatanodeException.class.getName().equals(reClass) ||
+            DisallowedDatanodeException.class.getName().equals(reClass) ||
+            IncorrectVersionException.class.getName().equals(reClass)) {
+          LOG.warn("DataNode is shutting down: " + 
+                   StringUtils.stringifyException(re));
+          shutdown();
+          return;
+        }
+        LOG.warn(StringUtils.stringifyException(re));
+      } catch (IOException e) {
+        LOG.warn(StringUtils.stringifyException(e));
+      }
+    } // while (shouldRun)
+  } // offerService
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（12）——DataNode主要数据结构]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure/"/>
+    <updated>2012-10-18T21:56:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure</id>
+    <content type="html"><![CDATA[<p>HDFS中DataNode主要负责维护block->stream bytes的映射关系，即实际block数据的存储。
+一个datanode的磁盘上存储目录下实际的文件部署结构如下：</p>
+
+<pre><code>data/
+├── blocksBeingWritten
+├── current
+│   ├── VERSION
+│   ├── blk_-1148021215131449924
+│   ├── blk_-1148021215131449924_1001.meta
+│   ├── blk_-8598609183581346893
+│   ├── blk_-8598609183581346893_1002.meta
+│   ├── blk_6693595845022390257
+│   ├── blk_6693595845022390257_1003.meta
+│   └── dncp_block_verification.log.curr
+├── detach
+├── storage
+└── tmp
+</code></pre>
+
+<p>data目录的路径是hdfs-site.xml中配置的dfs.data.dir的路径，表示每个datanode上数据存储的目录</p>
+
+<p>1) blocksBeingWritten：当前正在写入的block，写完之后会将block移至current目录</p>
+
+<p>2) current：当前已经写入的block文件目录</p>
+
+<p>2.1) VERSION为存储的VERSION文件，包括namespaceId，存储Id，存储版本，存储类型，创建时间戳等信息</p>
+
+<p>2.2）blk-*:文件为实际的block数据文件</p>
+
+<p>2.3）blk-*_xxx.meta: block的元信息文件</p>
+
+<p>2.4）dncp_*.log.curr: 当前copy文件</p>
+
+<p>3) detach：copy-on-write使用的目录</p>
+
+<p>4) tmp： 临时目录，DataNode启动时会检查 tmp的数据并删除。</p>
+
+<h2>Storage相关</h2>
+
+<p>Storage用于描述存储的类型，状态，目录等信息。
+其主要结构如下：
+<img src="http://jiangbo.me/images/hdfs/Storage.png" alt="Storage" /></p>
+
+<h3>StorageInfo</h3>
+
+<p>StorageInfo表示一个存储的通用信息，包括：</p>
+
+<ol>
+<li>layoutVersion： 存储文件中的版本号</li>
+<li>namespaceId： 存储所属的命名空间ID</li>
+<li>ctime： 该存储创建的时间戳</li>
+</ol>
+
+
+<h3>Storage</h3>
+
+<p>存储信息的抽象类，管理一个server（NameNode或DataNode）上的存储目录。</p>
+
+<p>Storage有两个关键属性：</p>
+
+<ol>
+<li>storageType: 表示该存储所属的节点类型（NameNode或是DataNode）</li>
+<li>storageDirs: 该存储上存储目录的列表(ArrayList<StorageDirectory>),StorageDirectory表示一个存储目录。</li>
+</ol>
+
+
+<h4>StorageDirectory</h4>
+
+<p>表示一个存储目录，有三个属性：</p>
+
+<ol>
+<li>root：根目录</li>
+<li>lock：当前目录的文件锁</li>
+<li>dirType：目录类型</li>
+</ol>
+
+
+<h4>StorageSate</h4>
+
+<p>表示存储的状态：</p>
+
+<ol>
+<li>NON_EXISTENT: 目录不存在</li>
+<li>NOT_FORMATTED: 目录未格式化</li>
+<li>COMPLETE_UPGRADE: 升级完成</li>
+<li>RECOVER_UPGRADE: 撤销升级</li>
+<li>COMPLETE_FINALIZE: 提交完成</li>
+<li>COMPLETE_ROLLBACK: 回滚完成</li>
+<li>RECOVER_ROLLBACK: 撤销回滚</li>
+<li>COMPLETE_CHECKPOINT: checkpoint完成</li>
+<li>RECOVER_CHECKPOINT: 撤销checkpoint</li>
+<li>NORMAL: 正常</li>
+</ol>
+
+
+<h3>DataStorage</h3>
+
+<p>DataStorage是DataNode上使用的存储类，指定了datanode上各类存储文件的前缀：</p>
+
+<ol>
+<li>subdir：子目录前缀</li>
+<li>blk_：块文件前缀</li>
+<li>dncp_：拷贝文件前缀</li>
+</ol>
+
+
+<h2>DatanodeBlockInfo</h2>
+
+<p>DataNode使用DatanodeBlockInfo管理block和其元数据之间的映射关系，结构如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/DatanodeBlockInfo.png" alt="DatanodeBlockInfo" /></p>
+
+<ol>
+<li>volmun：block所属的卷</li>
+<li>file：block文件</li>
+<li>detached：是否完成copy-on-write</li>
+</ol>
+
+
+<h2>FSDataSet相关</h2>
+
+<p>DataNode通过FSDataSet来完成数据的存储。FSDataset类结构如下：
+<img src="http://jiangbo.me/images/hdfs/FSDataset.png" alt="FSDataset" /></p>
+
+<h3>FSVolume</h3>
+
+<p>FSVolumne用于进行block文件所属的卷管理，统计存储目录额使用情况，其中：</p>
+
+<ol>
+<li>currentDir： 当前数据目录, 对应data/current目录</li>
+<li>dataDir： 数据目录</li>
+<li>tmpDir： 临时目录, 对应data/tmp目录</li>
+<li>dtacheDir: 用于实现写时复制的文件，对应data/detach目录</li>
+<li>usage: 目录使用的空间</li>
+<li>dfsusage: dfs使用的空间</li>
+<li>reseved: 空余空间</li>
+<li>blocksBeingWritten: 正在写入的block，对应data/blocksBeingWritten目录</li>
+</ol>
+
+
+<h3>FSVolumeSet</h3>
+
+<p>FSVolumeSet是FSVolume的集合，提供了所有容量，剩余空间等方法。其中getNextVolume中提供了round-robin策略选取下一个volume，从而实现简单的IO负载均衡，提高IO处理能力。</p>
+
+<h3>FSDataSet</h3>
+
+<p>FSDataSet是在FSVolumeSet之上进行封装实现FSDatasetInterface借口，向外提供块查询和操作方法。</p>
+
+<p>其中有几个主要属性:</p>
+
+<ol>
+<li>volumes: 卷集合（FSVolumeSet）</li>
+<li>ongoingCreates: 当前活动的文件</li>
+<li>maxBlocksPerDir: 每个目录下最多能存放发block数，可通过dfs.datanode.numblocks配置</li>
+<li>volumeMap：块与块文件的映射信息(HashMap&lt;Block, DatanodeBlockInfo>)，当前集合中所有的块信息均维护在该map中</li>
+</ol>
+
+
+<h3>FSDir</h3>
+
+<p>用于构建block块在datanode磁盘上的层次结构，默认情况下每个目录下最多64个子目录，最多能存储64个块。目录初始化时会递归扫描目录下的所有子目录和文件，构建一个树形结构。</p>
+
+<p>addBlock时，首先尝试在当前目录新加块，如果当前目录没有空闲空间，则尝试在子目录中添加，如果没有子目录，则新建一个子目录。</p>
+
+<h3>BlockAndFile</h3>
+
+<p>Block与其文件名的封装</p>
+
+<h3>ActiveFile</h3>
+
+<p>表示一个当前活动中的文件</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（11）——SecondaryNameNode]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-secondary-namenode/"/>
+    <updated>2012-10-18T21:55:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-secondary-namenode</id>
+    <content type="html"><![CDATA[<h2>概述</h2>
+
+<p>SecondaryNameNode在HDFS中的主要作用是帮助master NameNode周期性执行checkpoint操作。</p>
+
+<p>NameNode将运行过程中对文件的修改记录保存在EditLog中。当NameNode重新启动时会从FSImage中加载命名空间镜像，并将EditLog中的内容合并到FSImage中，将合并后的FSImage写入到磁盘，同时清空EditLog，共后续使用。但如果NameNode长时间不重启，随时间增长，EditLog将会越来越大（每次文件操作都要记录），大量占用NameNode磁盘空间，且会导致下一次重启花费大量时间在合并Editlog上。</p>
+
+<p>为了解决这个问题，SecondaryNameNode会定期从NameNode下载最新的FSImage和EditLog，合并editLog日志到FSImage，将合并后的FSImage上传到NameNode，并清空NameNode上的Editlog，将EditLog日志大小控制在一定限度下。</p>
+
+<h2>代码解析</h2>
+
+<p>SecondaryNameNode代码结构如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/SecondaryNameNode.png" alt="SecondaryNameNode" /></p>
+
+<p>SecondaryNameNode本身就是实现了Runnable接口，即一个可执行线程。</p>
+
+<p>checkpointImage表示当前SecondNameNode上的FsImage镜像，该类CheckpointStorage扩展自FSImage。</p>
+
+<p>其中有两个主要的可配置属性：</p>
+
+<ol>
+<li>checkpointPeriod: 两次检查点的间隔时间，可通过fs.checkpoint.period配置</li>
+<li>checkpointSize: EditLog文件的最大值，当EditLog超过这个最大值时会强制之行checkpoint，可通过fs.checkpoint.size配置，默认是64M</li>
+</ol>
+
+
+<h3>run()</h3>
+
+<p>run方法代码如下：</p>
+
+<pre><code>  public void run() {
+
+    //
+    // Poll the Namenode (once every 5 minutes) to find the size of the
+    // pending edit log.
+    //
+    long period = 5 * 60;              // 5 minutes
+    long lastCheckpointTime = 0;
+    if (checkpointPeriod &lt; period) {
+      period = checkpointPeriod;
+    }
+
+    while (shouldRun) {
+      try {
+        Thread.sleep(1000 * period);
+      } catch (InterruptedException ie) {
+        // do nothing
+      }
+      if (!shouldRun) {
+        break;
+      }
+      try {
+        long now = System.currentTimeMillis();
+
+        long size = namenode.getEditLogSize();
+        if (size &gt;= checkpointSize || 
+            now &gt;= lastCheckpointTime + 1000 * checkpointPeriod) {
+          doCheckpoint();
+          lastCheckpointTime = now;
+        }
+      } catch (IOException e) {
+        LOG.error("Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+      } catch (Throwable e) {
+        LOG.error("Throwable Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+        Runtime.getRuntime().exit(-1);
+      }
+    }
+  }
+</code></pre>
+
+<p>其核心就是周期性（默认每个5分钟)调用doCheckpoint().</p>
+
+<h3>doCheckpoint()</h3>
+
+<pre><code>  void doCheckpoint() throws IOException {
+
+    // 准备合并所需的空间
+    startCheckpoint();
+
+    // 通知NameNode将修改信息记录到新的editlog中，并获取一个用于上传合并后的fsimage的token
+    CheckpointSignature sig = (CheckpointSignature)namenode.rollEditLog();
+
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(0)) {
+      throw new IOException("Simulating error0 " +
+                            "after creating edits.new");
+    }
+    //从NameNode获取fsimage和editslog
+    downloadCheckpointFiles(sig);   // Fetch fsimage and edits
+    //合并editlog到fsimage
+    doMerge(sig);                   // Do the merge
+
+    //上传合并后的fsimage到NameNode
+    putFSImage(sig);
+
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(1)) {
+      throw new IOException("Simulating error1 " +
+                            "after uploading new image to NameNode");
+    }
+    // 通知NameNode使用该fsimage作为最新的镜像
+    namenode.rollFsImage();
+    checkpointImage.endCheckpoint();
+
+    LOG.warn("Checkpoint done. New Image Size: " 
+              + checkpointImage.getFsImageName().length());
+  }
+</code></pre>
+
+<h4>1. startCheckpoint()</h4>
+
+<p>该方法主要用于准备合并所需的磁盘空间，代码如下：</p>
+
+<pre><code>  private void startCheckpoint() throws IOException {
+    checkpointImage.unlockAll();
+    // 关闭当前Editlog
+    checkpointImage.getEditLog().close();
+    // 检查当前checkpoints目录，如果不存在则创建一个新目录，如果目录中存在异常，则尝试恢复该目录
+    checkpointImage.recoverCreate(checkpointDirs, checkpointEditsDirs);
+    // 为新的checkpoint准备目录空间，将当前的目录空间更名为lastcheckpoint.™p，新建一个current目录 
+    checkpointImage.startCheckpoint();
+  }
+</code></pre>
+
+<h4>2. namenode.rollEditLog();</h4>
+
+<p>namenode.rollEditLog()实际通过NameNodeProtocol调用NameNode.rollEditLog()方法，并最终调用FSImage.rollEditLog()，该方法主要完成：</p>
+
+<ol>
+<li>调用FSEditLog.rollEditLog()关闭当前editLog，新建一个editLog：edits.new</li>
+<li>返回一个CheckpointSignature做为上传合并后镜像的token</li>
+</ol>
+
+
+<h5>2.1. FSEditLog.rollEditLog()</h5>
+
+<p>该方法主要完成：</p>
+
+<ol>
+<li>关闭当前editlog， 打开一个新的editlog： edit.new</li>
+<li>返回editlog的最新更新时间</li>
+</ol>
+
+
+<p>代码结构如下</p>
+
+<pre><code>  synchronized void rollEditLog() throws IOException {
+    //检查edit.new是否已经存在，如果存在，检查是否所有目录都存在，如果是则认为edits.new已经建好了，直接返回
+    //
+    if (existsNew()) {
+      for (Iterator&lt;StorageDirectory&gt; it = 
+               fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+        File editsNew = getEditNewFile(it.next());
+     if (!editsNew.exists()) { 
+          throw new IOException("Inconsistent existance of edits.new " +
+                                editsNew);
+        }
+      }
+      return; // nothing to do, edits.new exists!
+    }
+
+    //关闭当前的editLog
+    close();                     // close existing edit log
+
+    //
+    // 新建一个editLog： edits.new
+    //
+    for (Iterator&lt;StorageDirectory&gt; it = 
+           fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      try {
+        EditLogFileOutputStream eStream = 
+             new EditLogFileOutputStream(getEditNewFile(sd));
+        eStream.create();
+        editStreams.add(eStream);
+      } catch (IOException e) {
+        // remove stream and this storage directory from list
+        processIOError(sd);
+       it.remove();
+      }
+    }
+  }
+</code></pre>
+
+<h4>3. downloadCheckpointFiles()</h4>
+
+<p>该方法用于从NameNode下载FSImage和FSEditLog，代码结构如下：</p>
+
+<pre><code>  private void downloadCheckpointFiles(CheckpointSignature sig
+                                      ) throws IOException {
+
+    checkpointImage.cTime = sig.cTime;
+    checkpointImage.checkpointTime = sig.checkpointTime;
+
+    // 获取fsimage
+    String fileid = "getimage=1";
+    File[] srcNames = checkpointImage.getImageFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+             srcNames[0].length() + " bytes.");
+
+    // 获取editlog
+    fileid = "getedit=1";
+    srcNames = checkpointImage.getEditsFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+        srcNames[0].length() + " bytes.");
+
+    // 标示checkpoint所需文件已经准备完成
+    checkpointImage.checkpointUploadDone();
+  }
+</code></pre>
+
+<h4>4. doMerge()</h4>
+
+<p>doMerge主要完成editLog与fsimage的合并，实际调用的checkpointImage.doMerge(sig);</p>
+
+<pre><code>private void doMerge(CheckpointSignature sig) throws IOException {
+  getEditLog().open();
+  StorageDirectory sdName = null;
+  StorageDirectory sdEdits = null;
+  Iterator&lt;StorageDirectory&gt; it = null;
+  it = dirIterator(NameNodeDirType.IMAGE);
+  if (it.hasNext())
+    sdName = it.next();
+  it = dirIterator(NameNodeDirType.EDITS);
+  if (it.hasNext())
+    sdEdits = it.next();
+  if ((sdName == null) || (sdEdits == null))
+    throw new IOException("Could not locate checkpoint directories");
+  // 加载fsimage
+  loadFSImage(FSImage.getImageFile(sdName, NameNodeFile.IMAGE));
+  // 加载editlog，并合并到fsimage
+
+  loadFSEdits(sdEdits);
+  // 校验新fsimage的一致性，主要包括版本，更新时间，namespaceId
+  sig.validateStorageInfo(this);
+  // 将fsImage存储到本地，并创建新edits
+  saveFSImage();
+}
+</code></pre>
+
+<p>该方法与NameNode启动时类似:</p>
+
+<ol>
+<li>加载fsiamge</li>
+<li>加载editslog，并作用到fsimage中</li>
+<li>校验合并后的fsimage</li>
+<li>将新fsimage存储到本地，并新建空的edit是目录</li>
+</ol>
+
+
+<h4>5. putFSImage(sig);</h4>
+
+<p>该方法比较简单，主要通过TransferFsImage工具类将合并后的fsimage上传到NameNode</p>
+
+<pre><code>  private void putFSImage(CheckpointSignature sig) throws IOException {
+    String fileid = "putimage=1&amp;port=" + infoPort +
+      "&amp;machine=" +
+      InetAddress.getLocalHost().getHostAddress() +
+      "&amp;token=" + sig.toString();
+    LOG.info("Posted URL " + fsName + fileid);
+    TransferFsImage.getFileClient(fsName, fileid, (File[])null);
+  }
+</code></pre>
+
+<h4>6. namenode.rollFsImage();</h4>
+
+<p>上传完新fsiamge之后，SecondaryNameNode通过namenode.rollFsImage()通知NameNode使用新的fsimage.ckpt作为最新镜像，并清空editslog。该请求最终由NameNode上的FsImage.rollFsImage()处理，代码如下：</p>
+
+<pre><code> void rollFSImage() throws IOException {
+    if (ckptState != CheckpointStates.UPLOAD_DONE) {
+      throw new IOException("Cannot roll fsImage before rolling edits log.");
+    }
+    //
+    // 校验fsimage.ckpt和edits.new是否存在于所有目录
+    if (!editLog.existsNew()) {
+      throw new IOException("New Edits file does not exist");
+    }
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      if (!ckpt.exists()) {
+        throw new IOException("Checkpoint file " + ckpt +
+                              " does not exist");
+      }
+    }
+    //删除旧的edits，并将edits.new重命名为edits
+    editLog.purgeEditLog(); // renamed edits.new to edits
+
+    //
+    // 重命名fsimage
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      File curFile = getImageFile(sd, NameNodeFile.IMAGE);
+      // renameTo fails on Windows if the destination file 
+      // already exists.
+      if (!ckpt.renameTo(curFile)) {
+        curFile.delete();
+        if (!ckpt.renameTo(curFile)) {
+          // Close edit stream, if this directory is also used for edits
+          if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+            editLog.processIOError(sd);
+        // add storage to the removed list
+          removedStorageDirs.add(sd);
+          it.remove();
+        }
+      }
+    }
+
+    //
+    // 更新所有目录的fstime
+    //
+    this.layoutVersion = FSConstants.LAYOUT_VERSION;
+    this.checkpointTime = FSNamesystem.now();
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                           dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      // delete old edits if sd is the image only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        File editsFile = getImageFile(sd, NameNodeFile.EDITS);
+        editsFile.delete();
+      }
+      // delete old fsimage if sd is the edits only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        File imageFile = getImageFile(sd, NameNodeFile.IMAGE);
+        imageFile.delete();
+      }
+      try {
+        sd.write();
+      } catch (IOException e) {
+        LOG.error("Cannot write file " + sd.getRoot(), e);
+        // Close edit stream, if this directory is also used for edits
+        if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+          editLog.processIOError(sd);
+      //add storage to the removed list
+        removedStorageDirs.add(sd);
+        it.remove();
+      }
+    }
+    ckptState = FSImage.CheckpointStates.START;
+  }
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（10）——NameNode与DataNode间的通信]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-and-datanode-communication/"/>
+    <updated>2012-10-18T21:54:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-and-datanode-communication</id>
+    <content type="html"><![CDATA[<p>NameNode和DataNode间的通信分为四种场景：</p>
+
+<ol>
+<li>初始时DataNode注册：</li>
+<li>周期性心跳检测：</li>
+<li>周期性blockreport：</li>
+<li>完成一个副本的写入：</li>
+</ol>
+
+
+<h2>一、初始时DataNode注册</h2>
+
+<p>DataNode在启动时会向NameNode注册，注册时需要提交的信息有DatanodeRegistration表示。结构如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/DatanodeRegistration.png" alt="DatanodeRegistration" /></p>
+
+<p>主要包括：</p>
+
+<ol>
+<li>name：机器名（主机名+服务端口号）</li>
+<li>infoPort: 状态信息服务端口好</li>
+<li>ipcPort： 提供ipc服务的端口号</li>
+</ol>
+
+
+<p>此外，该类中的storageID是该datanode在集群中的唯一id，在注册时有NameNode分配</p>
+
+<p>注册的主要流程如下：
+<img src="http://jiangbo.me/images/hdfs/register.png" alt="DataNodeRegister" /></p>
+
+<h2>二、心跳检测（heartbeat）</h2>
+
+<p>DataNode通过周期性调用namenode.sendHeartbeat()来完成心跳检测.主要流程如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/sendHeartbeat.png" alt="sendHeartbeat" /></p>
+
+<h2>三、blockReport</h2>
+
+<p>DataNode周期性向NameNode发送blockReport，告知自己最新的block信息：
+<img src="http://jiangbo.me/images/hdfs/blockReport.png" alt="blockReport" /></p>
+
+<h2>四、完成副本写入</h2>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（9）——安全模式（SafeMode）]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-safe-mode/"/>
+    <updated>2012-10-18T21:52:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-safe-mode</id>
+    <content type="html"><![CDATA[<h2>一、SafeModeInfo</h2>
+
+<p>SafeModeInfo维护了系统安全模式下的状态信息，每当系统进入安全模式时都会创建一个SafeModeInfo实例维护状态信息，离开时会销毁这个实例。
+该类结构如下</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/SafeModeInfo.png" alt="SafeModeInfo" /></p>
+
+<p>其中threshold和extension为可配置项：</p>
+
+<ol>
+<li>threshold表示离开安全模式时打到最低备份数的block的比例</li>
+<li>extension表示进入安全模式的最低时长</li>
+</ol>
+
+
+<h2>二、SafeModeMonitor</h2>
+
+<p>FSNameSystem中SafeModeMonitor代码结构如下：</p>
+
+<pre><code>  class SafeModeMonitor implements Runnable {
+    /** interval in msec for checking safe mode: {@value} */
+    private static final long recheckInterval = 1000;
+
+    /**
+     */
+    public void run() {
+      while (fsRunning &amp;&amp; (safeMode != null &amp;&amp; !safeMode.canLeave())) {
+        try {
+          Thread.sleep(recheckInterval);
+        } catch (InterruptedException ie) {
+        }
+      }
+      // leave safe mode and stop the monitor
+      try {
+        leaveSafeMode(true);
+      } catch(SafeModeException es) { // should never happen
+        String msg = "SafeModeMonitor may not run during distributed upgrade.";
+        assert false : msg;
+        throw new RuntimeException(msg, es);
+      }
+      smmthread = null;
+    }
+  }
+</code></pre>
+
+<p>其核心就是每个1秒检测一次是否能够离开模式（safeMode.canLeave()），如果可以，则尝试离开并停止SafeModeMonitor线程（leaveSafeMode(true)）</p>
+
+<h3>1.1. 是否能离开 —— safeMode.canLeave()</h3>
+
+<p>能够离开安全模式的标准是：
+1. 已进入安全模式的时长大于等于 extension
+2. 安全的block数比例打到门槛值</p>
+
+<pre><code>synchronized boolean canLeave() {
+  if (reached == 0)
+    return false;
+  if (now() - reached &lt; extension) {
+    reportStatus("STATE* Safe mode ON.", false);
+    return false;
+  }
+  return !needEnter();
+}
+
+/** 
+ * There is no need to enter safe mode 
+ * if DFS is empty or {@link #threshold} == 0
+ */
+boolean needEnter() {
+  return getSafeBlockRatio() &lt; threshold;
+}
+</code></pre>
+
+<h3>1.2. 离开安全模式 —— leaveSafeMode(true);</h3>
+
+<pre><code>  public void leaveSafeMode(boolean checkForUpgrades) throws SafeModeException {
+    writeLock();
+    try {
+    if (!isInSafeMode()) {
+      NameNode.stateChangeLog.info("STATE* Safe mode is already OFF."); 
+      return;
+    }
+    //获取升级状态，如在升级中，不能离开安全模式
+    if(getDistributedUpgradeState())
+      throw new SafeModeException("Distributed upgrade is in progress",
+                                  safeMode);
+    //调用SafeModeInfo.leave()离开安全模式
+    safeMode.leave(checkForUpgrades);
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h3>1.2.1 SafeModeInfo.leave()</h3>
+
+<pre><code>    synchronized void leave(boolean checkForUpgrades) {
+      if(checkForUpgrades) {
+        // 验证是否需要升级
+        boolean needUpgrade = false;
+        try {
+          needUpgrade = startDistributedUpgradeIfNeeded();
+        } catch(IOException e) {
+          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
+        }
+        if(needUpgrade) {
+          //如果需要升级，进入手动安全模式
+          safeMode = new SafeModeInfo();
+          return;
+        }
+      }
+      // 如果备份队列未初始化完，继续初始化该队列
+      if (!isPopulatingReplQueues()) {
+        initializeReplQueues();
+      }
+      long timeInSafemode = now() - systemStart;
+      NameNode.stateChangeLog.info("STATE* Leaving safe mode after " 
+                                    + timeInSafemode/1000 + " secs.");
+      NameNode.getNameNodeMetrics().safeModeTime.set((int) timeInSafemode);
+
+      if (reached &gt;= 0) {
+        NameNode.stateChangeLog.info("STATE* Safe mode is OFF."); 
+      }
+      reached = -1;
+      safeMode = null;
+      NameNode.stateChangeLog.info("STATE* Network topology has "
+                                   +clusterMap.getNumOfRacks()+" racks and "
+                                   +clusterMap.getNumOfLeaves()+ " datanodes");
+      NameNode.stateChangeLog.info("STATE* UnderReplicatedBlocks has "
+                                   +neededReplications.size()+" blocks");
+    }
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS源码学习（8）——Backup Mode]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-namenode-backup-mode/"/>
+    <updated>2012-10-18T21:51:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/18/hdfs-namenode-backup-mode</id>
+    <content type="html"><![CDATA[<h2>元数据的持久化</h2>
+
+<p>HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。NameNode启动时会从本地磁盘加载FSImage和FSEditLog，并将EditLog中的日志信息合并到FSImage中进行之持久化（该合并过程称为一个检查点：checkpoint），并构建文件系统的元信息。</p>
+
+<p>但是持久化的数据中不包括block<->datanode的映射信息，该信息由每个datanode向NameNode发起blockReport()请求时报告其所拥有的block信息。</p>
+
+<h3>Editlog记录修改日志</h3>
+
+<p>EditLog的持久化文件是一个二进制文件，大体结构如下：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/EditLogFile.png" alt="EditLogFile" /></p>
+
+<p>EditLog文件开始是一个日志版本号，0.19版本的hdfs中该version为-18。
+随后是每一条操作的事务日志，每条日志的起始为一个操作类型位，随后是该操作的详细信息，不同的操作类型所带的详细信息也不同。加载EditLog是根据layoutVersion和edit_op位采取不同的方式解析后面的详细信息。
+EditLog能够记录如下17中操作：</p>
+
+<p><img src="http://jiangbo.me/images/hdfs/EditLogOp.png" alt="EditLogOp" /></p>
+
+<p>EditLog为每种操作都提供了相应的log方法，当系统中发生文件修改时，会调用相应的log方法记录日志</p>
+
+<h2>元数据加载与恢复</h2>
+
+<p>NameNode启动过程中最终会通过FSImage.loadFSImage()来从fsimage目录中加载最新的fsimage镜像和editslog，并合并构建命名空间。
+代码结构如下：</p>
+
+<pre><code>  boolean loadFSImage() throws IOException {
+    // 根据checkpointtime查找最新的fsimage
+    long latestNameCheckpointTime = Long.MIN_VALUE;
+    long latestEditsCheckpointTime = Long.MIN_VALUE;
+    StorageDirectory latestNameSD = null;
+    StorageDirectory latestEditsSD = null;
+    boolean needToSave = false;
+    isUpgradeFinalized = true;
+    Collection&lt;String&gt; imageDirs = new ArrayList&lt;String&gt;();
+    Collection&lt;String&gt; editsDirs = new ArrayList&lt;String&gt;();
+    for (Iterator&lt;StorageDirectory&gt; it = dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      if (!sd.getVersionFile().exists()) {
+        needToSave |= true;
+        continue; // some of them might have just been formatted
+      }
+      boolean imageExists = false, editsExists = false;
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        imageExists = getImageFile(sd, NameNodeFile.IMAGE).exists();
+        imageDirs.add(sd.getRoot().getCanonicalPath());
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        editsExists = getImageFile(sd, NameNodeFile.EDITS).exists();
+        editsDirs.add(sd.getRoot().getCanonicalPath());
+      }
+
+      checkpointTime = readCheckpointTime(sd);
+      if ((checkpointTime != Long.MIN_VALUE) &amp;&amp; 
+          ((checkpointTime != latestNameCheckpointTime) || 
+           (checkpointTime != latestEditsCheckpointTime))) {
+        // Force saving of new image if checkpoint time
+        // is not same in all of the storage directories.
+        needToSave |= true;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE) &amp;&amp; 
+         (latestNameCheckpointTime &lt; checkpointTime) &amp;&amp; imageExists) {
+        latestNameCheckpointTime = checkpointTime;
+        latestNameSD = sd;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS) &amp;&amp; 
+           (latestEditsCheckpointTime &lt; checkpointTime) &amp;&amp; editsExists) {
+        latestEditsCheckpointTime = checkpointTime;
+        latestEditsSD = sd;
+      }
+      if (checkpointTime &lt;= 0L)
+        needToSave |= true;
+      // set finalized flag
+      isUpgradeFinalized = isUpgradeFinalized &amp;&amp; !sd.getPreviousDir().exists();
+    }
+
+    // 确保至少有一个fsimage和一个edits目录
+    if (latestNameSD == null)
+      throw new IOException("Image file is not found in " + imageDirs);
+    if (latestEditsSD == null)
+      throw new IOException("Edits file is not found in " + editsDirs);
+
+    // 确保获得的fsimage和edits是同一个检查点
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime
+        &amp;&amp; latestNameSD != latestEditsSD
+        &amp;&amp; latestNameSD.getStorageDirType() == NameNodeDirType.IMAGE
+        &amp;&amp; latestEditsSD.getStorageDirType() == NameNodeDirType.EDITS) {
+      // This is a rare failure when NN has image-only and edits-only
+      // storage directories, and fails right after saving images,
+      // in some of the storage directories, but before purging edits.
+      // See -NOTE- in saveNamespace().
+      LOG.error("This is a rare failure scenario!!!");
+      LOG.error("Image checkpoint time " + latestNameCheckpointTime +
+          " &gt; edits checkpoint time " + latestEditsCheckpointTime);
+      LOG.error("Name-node will treat the image as the latest state of " +
+          "the namespace. Old edits will be discarded.");
+    } else if (latestNameCheckpointTime != latestEditsCheckpointTime)
+      throw new IOException("Inconsitent storage detected, " +
+          "image and edits checkpoint times do not match. " +
+          "image checkpoint time = " + latestNameCheckpointTime +
+          "edits checkpoint time = " + latestEditsCheckpointTime);
+
+    // 如果上次检查点中断了，则恢复该检查点
+    needToSave |= recoverInterruptedCheckpoint(latestNameSD, latestEditsSD);
+
+    long startTime = FSNamesystem.now();
+    long imageSize = getImageFile(latestNameSD, NameNodeFile.IMAGE).length();
+
+    //
+    // 加载fsimage文件
+    //
+    latestNameSD.read();
+    needToSave |= loadFSImage(getImageFile(latestNameSD, NameNodeFile.IMAGE));
+    LOG.info("Image file of size " + imageSize + " loaded in " 
+        + (FSNamesystem.now() - startTime)/1000 + " seconds.");
+
+    // 加载最新的edits并作用于fsimage上
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime)
+      // the image is already current, discard edits
+      needToSave |= true;
+    else // latestNameCheckpointTime == latestEditsCheckpointTime
+      needToSave |= (loadFSEdits(latestEditsSD) &gt; 0);
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其中FSImage.loadFSImage(File curFile) 代码如下：</p>
+
+<pre><code>  boolean loadFSImage(File curFile) throws IOException {
+    assert this.getLayoutVersion() &lt; 0 : "Negative layout version is expected.";
+    assert curFile != null : "curFile is null";
+
+    FSNamesystem fsNamesys = FSNamesystem.getFSNamesystem();
+    FSDirectory fsDir = fsNamesys.dir;
+
+    //
+    // Load in bits
+    //
+    boolean needToSave = true;
+    DataInputStream in = new DataInputStream(new BufferedInputStream(
+                              new FileInputStream(curFile)));
+    try {
+      /*
+       * Note: Remove any checks for version earlier than 
+       * Storage.LAST_UPGRADABLE_LAYOUT_VERSION since we should never get 
+       * to here with older images.
+       */
+
+      /*
+       * TODO we need to change format of the image file
+       * it should not contain version and namespace fields
+       */
+      // 读取imageversion
+      int imgVersion = in.readInt();
+      // 读取namespaceid
+      this.namespaceID = in.readInt();
+
+      // 读取镜像中的文件数
+      long numFiles;
+      if (imgVersion &lt;= -16) {
+        numFiles = in.readLong();
+      } else {
+        numFiles = in.readInt();
+      }
+
+      this.layoutVersion = imgVersion;
+      // 读取镜像时间戳
+      if (imgVersion &lt;= -12) {
+        long genstamp = in.readLong();
+        fsNamesys.setGenerationStamp(genstamp); 
+      }
+
+      needToSave = (imgVersion != FSConstants.LAYOUT_VERSION);
+
+      // 读取每个文件的信息
+      short replication = FSNamesystem.getFSNamesystem().getDefaultReplication();
+
+      LOG.info("Number of files = " + numFiles);
+
+      byte[][] pathComponents;
+      byte[][] parentPath = ;
+      INodeDirectory parentINode = fsDir.rootDir;
+      for (long i = 0; i &lt; numFiles; i++) {
+        long modificationTime = 0;
+        long atime = 0;
+        long blockSize = 0;
+        //读取文件名(path)
+        pathComponents = readPathComponents(in);
+        //读取副本数
+        replication = in.readShort();
+        //调整副本数，使其不超过系统的最大和最小副本数限制
+        replication = FSEditLog.adjustReplication(replication);
+        //读取文件修改时间
+        modificationTime = in.readLong();
+        if (imgVersion &lt;= -17) {
+        //读取最近访问时间
+          atime = in.readLong();
+        }
+        if (imgVersion &lt;= -8) {
+        //读取block块大小
+          blockSize = in.readLong();
+        }
+        //读取block数
+        int numBlocks = in.readInt();
+        //构建blocks
+        Block blocks[] = null;
+
+        // 老版本hdfs中，numBlocks=0表示目录，新版本中numBlocks=-1表示目录
+        if ((-9 &lt;= imgVersion &amp;&amp; numBlocks &gt; 0) ||
+            (imgVersion &lt; -9 &amp;&amp; numBlocks &gt;= 0)) {
+           //构建文件block信息
+          blocks = new Block[numBlocks];
+          for (int j = 0; j &lt; numBlocks; j++) {
+            blocks[j] = new Block();
+            if (-14 &lt; imgVersion) {
+              blocks[j].set(in.readLong(), in.readLong(), 
+                            Block.GRANDFATHER_GENERATION_STAMP);
+            } else {
+              // 读取block信息
+              blocks[j].readFields(in);
+            }
+          }
+        }
+        // 老版本inode中不维护blocksize，如果存在多个block，blocksize选取第一个block的大小，如果只有一个block，则选该block大小和默认大小中较大的，如果没有block，则选用默认大小
+        if (-8 &lt;= imgVersion &amp;&amp; blockSize == 0) {
+          if (numBlocks &gt; 1) {
+            blockSize = blocks[0].getNumBytes();
+          } else {
+            long first = ((numBlocks == 1) ? blocks[0].getNumBytes(): 0);
+            blockSize = Math.max(fsNamesys.getDefaultBlockSize(), first);
+          }
+        }
+
+        // 如果是目录（blocks=null），读取该目录的配额
+        long nsQuota = -1L;
+        if (imgVersion &lt;= -16 &amp;&amp; blocks == null) {
+          nsQuota = in.readLong();
+        }
+        long dsQuota = -1L;
+        if (imgVersion &lt;= -18 &amp;&amp; blocks == null) {
+          dsQuota = in.readLong();
+        }
+
+        //获取权限信息
+        PermissionStatus permissions = fsNamesys.getUpgradePermission();
+        if (imgVersion &lt;= -11) {
+          permissions = PermissionStatus.read(in);
+        }
+
+        //如果该path为root，且设置了配额信息，则更新根目录的配额
+        if (isRoot(pathComponents)) { // it is the root
+          // update the root's attributes
+          if (nsQuota != -1 || dsQuota != -1) {
+            fsDir.rootDir.setQuota(nsQuota, dsQuota);
+          }
+          fsDir.rootDir.setModificationTime(modificationTime);
+          fsDir.rootDir.setPermissionStatus(permissions);
+          continue;
+        }
+        //如果该inode的parent与当前路径不一至，获取新的parentPaht
+        if(!isParent(pathComponents, parentPath)) {
+          parentINode = null;
+          parentPath = getParent(pathComponents);
+        }
+        // 将该inode添加到inode树中
+        parentINode = fsDir.addToParent(pathComponents, parentINode, permissions,
+                                        blocks, replication, modificationTime, 
+                                        atime, nsQuota, dsQuota, blockSize);
+      }
+
+      // 加载datanode信息，imgVersion&lt;-12的版本事实上啥都不做，datanode信息已经不保存在fsimage中
+      this.loadDatanodes(imgVersion, in);
+
+      // 加载正在构建中的文件
+      this.loadFilesUnderConstruction(imgVersion, in, fsNamesys);
+
+    } finally {
+      in.close();
+    }
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其核心就是加载并解析fsimage文件，构建命名空间，fsimage文件的结构参见《NameNode中主要数据结构》</p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[HDFS源码学习（7）——Block管理]]></title>
@@ -2590,445 +4099,6 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
 <h3>自定义WebApp ClassLoader</h3>
 
 <p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[解决Mac上解压Windows压缩包乱码问题]]></title>
-    <link href="http://jiangbo.me/blog/2012/02/13/unzip-file-from-win-to-mac/"/>
-    <updated>2012-02-13T16:53:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/02/13/unzip-file-from-win-to-mac</id>
-    <content type="html"><![CDATA[<p>Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
-下面是用ruby写的一个解决方法：</p>
-
-<p><a href="https://github.com/jiang-bo/codingforfun/blob/master/ruby/utils/unzipFromWinToMac.rb">source@github</a></p>
-
-<pre><code>require 'zip/zip'
-require 'iconv'
-
-# To unzip zipfile which zip in GBK to UTF-8.
-#
-# When you zip a file on Windows, it will encode in GBK default.
-# Then you unzip it on Mac OSX which use unicode default, it will be wrong.
-# This code is used to fix this problem:)
-#
-# @Author: jiang-bo
-Zip::ZipInputStream::open(zipFile){
-  |io|
-  while(entry = io.get_next_entry)
-    name=Iconv.iconv("UTF-8","GBK", entry.name)[0]
-
-    puts "Extracting #{name}"
-    if name.end_with?('/')
-      Dir.mkdir(name.to_s)
-    else
-      entry.extract(name.to_s)
-    end
-  end
-}
-</code></pre>
-
-<p>主要依赖rubyzip和iconv两个包：</p>
-
-<pre><code>gem install rubyzip
-gem install iconv
-</code></pre>
-
-<p>使用ruby zip中ZipInputStream打开压缩包，然后使用Iconv.iconv将其中的文件名由&#8217;GBK&#8217;转码为&#8217;UTF-8&#8217;。
-然后解压压缩包。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[JVM Luncher Lifecycle]]></title>
-    <link href="http://jiangbo.me/blog/2012/02/10/jvm-luncher-lifecycle/"/>
-    <updated>2012-02-10T23:51:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/02/10/jvm-luncher-lifecycle</id>
-    <content type="html"><![CDATA[<h1>JVM运行时环境</h1>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[CentOS6编译OpenJDK7]]></title>
-    <link href="http://jiangbo.me/blog/2012/02/10/compile-openjdk7-on-centos6/"/>
-    <updated>2012-02-10T14:39:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/02/10/compile-openjdk7-on-centos6</id>
-    <content type="html"><![CDATA[<h2>一.环境准备</h2>
-
-<h3>1.jdk</h3>
-
-<p>在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:)</p>
-
-<h3>2.alsa包</h3>
-
-<p>linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装，CentOS可以通过如下命令检查：</p>
-
-<pre><code> rpm -qa |grep alsa
-</code></pre>
-
-<p>alsa-lib和alsa-lib-devel均需要。CentOS缺少alsa-lib-devel，通过如下命令安装：</p>
-
-<pre><code> yum install alsa-lib-devel
-</code></pre>
-
-<h3>3.cups-devel</h3>
-
-<pre><code>yum install cups-devel
-</code></pre>
-
-<h3>4.libXi-devel</h3>
-
-<pre><code>yum install libXi-devel
-</code></pre>
-
-<h3>5.freetype2.3</h3>
-
-<pre><code>wget http://download.savannah.gnu.org/releases/freetype/freetype-2.3.12.tar.gz
-tar -xvf freetype-2.3.12.tar.gz
-cd freetype-2.3.12
-./configure &amp;&amp; make &amp;&amp; make install
-</code></pre>
-
-<h3>6. ant</h3>
-
-<pre><code>wget http://mirror.bit.edu.cn/apache//ant/binaries/apache-ant-1.8.2-bin.zip
-unzip apache-ant-1.8.2-bin.zip
-</code></pre>
-
-<h3>7.g++</h3>
-
-<pre><code>yum install gcc gcc-c++
-</code></pre>
-
-<h2>二、设置环境变量</h2>
-
-<p>jdk编译过程中有一些环境变量需要设置，详细的请参考README-builds.html，下面写的只是一些必须设置的环境变量：</p>
-
-<pre><code>export ALT_BOOTDIR=/usr/opt/jdk # 预装的jdk7目录
-export ANT_HOME=ant安装目录
-export ALT_FREETYPE_HEADERS_PATH=/usr/local/include/freetype2 #freetype2头文件安装目录
-export ALT_FREETYPE_LIB_PATH=/usr/local/lib #freetype2 lib目录
-</code></pre>
-
-<h2>三、编译</h2>
-
-<h3>1.健全检查</h3>
-
-<p>可以通过如下命令检查环境配置是否准备好：</p>
-
-<pre><code>make sanity ARCH_DATA_MODEL=64
-</code></pre>
-
-<p>如果最终输出：</p>
-
-<pre><code>Sanity check passed.
-</code></pre>
-
-<p>则表示环境检查通过，否则需要根据提示信息排查问题。</p>
-
-<h3>2.执行编译</h3>
-
-<p>通过如下命令开始编译：</p>
-
-<pre><code>make ARCH_DATA_MODEL=64
-</code></pre>
-
-<h3>3.问题排查：</h3>
-
-<p>编译过程中出现一些问题：</p>
-
-<h3>1)缺少jaxp和jaxws</h3>
-
-<p>错误信息</p>
-
-<pre><code>ERROR: Cannot find source for project jaxp
-</code></pre>
-
-<p>原因是现在jaxp源码分支和jdk源码分支分开了，但是jaxws是jdk中的一部分，所以完全编译需要jaxp源码，针对该问题的描述可以查看README-build.html中TroubleShooting部分。
-解决方式有两种：
-一种是先下载好源码包，以drops的方式安装，具体参考README-build.html
-另外一种是使用在线安装，在编译时加入允许下载源码的配置:</p>
-
-<pre><code>make ARCH_DATA_MODEL=64 ALLOW_DOWNLOADS=true
-</code></pre>
-
-<h3>2)缺少X＊库</h3>
-
-<p>编译过程中多次出现如下缺少X*, awt之类的错误，基本上都是因为缺乏图形相关的库</p>
-
-<pre><code>../../../src/solaris/native/sun/awt/img_util_md.h:32: ??:expected specifier-qualifier-list before 'XID'
-make[5]: *** [/home/jiangbo/Workspace/jdk/openjdk/build/linux-amd64/tmp/sun/sun.awt/awt/obj64/BufImgSurfaceData.o] Error 1
-make[5]: *** Waiting for unfinished jobs....
-make[5]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[4]: *** [library_parallel_compile] Error 2
-make[4]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[3]: *** [all] Error 1
-make[3]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun'
-make[2]: *** [all] Error 1
-make[2]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make'
-make[1]: *** [jdk-build] Error 2
-make[1]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk'
-make: *** [build_product_image] Error 2
-</code></pre>
-
-<p>解决方式时安装X相关的库</p>
-
-<pre><code>yum install libX*
-</code></pre>
-
-<p>这个有些暴力，不过比较有效:)</p>
-
-<h2>四、测试编译结果</h2>
-
-<p>漫长的编译之后直至出现如下类似内容时，表示编译完成了：</p>
-
-<pre><code>-- Build times ----------
-Target all_product_build
-Start 2012-02-09 10:38:39
-End   2012-02-09 11:14:37
-00:01:41 corba
-00:06:19 hotspot
-00:15:49 jaxp
-00:01:30 jaxws
-00:10:03 jdk
-00:00:36 langtools
-00:35:58 TOTAL
-</code></pre>
-
-<p>编译完成后，编译结果维语build/linux-amd64目录下，可以写个简单的Java程序测试编译结果</p>
-
-<p>Test.java</p>
-
-<pre><code>public class Test{
-        public static void main(String[] args){
-                System.out.println("Hello");
-        }
-}
-</code></pre>
-
-<p>编译</p>
-
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test.java
-</code></pre>
-
-<p>执行</p>
-
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test
-Hello
-</code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[如何用ruby获取本机IP&发送給Gtalk]]></title>
-    <link href="http://jiangbo.me/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/"/>
-    <updated>2012-01-04T17:35:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby</id>
-    <content type="html"><![CDATA[<h3>问题</h3>
-
-<p>有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。</p>
-
-<h3>解决</h3>
-
-<h4>如何获取本机IP</h4>
-
-<p>用ruby获取本机的动态ip，网上很多教程都用</p>
-
-<pre><code>require 'socket'
-
-IPSocket.getaddress(Socket.gethostname)
-puts TCPSocket.gethostbyname(Socket.gethostname)
-</code></pre>
-
-<p>这个在mac下是正常的，但是在linux下就只能拿到127.0.0.1
-在StackOverflow上有另一种解决方案</p>
-
-<pre><code>require 'socket'
-
-def local_ip
-  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
-
-  UDPSocket.open do |s|
-    s.connect '64.233.187.99', 1
-    s.addr.last
-  end
-ensure
-  Socket.do_not_reverse_lookup = rig
-end
-</code></pre>
-
-<p>这段主要是通过开启一个UDP链接来获取本地对外ip，因为UDP是无状态，所以不会实际建立网络链接，但是会获取本机对外ip。</p>
-
-<h4>如何发送消息</h4>
-
-<p>获取ip后需要通过gtalk发送，gtalk使用的是xmpp协议，ruby中协议有多种开源实现，比较简单通用的是xmpp4r，详细教程请看这里
-首先需要安装xmpp4r-simple</p>
-
-<pre><code>gem install xmpp4r-simple
-</code></pre>
-
-<p>注意，貌似这个gem不支持1.9.*，所以使用之前先将ruby切换到1.8.7版本
-然后编写代码，主要两步：</p>
-
-<ul>
-<li>建立链接</li>
-<li>发送消息</li>
-</ul>
-
-
-<p>代码如下：</p>
-
-<pre><code> require 'rubygems'
- require 'xmpp4r-simple'  
-
- username = gmailusername
- password = gmailpassword
- to_username = destination_gmailusername  
-
- puts "Connecting to jabber server.."
- jabber = Jabber::Simple.new(username+'@gmail.com',password)
- puts "Connected."
- jabber.deliver(to_username+"@gmail.com", "Hello..!")
- sleep(1)
-</code></pre>
-
-<p>注意，最后那个sleep不能少，尽管我还不知道为啥:(</p>
-
-<p>如此以来整个的获取ip，发送給gtalk的脚本为：</p>
-
-<pre><code>require 'rubygems'
-require 'socket'
-require 'xmpp4r-simple'
-
-def local_ip
-  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
-
-  UDPSocket.open do |s|
-    s.connect '64.233.187.99', 1
-    s.addr.last
-  end
-ensure
-  Socket.do_not_reverse_lookup = orig
-end
-
-jabber = Jabber::Simple.new('gmailuseanme@gmail.com','password')
-jabber.deliver('destusenam@gmail.com', local_ip)
-sleep 1
-</code></pre>
-
-<h4>设置自动运行</h4>
-
-<p>linux设置自动运行是老生常谈了，在/etc/rc.local加上一句运行脚本的命令即可：</p>
-
-<pre><code>ruby /home/jiangbo/ruby/getIP.rb
-</code></pre>
-
-<h3>结尾</h3>
-
-<p>这样每次机器重启时，就能够通过gtalk获取到ip了，不过还遗留一个问题，就是在机器重启时，必须保证接收消息的gtalk在线，因为这种方式的消息gtalk不会自动重法，目前不知怎么解决。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[我的2011&2012]]></title>
-    <link href="http://jiangbo.me/blog/2011/12/31/my2011and2012/"/>
-    <updated>2011-12-31T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/12/31/my2011and2012</id>
-    <content type="html"><![CDATA[<p>一眨眼，一年又过去了，奔三的步伐又向前迈进了一步…</p>
-
-<p><h2>2011流水账</h2></p>
-
-<p>1月～3月，入职来第一次正是参加了大项目，中间夹杂个春节，据说每年年底做大项目是部门的传统，今年也不例外啊:(，项目苦了写，不过学了不少</p>
-
-<p><p>4月～6月，公司进行服务化改造，作为主力开发参与了部门的服务化建设，期间送走了两个同事好友，一个去了厦门，一个回了宁波，各自寻找自己的幸福去了。<br />
-附加一句，上半年基本还处在阴霾期，期间养成了去酒吧喝酒的习惯，有钱去酒吧，没钱去地摊，酒量现在还可以。</p></p>
-
-<p>7月～8月，参加了另外一个项目，8月底的时候由于上半年持续表现不错，连续两个3.75，所以被升了一级，薪水也有了不错的涨幅:)。同时部门也组织了一次outing，去了舟山嵊泗岛，很祥和的小渔村，很不错。中间的时候李辉来杭州玩，许久不见的兄弟啊</p>
-
-<p>9月第一次自己带了一个小项目。同时又送走一位同事。</p>
-
-<p>十一期间，休了半个月的假，和同事几人一起去了趟西藏，花光了半年多的积蓄，感觉无法用语言形容，还会再去的，一定</p>
-
-<p>11月～12月，需求不断，每日都投入在工作中，有些疲惫哈</p>
-
-<p><h2>2011总结</h2></p>
-
-<p>回顾下11年初定的三个目标：</p>
-
-<p><em>1. 工作顺利挺进，争取升一级</em></p>
-
-<p><em>2. 保养皮肤，争取帅一点</em></p>
-
-<p><em>3. 去西藏，无论如何，我一定会去的</em></p>
-
-<p><p>第一点顺利完成；第二点除了痘少些，人也老些，基本没变；第三点纠结许久也顺利完成，而且收获远超期望。<br />
-除了以上三点，还有些额外收获，譬如结束单身生活啥的:)，老家盖新房啥的<br />
-总的来说11年过的还算不错，基本算是从阴霾走向光明，逐渐奔向幸福，哈哈</p></p>
-
-<p><h2>2012的三件事</h2></p>
-
-<p>按照惯例，还是列下明年的目标把，不多，还是三个：</p>
-
-<p><ol>
-<li>自己做个网站</li>
-<li>再一次长途旅行（环青海湖或这挺进新疆，诚征驴友）</li>
-<li>还有一个很重要的事，一时想不起来了，暂定“顺利度过2012吧！”</li>
-</ol></p>
-
-<p><h2>祝福</h2></p>
-
-<p>还是按照惯例，最后送上祝福：</p>
-
-<p><p>亲们，尽管我这个人平时很少和大家联系，但我内心真的很想念你们，大家都要幸福啊！<br />
-2012，幸福快乐！</p>
-</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[优化rails new时bundle install速度]]></title>
-    <link href="http://jiangbo.me/blog/2011/12/17/rails_new_optimize_bundle_install/"/>
-    <updated>2011-12-17T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/12/17/rails_new_optimize_bundle_install</id>
-    <content type="html"><![CDATA[<p>最近痴迷ruby和ror，但是每次rails new xxx时总会在bundle install 停留很久，学习了下，发现rails new时会进行bundle install，自动到rubygems.org上检查是否有更新。如果确定不需要更新，事实上是可以跳过这个步骤的，方法很简单：
-<code>
-rails new my_app --skip-bundle
-</code>
-另外在单独执行bundle install时默认也会自动检查所有更新，解决方法时
-<code>
-bundle insall --local
-</code></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Rails中常见的错误]]></title>
-    <link href="http://jiangbo.me/blog/2011/12/17/rails-common-error/"/>
-    <updated>2011-12-17T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/12/17/rails-common-error</id>
-    <content type="html"><![CDATA[<p><h1>Rails中常见错误总结</h1>
-<h3>NoMothedError</h3>
-NoMethodError通常表示引用了错误的方法，比如link_to写成了lunk_to。根据页面上的错误提示很容易能够定位到错误代码位于哪一行。
-<h3>NameError</h3>
-NameError常见于引用了错误的变量，比如变量不存在等
-<h3>SyntaxError: unexpected $end</h3>
-SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少了end关键字。def和do必须要有对应的end。不过通常错误提示无法定位具体哪一行缺少了end，需要自己审查代码逻辑。
-<h3>invalid multibyte char(US-ASCII)</h3>
-如果使用的是Ruby1.9，出现:invalid multibyte char(US-ASCII)的时候，通常表示代码源文件中有UTF-8字符，比如中文，根据Ruby1.9规范，必须在源文件的头部加上编码注解<br />
-#encoding: utf-8<br />
-并且代码的源文件格式必须时utf-8的。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[chrome中清除dns缓存]]></title>
-    <link href="http://jiangbo.me/blog/2011/12/07/clean-dns-cache-on-chrome/"/>
-    <updated>2011-12-07T00:00:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2011/12/07/clean-dns-cache-on-chrome</id>
-    <content type="html"><![CDATA[<p>web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：<br />
-1、用chrome打开：chrome://net-internals/#dns<br />
-2、点击上面的“clean host cache”<br />
-为了方便使用，可以加个bookmark:)</p>
 ]]></content>
   </entry>
   

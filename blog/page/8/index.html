@@ -9,10 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="Spring 提供了几个帮助类用于在应用中做调度，包括JDK Timer类和OpenSymphony Quartz Scheduler两种. Quartz基础 Quartz包括五种主要结构用于实现调度： Job接口
-JobDetail类
-Trigger 抽象类
-Scheduler接口 &hellip;">
+  <meta name="description" content="1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包
+3 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -87,7 +85,7 @@ Scheduler接口 &hellip;">
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2010/10/18/post/">在Spring中使用Quartz</a></h1>
+      <h1 class="entry-title"><a href="/blog/2011/08/03/mac-osx-install-memcached/">Mac OSX 安装memcached</a></h1>
     
     
       <p class="meta">
@@ -103,16 +101,16 @@ Scheduler接口 &hellip;">
   
 
 
-<time datetime="2010-10-18T00:00:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2010</time>
+<time datetime="2011-08-03T00:00:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2011</time>
         
-         | <a href="/blog/2010/10/18/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2011/08/03/mac-osx-install-memcached/#disqus_thread">Comments</a>
         
         
           | 
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/spring/'>Spring</a>
+    <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/未分类/'>未分类</a>
   
 </span>
 
@@ -123,168 +121,18 @@ Scheduler接口 &hellip;">
   </header>
 
 
-  <div class="entry-content"><p>	Spring 提供了几个帮助类用于在应用中做调度，包括JDK Timer类和OpenSymphony Quartz Scheduler两种.</p>
-<h3><a name="在Spring中使用Quartz-Quartz基础"></a>
-
-Quartz基础	</h3>
-<p>	Quartz包括五种主要结构用于实现调度：</p>
-<ul>
-<li>Job接口</li>
-<li>JobDetail类</li>
-<li>Trigger 抽象类</li>
-<li>Scheduler接口</li>
-<li>SchedulerFactory 接口</li>
-</ul>
-<p>	Job接口表示一个作业(job)。一个作业专注做一件事。它的API非常简洁。只有一个execute方法，该方法在作业被执行时有Quartz调度。该方法有一个JobExecuteContext参数，可以通过该参数给execute()方法传递有用信息。</p>
-<p><pre class="brush: java">public interface Job{
-    void execute(JobExecuteContext ctx);
-}</pre>
-</p>
-<p>一些数据可以通过JobDataMap传递给作业。如果一个JobDataMap被注册到JobDetail中，就能够在作业中通过
-JobExecuteContext来访问。JobDetail用来描述一个特定Job的信息。Job通过触发器（Trigger）触发。Quartz提
-供了集中Trigger的实现，如SimpleTrigger和CronTrigger。SimpleTrigger类似一个简单时钟，你可以定义开始是
-建，结束时间，重复次数，重复周期。CronTrigger类似Linux系统中的cron。CronTrigger的设置可以非常详细，如在每个月最后
-一个周五的上午10:15执行作业。需要注意的是Trigger和Job是具名的，可以被赋值给一个组，在同一组内不能出现同名。你可以对一个组创建一个
-触发器，在该组内的所有Job都将会执行。<br />
-
-	SchedulerFactory 用于获得Scheduler实例，可以用于注册作业和触发器。<br />
-
-	实现一个简单的实例：每十秒钟打印一次欢迎。<br />
-
-	首先实现一个作业：</p>
-<p><pre class="brush: java">public class SimpleJob implements Job {
-	@Override
-	public void execute(JobExecutionContext arg0)
-	throws JobExecutionException {
-		System.out.println(&quot;[JOB] Welcome to Quartz!&quot;);
-	}
-}</pre>
-</p>
-<p>定义一个Scheduler，注册触发器和作业:</p>
-<p><pre class="brush: java">public class SimpleSchedule {
-	public static void main(String[] args) {
-		SchedulerFactory factory=new StdSchedulerFactory();
-		try {
-			Scheduler scheduler = factory.getScheduler();
-			scheduler.start();
-										            
-			JobDetail jobDetail = new JobDetail(&quot;SimpleJob&quot;,null, SimpleJob.class);
-			Trigger simplerTrigger = TriggerUtils.makeSecondlyTrigger(10);
-			simplerTrigger.setName(&quot;SimpleTrigger&quot;);
-										            
-			scheduler.scheduleJob(jobDetail, simplerTrigger);
-		}catch (SchedulerException e) {
-		    // TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-}</pre>
-</p>
-<p>执行过后，每十秒输出<span class="nobr">[JOB]</span>
-
-Welcome to Quartz!</p>
-<h3>Spring中的Quartz</h3>
-<p>	Spring中的Quartz API位于org.springframework.scheduling.quartz包中。主要类结构包括：</p>
-<ul>
-<li>QuartzJobBean 抽象类</li>
-<li>JobDetailBean</li>
-<li>SimpleTriggerBean</li>
-<li>CronTriggerBean</li>
-<li>SchedulerFactoryBean</li>
-<li>MethodInvokingDetailFactoryBean
-</li>
-</ul>
-<p>
-很明显对应实现Quartz中相应的接口。QuartzJob实现Job，JobDetailBean继承JobDetail。
-SimpleTriggerBean和CronTriggerBean继承自相应的Trigger。
-MethodInvokingJobDetailFactoryBean用于在类中调用任何对象的方法。<br />
-<strong>声明Job
-</strong>
-</p>
-<p>JobDetailBean用于声明作业。可以为其设置作业名，以及需要的数据。</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleJob&quot; class=&quot;org.springframework.scheduling.quartz.JobDetailBean&quot;&gt;
-	&lt;property name=&quot;jobClass&quot; value=&quot;com.alibaba.jiang.learn.quartz.SimpleJob&quot; /&gt;
-	&lt;property name=&quot;jobDataAsMap&quot;&gt;
-		&lt;map&gt;
-			&lt;entry key=&quot;message&quot; value=&quot;Welcome to Quartz&quot; /&gt;
-		&lt;/map&gt;
-	&lt;/property&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>实现Job类：</p>
-<p><pre class="brush: java">public class SimpleJob extends QuartzJobBean {
-	@Override
-	protected void executeInternal(JobExecutionContext ctx) throws JobExecutionException {
-		String message = ctx.getJobDetail().getJobDataMap().getString(&quot;message&quot;);
-		System.out.println(message);
-	}
-}</pre>
-</p>
-<p>还可以通过setter注入的方式注入message。<br />
-声明触发器：</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
-	&lt;property name=&quot;jobDetail&quot; ref=&quot;simpleJob&quot;/&gt;
-	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
-	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>声明调度器,设置Job和Trigger：</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;schedulerFactory&quot; class=&quot;org.springframework.scheduling.quartz.SchedulerFactoryBean&quot;&gt;
-	&lt;property name=&quot;triggers&quot;&gt;
-		&lt;list&gt;
-			&lt;ref bean=&quot;simpleTrigger&quot;/&gt;
-		&lt;/list&gt;
-	&lt;/property&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>所有都设置好后，可以通过加载Context，调度器将自动执行：</p>
-<p><pre class="brush: java">public class SimpleSpringQuartz {
-	public static void main(String[] args) {
-		ApplicationContext ctx = new ClassPathXmlApplicationContext(&quot;beans.xml&quot;);
-	}
-}</pre>
-</p>
-<h4>使用MethodInvokingJobFactoryBean</h4>
-<p>上面的范例使用的是Quartz Job，事实上在Spring中可以使用自定义Pojo Bean，无须继承自QuartzJobBean。<br />
-首先声明一个PojoBean</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;welcomeBean&quot; class=&quot;com.alibaba.jiang.learn.quartz.WelcomeBean&quot;&gt;
-	&lt;property name=&quot;message&quot; value=&quot;Welcome to Quartz Method&quot;/&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>对应的Pojo Bean：</p>
-<p><pre class="brush: java">public class WelcomeBean {
-    private String message;
-	public void setMessage(String message) {
-		this.message = message;
-	}
-	public void welcome(){
-		System.out.println(message);
-	}
-}</pre>
-</p>
-<p>声明MethodInvokingJobDetailFactoryBean:</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;methodInvokingJob&quot; class=&quot;org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean&quot;&gt;
-	&lt;property name=&quot;targetObject&quot; ref=&quot;welcomeBean&quot;/&gt;
-	&lt;property name=&quot;targetMethod&quot; value=&quot;welcome&quot;/&gt;
-&lt;/bean&gt;
-&lt;bean name=&quot;methodTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
-	&lt;property name=&quot;jobDetail&quot; ref=&quot;methodInvokingJob&quot; /&gt;
-	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
-	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
-&lt;/bean&gt;</pre>
-</p>
-<h4>注意</h4>
-<p>一个触发器只能触发一个Job，不过一个Job可以有多个Trigger触发，这回带来并发问题。在Quartz中，如果你不想并发执行一个同一个
-Job，你可以实现StatefulJob，而不是Job。在Spring中如果使用
-MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&quot;属性来实现。</p>
-<h3><a name="在Spring中使用Quartz-尾注"></a>
-尾注</h3>
-<p>在Spring中使用Quartz而不是单独的一个应用的好处包括：</p>
-<ul>
-<li>将所有的任务调度设置放在同一个地方，是任务易于维护。</li>
-<li>只对Job编码，Trigger和Scheduler可以通过配置设置</li>
-<li>可以使用Pojo Java Bean执行job，而无需实现Job接口</li>
-</ul></div>
+  <div class="entry-content"><p>1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包<br />
+3.执行下载的脚本，
+<pre class="brush:shell">$ chmod +x install-memcached.sh
+$ sudo ./install-memchaced.sh</pre>
+4.在环境变量里添加EVENT_NOKQUEUE=1<br />
+5.验证是否成功， $memcached -h，应该产生帮助提示
+<a href="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png"><img class="aligncenter size-full wp-image-35" title="Screen shot 2011-08-03 at 11.12.50 AM" src="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png" alt="" width="607" height="423" /></a>
+6.启动memcached,
+<pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
+参考文档<br />
+http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
+</div>
   
   
 
@@ -296,7 +144,7 @@ MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&qu
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2010/09/06/post/">DBunit入门</a></h1>
+      <h1 class="entry-title"><a href="/blog/2011/08/02/use-mat-analysis-dump-file/">使用MAT进行dump文件分析</a></h1>
     
     
       <p class="meta">
@@ -312,9 +160,523 @@ MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&qu
   
 
 
-<time datetime="2010-09-06T00:00:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2010</time>
+<time datetime="2011-08-02T00:00:00+08:00" pubdate data-updated="true">Aug 2<span>nd</span>, 2011</time>
         
-         | <a href="/blog/2010/09/06/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2011/08/02/use-mat-analysis-dump-file/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/未分类/'>未分类</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><strong>一、简介</strong></p>
+
+<p><strong> </strong>一个实际的应用系统难免会出现问题。JVM能够实时的记录系统发生问题时JVM内部的运行状态，并将起存储在堆转储（Heap dump）文件中，dump文件为系统分析提供了重要依据。但是原始dump文件纯文本方式，难于理解，为了降低dump文件分析的复杂度，MAT（Eclipse Memory Analyzer）应运而生。MAT时公认的、强大的、“傻瓜式”堆转储文件分析工具。详细介绍见<a href="http://www.eclipse.org/mat/">http://www.eclipse.org/mat/</a></p>
+
+<p><strong>二、获取MAT</strong></p>
+
+<p>MAT现在提供两种安装方式，Eclipse IDE插件（集成版）和Eclipse RCP（单机版）。</p>
+
+<p>本文采用的时Eclipse RCP版本，可到<a href="http://www.eclipse.org/mat/downloads.php">http://www.eclipse.org/mat/downloads.php</a>下载。解压运行后如图所示</p>
+
+<p><a href="/images/uploads/2011/07/界面.png"><img class="alignnone size-large wp-image-21" title="界面" src="/images/uploads/2011/07/界面-1024x673.png" alt="" width="640" height="420" /></a></p>
+
+<p>&nbsp;</p>
+
+<p><strong>三、获取dump文件</strong></p>
+
+<p>可用通过多种方式获得dump文件，主要分为交互式和基于事件的方式。</p>
+
+<p><strong> 1.交互式</strong></p>
+
+<p>1）、使用Ctrl+Break：如果在JVM运行时参数上加入
+<p style="text-align: center;">-Xrunhprof:format=b,file=heapdump.hprof</p>
+参数。当java进程收到SIGQUIT信号（kill -3）时会生成一个HPROF格式的dump文件。</p>
+
+<p>2）、使用jmap工具：jmap是jdk自带的实用工具，在java6可以通过如下命令获得一个运行中java进程的dump文件
+<p style="text-align: center;">jmap -dump:format=b,file=<em>filename pid</em></p>
+<strong> 2.基于事件的方法</strong></p>
+
+<p>通常在生产环境中当出现问题时再去用交互式的方式获取dump文件为时已晚。因此实际的生产环境多用基于事件的方法。JVM支持在发生OutOfMemoryError时进行自动的堆转储，生成dump文件。需要在应用JVM启动参数中加入如下参数：
+<p style="text-align: center;">-XX:+HeapDumpOnOutOfMemoryError</p>
+<strong>四、文件分析</strong></p>
+
+<p>在MAT钟打开获取的转储文件，文件夹在完成后自动生成分析报告，如图所示</p>
+
+<p><a href="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.47-PM.png"><img class="alignnone size-large wp-image-29" title="文件分析" src="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.47-PM-1024x640.png" alt="" width="640" height="400" /></a></p>
+
+<p>主工作区展示文件分析的概况，可以看到主要的类占用（Biggest Objects）和可选的一些操作，Action，Reports等。</p>
+
+<p><a href="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.56-PM.png"><img class="alignnone size-full wp-image-30" title="action" src="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.56-PM.png" alt="" width="917" height="193" /></a></p>
+
+<p>左侧的Inspector区可以查看各个类的域信息，如图显示的是一个com.ibatis.sqlmap.engine.impl.SqlMapExecutorDelegate类实例的信息，包括其各个域的值。</p>
+
+<p><strong>五、一个OutOfMemoryError小例子</strong></p>
+
+<p><strong> 1.写一个明显会OutOfMemoryError小程序</strong></p>
+
+<p>&nbsp;</p>
+
+<p>import java.util.Date;</p>
+
+<p>import java.util.List;</p>
+
+<p>import java.util.ArrayList;</p>
+
+<p>public class Test{</p>
+
+<p>public static void main(String[] args){</p>
+
+<p>List&lt;Date&gt; list = new ArrayList&lt;Date&gt;();</p>
+
+<p>while(true){</p>
+
+<p>Date date = new Date();</p>
+
+<p>list.add(date);</p>
+
+<p>date=null;</p>
+
+<p>}</p>
+
+<p>&nbsp;</p>
+
+<p>}</p>
+
+<p>}</p>
+
+<p><strong> 2.设置启动参数</strong>
+<p style="text-align: center;">$ java -XX:+HeapDumpOnOutOfMemoryError Test</p>
+<strong> 3.如其获得异常</strong></p>
+
+<p><a href="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.29.07-PM.png"><img class="alignnone size-full wp-image-31" title="Screen shot 2011-07-29 at 3.29.07 PM" src="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.29.07-PM.png" alt="" width="534" height="130" /></a></p>
+
+<p>生成的dump文件为java_pid4931.hprof</p>
+
+<p><strong> 4.使用MAT导入dump文件</strong></p>
+
+<p><a href="/images/uploads/2011/08/dump文件.png"><img class="aligncenter size-full wp-image-32" title="dump文件" src="/images/uploads/2011/08/dump文件.png" alt="" width="1356" height="858" /></a></p>
+
+<p>从分析报告中可以明显看出有一个类Thread占用了99%的内存，该类由java.lang.ClassLoader加载。</p>
+
+<p>通过查看Leak Suspects报告可以看到更清晰的内存泄漏情况</p>
+
+<p><a href="/images/uploads/2011/07/Leak-Suspects.png"><img class="aligncenter size-large wp-image-24" title="Leak Suspects" src="/images/uploads/2011/07/Leak-Suspects-1024x647.png" alt="" width="640" height="404" /></a></p>
+
+<p>点击detail，可以查看详细信息</p>
+
+<p><a href="/images/uploads/2011/07/详细信息.png"><img class="aligncenter size-large wp-image-23" title="详细信息" src="/images/uploads/2011/07/详细信息-1024x636.png" alt="" width="640" height="397" /></a> 跟集合到内存消耗点的最短路径</p>
+
+<p><a href="/images/uploads/2011/07/最短路径.png"><img class="aligncenter size-full wp-image-22" title="最短路径" src="/images/uploads/2011/07/最短路径.png" alt="" width="593" height="195" /></a></p>
+
+<p>内存消耗的对象</p>
+
+<p><a href="/images/uploads/2011/07/内存消耗对象.png"><img class="aligncenter size-full wp-image-26" title="内存消耗对象" src="/images/uploads/2011/07/内存消耗对象.png" alt="" width="553" height="373" /></a></p>
+
+<p>此时应该就可以分析出大概情况了，内存溢出主要是因为还有大量的Date对象。进而查看下线程栈</p>
+
+<p><a href="/images/uploads/2011/07/Thread.png"><img class="aligncenter size-full wp-image-25" title="Thread" src="/images/uploads/2011/07/Thread.png" alt="" width="852" height="171" /></a></p>
+
+<p>也就基本能定位问题的所在了。问题代码就是：</p>
+
+<p>while(true){</p>
+
+<p>Date date = new Date();</p>
+
+<p>list.add(date);</p>
+
+<p>date=null;</p>
+
+<p>}</p>
+
+<p><strong>六、总结</strong></p>
+
+<p>MAT是一个功能强大的内存分析工具，目前介绍的只是很基本的一些功能，更多信息请参考</p>
+
+<p><a href="http://memoryanalyzer.blogspot.com">http://memoryanalyzer.blogspot.com</a>/</p>
+
+<p><a href="http://www.ibm.com/developerworks/cn/java/j-memoryanalyzer/index.html?ca=drs-">http://www.ibm.com/developerworks/cn/java/j-memoryanalyzer/index.html?ca=drs-</a></p>
+
+<p><a href="http://www.vogella.de/articles/EclipseMemoryAnalyser/article.html">http://www.vogella.de/articles/EclipseMemoryAnalyser/article.html</a></p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/03/15/post/">Mac OSX安装Git</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-15T00:00:00+08:00" pubdate data-updated="true">Mar 15<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/03/15/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/mac/'>Mac</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><strong>一、安装Git</strong></p>
+<p class="p2"><span class="s1">由于mac git的地址<a href="http://code.google.com/p/git-osx-installer/"><span class="s2">http://code.google.com/p/git-osx-installer/</span></a>被墙，被迫使用源码安装，源码可以从<a href="http://kernel.org/pub/software/scm/git/"><span class="s2">http://kernel.org/pub/software/scm/git/</span></a></span><span class="s3">下载，编译源码需要先安装xcode，参考<a href="http://developer.apple.com/"><span class="s4">http://developer.apple.com</span></a>。</span></p>
+<p class="p3">编译安装</p>
+<p class="p3">1.解压</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;tar xjvf git-1.7.4.1.tar.tar.bz2</p>
+<p class="p3">2. 编译</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;cd git-1.7.4.1</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;./configure &#8211;prefix=/usr/local</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;make</p>
+<p class="p3">3.安装</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;sudo make install</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">Ok 了，which git试一下～</p>
+<p class="p5"><strong>二、设置SSH</strong></p>
+<p class="p3">github使用SSH链接，需要设置SSH</p>
+<p class="p3">1.检查SSH key</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; cd ~/.ssh</p>
+<p class="p3">2.备份已有的key，（如果有的话）</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mkdir key_backup</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mv id_rsa* key_backup</p>
+<p class="p3">3.生成SSH key</p>
+<p class="p3">$ ssh-keygen -t rsa -C <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">Generating public/private rsa key pair.</p>
+<p class="p3">Enter file in which to save the key (/Users/jiangbo/.ssh/id_rsa):&nbsp;</p>
+<p class="p3">Enter passphrase (empty for no passphrase):</p>
+<p class="p3">Enter same passphrase again:</p>
+<p class="p3">Your identification has been saved in yes.</p>
+<p class="p3">Your public key has been saved in id_rsa.pub.</p>
+<p class="p3">The key fingerprint is:</p>
+<p class="p3">fb:c4:b0:e0:47:fd:be:e0:fb:ea:73:ef:a8:29:d5:22 <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">The key&#8217;s randomart image is:</p>
+<p class="p3">+&#8211;[ RSA 2048]&#8212;-+</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . S ..&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp; . oE=o..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . +o+..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ..+.+..&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; oOB=+o&nbsp; |</p>
+<p class="p3">+&#8212;&#8212;&#8212;&#8212;&#8212;&#8211;+</p>
+<p class="p3">4.将SSH key添加到GitHub</p>
+<p class="p3">登录到GitHub页面，Account Settings-&gt;SSH Public Keys-&gt;Add another key</p>
+<p class="p3">将生成的key(id_rsa.pub文件）内容copy到输入框中，save。</p>
+<p class="p4"><img src="http://hi.csdn.net/attachment/201103/15/0_1300170843sWhI.gif" alt="" /></p>
+<p class="p3">5.测试链接</p>
+<p class="p6"><span class="s3">$ ssh <a href="mailto:git@github.com"><span class="s5">git@github.com</span></a></span></p>
+<p class="p3">The authenticity of host &#8217;<a href="http://github.com/"><span class="s5">github.com</span></a> (207.97.227.239)&#8217; can&#8217;t be established.</p>
+<p class="p3">RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.</p>
+<p class="p3">Are you sure you want to continue connecting (yes/no)? yes</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">PTY allocation request failed on channel 0</p>
+<p class="p3">Hi jiang-bo! You&#8217;ve successfully authenticated, but GitHub does not provide shell access.</p>
+<p class="p3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connection to <a href="http://github.com/"><span class="s5">github.com</span></a> closed.</p>
+<p class="p3">别担心，这是正常情况。</p>
+<p class="p5"><strong>三、设置个人信息</strong></p>
+<p class="p3">$ git config &#8211;global <a href="http://user.name/"><span class="s5">user.name</span></a> &#8220;Bo Jiang&#8221;</p>
+<p class="p3">$ git config &#8211;global user.email &#8220;jiang.bo.hit@gmail.com&#8221;</p>
+<p class="p3">&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/03/10/post/">Java基础（1）－泛型</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-10T00:00:00+08:00" pubdate data-updated="true">Mar 10<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/03/10/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/基础巩固/'>基础巩固</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>&nbsp;</p>
+<h2>一、Basic FAQ：</h2>
+<p><strong>1. What are Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics ara language feature that allows for definition and use of generic types and methods.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型指的是一种允许定义通用类型和方法的语言特性。</em></p>
+<p><strong>2. What is the primary purpose of Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初的目的是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics are invented primarily for implementation of generic collection.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初是为了实现通用集合类设计的。</em></p>
+<p><strong>3.What is the benefit of using Java generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>使用Java泛型的好处？？？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Early error detection at compile time.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>能够在编译期检查类型错误。</em></p>
+<p><strong>4.What does type-safe mean?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>什么叫做类型安全</em>？</p>
+<p>&nbsp;&nbsp; &nbsp; In Java, a program is considered type-safe if it compiles without errors and warnings and does not raise any unexpected ClassCastException at runtime.</p>
+<p><em>&nbsp;&nbsp; &nbsp; 在Java里，类型安全指的是：如果一个程序编译期未发现Error或Warning，那么在运行时就不会报ClassCastException。</em></p>
+<p>&nbsp;</p>
+<h2>奇怪的特性</h2>
+<p>&nbsp;&nbsp; &nbsp; 泛型有些特性，令人困扰，如下：</p>
+<p>&nbsp;</p>
+<ol>
+<li>&nbsp;&nbsp; 子类型的泛型不能赋值给父类型的泛型，即泛型不可协变。</li>
+<li>&nbsp;&nbsp; 泛型类并没有自己独有的Class类对象。比如并不存在List&lt;String&gt;.class或是List&lt;Integer&gt;.class，而只有List.class。</li>
+<li>&nbsp;&nbsp; 静态变量是被泛型类的所有实例所共享的。对于声明为MyClass&lt;T&gt;的类，访问其中的静态变量的方法仍然是 MyClass.myStaticVar。不管是通过new MyClass&lt;String&gt;还是new MyClass&lt;Integer&gt;创建的对象，都是共享一个静态变量。</li>
+<li>&nbsp;&nbsp; 泛型的类型参数不能用在Java异常处理的catch语句中。因为异常处理是由JVM在运行时刻来进行的。由于类型信息被擦除，JVM是无法区分两个异常类型MyException&lt;String&gt;和MyException&lt;Integer&gt;的。对于JVM来说，它们都是 MyException类型的。也就无法执行与异常对应的catch语句。</li>
+</ol>
+<p>&nbsp;</p>
+<h2>协变（convariant）</h2>
+<p>&nbsp;&nbsp; &nbsp; Within the type system of a programming language, covariance and contravariance refers to the ordering of types from narrower to wider and their interchangeability or equivalence in certain situations (such as parameters, generics, and return types). &nbsp; &nbsp; &mdash;&mdash;Wikipedia（偶不会翻译*A*）</p>
+<p>&nbsp;&nbsp; &nbsp; 简单来说，可协变表示子类型的引用可以赋值给父类性，不可协变则表示子类型引用不能赋值给父类型。以数组和泛型为例：</p>
+<p>&nbsp;&nbsp; &nbsp; 数组是可协变的，因为Number[] a = new Integer[]()；是成立的。</p>
+<p>&nbsp;&nbsp; &nbsp; 泛型是不可协变的，因为List&lt;Number&gt; ln = new ArrayList&lt;Integer&gt;()；编译会出错。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp; 由于数组是可协变的，而泛型不可协变，导致数组能够协变而泛型不能协变的另一个后果是，不能实例化泛型类型的数组（new List&lt;String&gt;[3]是不合法的），除非类型参数是一个未绑定的通配符（new List&lt;?&gt;[3]是合法的）。</p>
+<p>&nbsp;&nbsp; &nbsp;可是，为什么泛型不能协变呢？&mdash;&mdash;因为这样会破坏类型安全</p>
+<p>&nbsp;&nbsp; &nbsp; 假设可以协变，那么</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Integer&gt; li = new ArrayList&lt;Integer&gt;();</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Number&gt; ln = li;</p>
+<p>&nbsp;&nbsp; &nbsp; ln.add(new Float(3.14));</p>
+<p>&nbsp;&nbsp; &nbsp; 发生了什么？本来是放Integer的List里面加入了Float！。</p>
+<p>&nbsp;</p>
+<h2>类型擦除</h2>
+<p>&nbsp;&nbsp; &nbsp; &nbsp;Java中的泛型基本上都是在编译器这个层次来实现的。在生成的Java字节代码中是不包含泛型中的类型信息的。使用泛型的时候加上的类型参数，会被编译器在编译的时候去掉。这个过程就称为类型擦除。如在代码中定义的List&lt;Object&gt;和List&lt;String&gt;等类型，在编译之后都会变成List。JVM看到的只是List，而由泛型附加的类型信息对JVM来说是不可见的。Java编译器会在编译时尽可能的发现可能出错的地方，但是仍然无法避免在运行时刻出现类型转换异常的情况。</p>
+<h3>编译器如何处理泛型？</h3>
+<p>&nbsp;&nbsp; &nbsp; 通常情况下，一个编译器处理泛型有两种方式：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.Code specialization。在实例化一个泛型类或泛型方法时都产生一份新的目标代码（字节码or二进制代码）。例如，针对一个泛型list，可能需要针对string，integer，float产生三份目标代码。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.Code sharing。对每个泛型类只生成唯一的一份目标代码；该泛型类的所有实例都映射到这份目标代码上，在需要的时候执行类型检查和类型转换。</p>
+<p>&nbsp;&nbsp; &nbsp; C++中的模板（template）是典型的Code specialization实现。C++编译器会为每一个泛型类实例生成一份执行代码。执行代码中integer list和string list是两种不同的类型。这样会导致代码膨胀（code bloat），不过有经验的C＋＋程序员可以有技巧的避免代码膨胀。</p>
+<p>&nbsp;&nbsp; &nbsp; Code specialization另外一个弊端是在引用类型系统中，浪费空间，因为引用类型集合中元素本质上都是一个指针。没必要为每个类型都产生一份执行代码。而这也是Java编译器中采用Code sharing方式处理泛型的主要原因。</p>
+<p>&nbsp;&nbsp; &nbsp; Java编译器通过Code sharing方式为每个泛型类型创建唯一的字节码表示，并且将该泛型类型的实例都映射到这个唯一的字节码表示上。将多种泛型类形实例映射到唯一的字节码表示是通过类型擦除（type erasue）实现的。</p>
+<h3>什么是类型擦除？</h3>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除指的是通过类型参数合并，将泛型类型实例关联到同一份字节码上。编译器只为泛型类型生成一份字节码，并将其实例关联到这份字节码上。类型擦除的关键在于从泛型类型中清除类型参数的相关信息，并且再必要的时候添加类型检查和类型转换的方法。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除可以简单的理解为将泛型java代码转换为普通java代码，只不过编译器更直接点，将泛型java代码直接转换成普通java字节码。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除的主要过程如下：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.将所有的泛型参数用其最左边界（最顶级的父类型）类型替换。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.移除所有的类型参数。</p>
+<p>&nbsp;&nbsp; &nbsp; 如</p>
+<p><pre class="brush: java">interface Comparable &lt;A&gt; { 
+  public int compareTo( A that); 
+} 
+final class NumericValue implements Comparable &lt;NumericValue&gt; { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }    
+  public  byte getValue() { return value; }    
+  public  int compareTo( NumericValue t hat) { return this.value - that.value; } 
+} 
+－－－－－－－－－－－－－－－－－
+class Collections {  
+  public static &lt;A extends Comparable&lt;A&gt;&gt;A max(Collection &lt;A&gt; xs) { 
+    Iterator &lt;A&gt; xi = xs.iterator(); 
+    A w = xi.next(); 
+    while (xi.hasNext()) { 
+      A x = xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList &lt;NumericValue&gt; numberList = new LinkedList &lt;NumericValue&gt; (); 
+    numberList .add(new NumericValue((byte)0));  
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>经过类型擦除后的类型为</p>
+<p><pre class="brush: java">     interface Comparable { 
+  public int compareTo( Object that); 
+} 
+final class NumericValue implements Comparable { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }  
+  public  byte getValue() { return value; }  
+  public  int compareTo( NumericValue t hat)   { return this.value - that.value; } 
+  public  int compareTo(Object that) { return this.compareTo((NumericValue)that);  } } 
+－－－－－－－－－－－－－
+class Collections {  
+  public static Comparable max(Collection xs) { 
+    Iterator xi = xs.iterator(); 
+    Comparable w = (Comparable) xi.next(); 
+    while (xi.hasNext()) { 
+      Comparable x = (Comparable) xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList numberList = new LinkedList(); 
+    numberList .add(new NumericValue((byte)0));  ，
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = (NumericValue) Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>&nbsp;</p>
+<p>第一个泛型类Comparable &lt;A&gt;擦除后 A被替换为最左边界Object。Comparable&lt;NumericValue&gt;的类型参数NumericValue被擦除掉，但是这直接导致NumericValue没有实现接口Comparable的compareTo(Object that)方法，于是编译器充当好人，添加了一个桥接方法。</p>
+<p>第二个示例中限定了类型参数的边界&lt;A extends Comparable&lt;A&gt;&gt;A，A必须为Comparable&lt;A&gt;的子类，按照类型擦除的过程，先讲所有的类型参数ti换为最左边界Comparable&lt;A&gt;，然后去掉参数类型A，得到最终的擦除后结果。</p>
+<h3>类型擦除带来的问题</h3>
+<p>&nbsp;&nbsp; &nbsp; 正是由于类型擦除的隐蔽存在，直接导致了众多的泛型灵异问题。</p>
+<p><strong>Q1.用同一泛型类的实例区分方法签名？&mdash;&mdash;NO！</strong></p>
+<p>{code}</p>
+<p>import java.util.*;</p>
+<p>&nbsp;</p>
+<p>public class Erasure{</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;String&gt; ls){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Sting&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;Integer&gt; li){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Integer&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>}</p>
+<p>{code}</p>
+<p>编译该类，</p>
+<p><img src="http://hi.csdn.net/attachment/201103/10/0_12997506095504.gif" alt="" /></p>
+<p>what the f**k! 参数类型明明不一样啊，一个List&lt;String&gt;，一个是List&lt;Integer&gt;，但是，偷偷的说，type erasure之后，它就都是List了⋯⋯</p>
+<p><strong>Q2. 同时catch同一个泛型异常类的多个实例？&mdash;&mdash;NO！</strong></p>
+<p>同理，如果定义了一个泛型一场类GenericException&lt;T&gt;，千万别同时catch GenericException&lt;Integer&gt; 和GenericException&lt;String&gt;，因为他们是一样一样滴⋯⋯</p>
+<p><strong>Q3.泛型类的静态变量是共享的？&mdash;&mdash;Yes！</strong></p>
+<p>猜猜这段代码的输出是什么？</p>
+<p><pre class="brush: java">import java.util.*;
+public class StaticTest{
+    public static void main(String[] args){
+        GT&lt;Integer&gt; gti = new GT&lt;Integer&gt;();
+        gti.var=1;
+        GT&lt;String&gt; gts = new GT&lt;String&gt;();
+        gts.var=2;
+        System.out.println(gti.var);
+    }
+}
+class GT&lt;T&gt;{
+    public static int var=0;
+    public void nothing(T x){}
+}</pre>&nbsp;</p>
+<p>答案是&mdash;&mdash;2！</p>
+<p>&nbsp;</p>
+<h3>Just remember：</h3>
+<p>1.虚拟机中没有泛型，只有普通类和普通方法</p>
+<p>2.所有泛型类的类型参数在编译时都会被擦除</p>
+<p>3.创建泛型对象时请指明类型，让编译器尽早的做参数检查（Effective Java，第23条：请不要在新代码中使用原生态类型）</p>
+<p>4.不要忽略编译器的警告信息，那意味着潜在的ClassCastException等着你。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<h2>参考文档</h2>
+<p>《Java深度历险－泛型》http://www.infoq.com/cn/articles/cf-java-generics</p>
+<p>《Java Generics FAQ》http://www.angelikalanger.com/GenericsFAQ/JavaGenericsFAQ.html</p>
+<p>《Java Gotchas》http://www.ibm.com/developerworks/java/library/j-jtp01255.html</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/02/27/post/">使用memcached进行并发控制</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-02-27T00:00:00+08:00" pubdate data-updated="true">Feb 27<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/02/27/post/#disqus_thread">Comments</a>
         
         
           | 
@@ -332,529 +694,49 @@ MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&qu
   </header>
 
 
-  <div class="entry-content"><p>&nbsp;</p>
-<h3></h3>
-<h3><a name="createtest">使用DBTestCase子类设置数据库</a></h3>
-<p><a name="createtest"></a> <a name="createdataset"></a></p>
-<h4><a name="createdataset">第1步：创建你的数据集文件</a></h4>
-<p><a name="createdataset"> </a></p>
-<p>你的测试需要一些数据来辅助。也就是说你必须创建一个数据集。在大多数情况下你会使用XML数据集。你可以手动从头创建一个<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">flat XML数据集</a>或从你的数据库中<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">导出</a>一些数据。</p>
-<h4>第2步：扩展类的DBTestCase</h4>
-<p>现在您需要创建一个测试类。最简单的使用DBUnit的方法是是你的测试类继承DBTestCase。DBTestCase扩展了JUnit TestCase类。一个getDataSet()模板方法必须被实现，该方法返回步骤1中创建的数据集。<a class="code">DBTestCase依赖IDatabaseTester来完成工作，默认配置使用PropertiesBasedJdbcDatabaseTester，它通过系统属性来定位DriverManager的配置。</a><a class="code">最简单的配置方法是通过测试类的构造函数来配置。</a><a class="code">你可以通过使用你自己的或其他3个系统提供的IDatabaseTester实现重载getDatabaseTester()来改变该行为。</a></p>
-<p>你还可以使用如下所述其他的DBTestCase子类：</p>
-<table class="bodyTable" border="0">
-<tbody>
-<tr class="a">
-<td><a class="code">JdbcBasedDBTestCase</a></td>
-<td>使用一个DriverManager创建连接（在JdbcDatabaseTester的辅助之下）。</td>
-</tr>
-<tr class="b">
-<td><a class="code">DataSourceBasedDBTestCase</a></td>
-<td>使用javax.sql.DataSource创建连接（在DataSourceDatabaseTester的辅助之下）。</td>
-</tr>
-<tr class="a">
-<td><a class="code">JndiBasedDBTestCase</a></td>
-<td>使用javax.sql.DataSource通过JNDI定位（在JndiDatabaseTester的辅助之下）。</td>
-</tr>
-</tbody>
-</table>
+  <div class="entry-content"><p><strong><span style="font-family: mceinline;">引子</span></strong></p>
+<p>
+</p><p class="p2">一个使用缓存进行并发控制的讨论，让我学习到成本与收益间的平衡，以及何为真正的可用性&#8230;&#8230;</p>
+<p class="p2">防止并发有多种方式，本文只涉及使用缓存memcached控制。</p>
+<p class="p1" style="font-weight: bold;"><span style="font-family: mceinline;"><strong>并发场景</strong><span class="s1"><strong>：</strong></span></span></p>
+<p class="p2"><strong>&nbsp;&nbsp; </strong>&nbsp; 用例：SNS系统中具有高级会员资格的人发起活动。</p>
+<p class="p2">&nbsp;&nbsp; &nbsp; 业务规则：1.一个人同时只能创建一个活动。2.具有高级会员资格。</p>
+<p class="p2">&nbsp;&nbsp; &nbsp; 基本流程如下：</p>
+<p style="font-weight: bold;">&nbsp;</p>
+<p class="p1" style="font-weight: bold;">&nbsp;</p>
+
 <p>&nbsp;</p>
-<p>以下是一个示例实现，返回一个Hypersonic数据库连接和一个XML数据集：</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    public SampleTest(String name)
-    {
-        super( name );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_DRIVER_CLASS, "org.hsqldb.jdbcDriver" );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_CONNECTION_URL, "jdbc:hsqldb:sample" );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_USERNAME, "sa" );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_PASSWORD, "" );
-	// System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_SCHEMA, "" );
-    }
-
-    protected IDataSet getDataSet() throws Exception
-    {
-        return new FlatXmlDataSetBuilder().build(new FileInputStream("dataset.xml"));
-    }
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>第3步：（可选）实现getSetUpOperation（）和getTearDownOperation（）方法</h4>
-<p>默认情况下，DBUnit的执行每个测试之前回进行<a href="http://www.dbunit.org/components.html#cleanInsert">CLEAN_INSERT</a>操作并且在之后没有清除操作。你可以通过重载getSetUpOperation（）和getTearDownOperation（）来改变这一行为。</p>
-<p>下面的示例展现了你可以很简单的重载测试前后的操作</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    ...
-    protected DatabaseOperation getSetUpOperation() throws Exception
-    {
-        return DatabaseOperation.REFRESH;
-    }
-
-    protected DatabaseOperation getTearDownOperation() throws Exception
-    {
-        return DatabaseOperation.NONE;
-    }
-    ...
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>第4步：（可选）重载方法setUpDatabaseConfig(DatabaseConfig congfig)</h4>
-<p>使用如下方法来改变DBUnit的DatabaseConfi中g某些配置设置。</p>
-<p>下面的示例演示如何你可以轻松地重写此方法：</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    ...
-    /**
-     * Override method to set custom properties/features
-     */
-    protected void setUpDatabaseConfig(DatabaseConfig config) {
-        config.setProperty(DatabaseConfig.PROPERTY_BATCH_SIZE, new Integer(97));
-        config.setFeature(DatabaseConfig.FEATURE_BATCHED_STATEMENTS, true);
-    }
-    ...
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>第5步：实现你的testXXX（）方法</h4>
-<p>像正常使用JUnit一样实现你的测试方法。现在你的数据库将按照你之前几步所做设置那样在每个测试方法之前进行初始化并在之后进行清除操作。</p>
-<p> <a name="noextend"></a></p>
-<h3><a name="noextend">用你自己的TestCase子类来是设置数据库</a></h3>
-<p><a name="noextend"></a></p>
-<p>使用Dbunit并不严格要求继承DBTestCase。你可以重写标准的JUnit的setUp()方法并在数据库上执行所需的操作。如果您需要执行清理还可以做一些类似tearDwon()的操作。</p>
-<p>例如：</p>
-<div class="source">
-<pre><pre class="brush: c-sharp">public class SampleTest extends TestCase
-{
-    public SampleTest(String name)
-    {
-        super(name);
-    }
-
-    protected void setUp() throws Exception
-    {
-        super.setUp();
-
-        // initialize your database connection here
-        IDatabaseConnection connection = null;
-        // ...
-
-        // initialize your dataset here
-        IDataSet dataSet = null;
-        // ...
-
-        try1
-        {
-            DatabaseOperation.CLEAN_INSERT.execute(connection, dataSet);
-        }
-        finally
-        {
-            connection.close();
-        }
-    }
-    ...
-}
-</pre> 
-
-
-</pre>
-</div>
-<p>&nbsp;</p>
-<p>自2.2版你可以使用新的IDatabaseTester来完成相同的壮举。如前所述，DBTestCase使用IDatabaseTester在内部进行工作，你的测试类也可以使用此方法来操纵数据集。目前有4个已有的实现：<br />
-<table class="bodyTable" border="0">
-<tbody>
-<tr class="b">
-<td><a class="code">JdbcDatabaseTester</a></td>
-<td>使用一个DriverManager来创建连接。</td>
-</tr>
-<tr class="a">
-<td><a class="code">PropertiesBasedJdbcDatabaseTester</a></td>
-<td>同样使用DriverManager，但配置是采取从系统性能。<br />DBTestCase的默认实现。</td>
-</tr>
-<tr class="b">
-<td><a class="code">DataSourceDatabaseTester</a></td>
-<td>使用javax.sql.DataSource创建连接。</td>
-</tr>
-<tr class="a">
-<td><a class="code">JndiDatabaseTester</a></td>
-<td>使用javax.sql.DataSource通过JNDI定位的。</td>
-</tr>
-</tbody>
-</table>
-<br />你也可以自己实现IDatabaseTester接口。建议以AbstractDatabaseTester作为出发点。</p>
-<p>示例：</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends TestCase
-{
-    private IDatabaseTester databaseTester;
-
-    public SampleTest(String name)
-    {
-        super(name);
-    }
-
-    protected void setUp() throws Exception
-    {
-        databaseTester = new JdbcDatabaseTester("org.hsqldb.jdbcDriver",
-            "jdbc:hsqldb:sample", "sa", "");
-
-        // initialize your dataset here
-        IDataSet dataSet = null;
-        // ...
-
-        databaseTester.setDataSet( dataSet );
-	// will call default setUpOperation
-        databaseTester.onSetUp();
-    }
-
-    protected void tearDown() throws Exception
-    {
-	// will call default tearDownOperation
-        databaseTester.onTearDown();
-    }
-    ...
-}
-</pre> 
-
-
-
-</pre>
-</div>
-<p>&nbsp;</p>
-<p> <a name="assertdata"></a></p>
-<h3><a name="assertdata">数据库数据检查</a></h3>
-<p><a name="assertdata"></a></p>
-<p>DBUnit支持校验两个表或者数据集中包含的数据是否相同。以下两种方法可以用来验证在测试用例执行期间你的数据库是否包含预期的数据。</p>
-<div class="source">
-<pre><pre class="brush: java">public class Assertion
-{
-    public static void assertEquals(ITable expected, ITable actual)
-    public static void assertEquals(IDataSet expected, IDataSet actual)
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>示例</h4>
-<p>下面的示例，说明如何对数据库表的快照和XML数据表进行比较</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    public SampleTest(String name)
-    {
-        super(name);
-    }
-
-    // Implements required setup methods here
-    ...
-
-    public void testMe() throws Exception
-    {
-        // Execute the tested code that modify the database here
-        ...
-
-
-        // Fetch database data after executing your code
-        IDataSet databaseDataSet = getConnection().createDataSet();
-        ITable actualTable = databaseDataSet.getTable("TABLE_NAME");
-
-        // Load expected data from an XML dataset
-        IDataSet expectedDataSet = new FlatXmlDataSetBuilder().build(new File("expectedDataSet.xml"));
-        ITable expectedTable = expectedDataSet.getTable("TABLE_NAME");
-
-        // Assert actual database table match expected table
-        Assertion.assertEquals(expectedTable, actualTable);
-    }
-}
-</pre> 
-
-
-
-</pre>
-</div>
-<p>&nbsp;</p>
-<p>实际数据集是一个你要与预期的数据集进行比较的数据库快照。正如其名称表明，预期数据集包含的期望数据值。</p>
-<p>预期的数据集必须与你用来设置你的数据库的数据集不同。因此，你需要两个数据集，一在测试之前设置数据库，另一个是在测试过程中提供预期的数据。</p>
-<p> <a name="assertquery"></a></p>
-<h4><a name="assertquery">使用查询获取数据库快照</a></h4>
-<p><a name="assertquery"> </a></p>
-<p>你也可以验证一个查询的结果是否与预期的数据集相等。查询可以用来查询单个表的一个子集或多个表的级联查询。</p>
-<div class="source">
-<pre>ITable actualJoinData = getConnection().createQueryTable("RESULT_NAME",
-                "SELECT * FROM TABLE1, TABLE2 WHERE ..."); ;</pre>
-</div>
-<p>&nbsp;</p>
-<p> <a name="compareignorecolumns"></a></p>
-<h4><a name="compareignorecolumns">在比较中忽略一些列</a></h4>
-<p><a name="compareignorecolumns"> </a></p>
-<p>有时需要忽略一些列来进行比较;特别是主键，日期或时间值等根据测试代码生成的字段。一个解决方法是在期望的数据表中声明不需要的字段。然后，您可以筛选实际的数据库表只暴露预期的字段。<br />下面的代码片断显示了如何筛选实际的数据表。为了能够运行，实际的表必须至少包含所有预期表中的字段列。实际表中可以包含期望表中没有的额外字段。</p>
-<div class="source">
-<pre>        
-<pre class="brush: java">ITable filteredTable = DefaultColumnFilter.includedColumnsTable(actual, 
-            expected.getTableMetaData().getColumns());
-    Assertion.assertEquals(expected, filteredTable); </pre> </pre>
-</div>
-<p>&nbsp;</p>
-<p>该技术的一个主要限制是你不能使用你的预期持平的XML数据集的DTD。有了你需要过滤的DTD列从预期的和实际的表。参见常见问题解答有关<a href="http://www.dbunit.org/faq.html#columnfilter">在运行时不包括一些表列</a> 。</p>
-<p> <a name="roworder"></a></p>
-<h4><a name="roworder">排序</a></h4>
-<p><a name="roworder"> </a></p>
-<p>默认情况下，DBUnit是按照主键排序来对获取数据库表的快照的。如果表没有主键或主键是数据库自动生成的，行的顺序是无法预测的，此时<code>assertEquals</code>将失败。</p>
-<p>必须通过使用ORDER BY条件手动设置IDatabaseConnection.createQueryTable来获取排序的数据库表快照或者可以使用<code>SortedTable</code>装饰类：</p>
-<div class="source">
-<pre>Assertion.assertEquals(new SortedTable(expected),
-                new SortedTable(actual, expected.getTableMetaData()));      </pre>
-</div>
-<p>请注意，默认情况下SortedTable使用每一列的字符串值来排序因此，如果排序的是数字类型，排列顺序应该是如<em>1，10，11，12，2，3，4。</em>如果您想使用列的数据类型进行排序，如<em>1，2，3，4，10，12），</em>，可以如下操作：</p>
-<div class="source">
-<pre><pre class="brush: c-sharp">SortedTable sortedTable1 = new SortedTable(table1, new String[]{"COLUMN1"});
-          sortedTable1.setUseComparable(true); // must be invoked immediately after the constructor
-          SortedTable sortedTable2 = new SortedTable(table2, new String[]{"COLUMN1"});
-          sortedTable2.setUseComparable(true); // must be invoked immediately after the constructor
-          Assertion.assertEquals(sortedTable1, sortedTable2);</pre> 
-      </pre>
-</div>
-<p>参数目前不放在构造方法中原因是这样会使SortedTable的构造方法由4个变为8个，太多了。<em>未来还需不断探索如何能更好地实现该功能</em></p>
-<p>&nbsp;</p>
-<p> <a name="assert-collect-diff"></a></p>
-<h4><a name="assert-collect-diff">断言和收集差异</a></h4>
-<p><a name="assert-collect-diff"> </a></p>
-<p>默认情况下，DBUnit发现第一个不一致数据时立即失败从DBunit2.4开始，可以通过注册一个定制的FailHandler来指定什么样的异常会被抛出，以及发现数据不一致时如何处理。使用<a href="http://www.dbunit.org/apidocs/org/dbunit/assertion/DiffCollectingFailureHandler.html">DiffCollectingFailureHandler</a>可以避免数据不匹配是抛出异常，使你可以在事后比对所有的结果集。</p>
-<p>&nbsp;</p>
-<div class="source">
-<pre><pre class="brush: java">IDataSet dataSet = getDataSet();
-DiffCollectingFailureHandler myHandler = new DiffCollectingFailureHandler();
-//invoke the assertion with the custom handler
-assertion.assertEquals(dataSet.getTable("TEST_TABLE"),
-                       dataSet.getTable("TEST_TABLE_WITH_WRONG_VALUE"),
-                       myHandler);
-// Evaluate the results and throw an failure if you wish
-List diffList = myHandler.getDiffList();
-Difference diff = (Difference)diffList.get(0);</pre> </pre>
-</div>
-<p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/08/01/post/">Linux批量转换文件名编码</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-08-01T00:00:00+08:00" pubdate data-updated="true">Aug 1<span>st</span>, 2010</time>
-        
-         | <a href="/blog/2010/08/01/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/linux/'>Linux</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>今天从网上用wget下了很多的电子书，不过文件名的编码都是GBK，系统默认为UTF-8，可以用convmv来转换文件名编码，例如将GBK编码的文件filename重命名为UTF-8：</p>
-<p><pre class="brush: ruby:nogutter">convmv -f gbk -t utf-8 filename --notest</pre>&nbsp;</p>
-<p>由于需要转换的文件比较多，写了个脚本来实现，主要就是一个文件目录的递归遍历：</p>
-<p><pre class="brush: python:nogutter">list_dir(){
-for file in $1/*
-do
-if [ -d $file ]; then
-echo "$file is dirctory"
-list_dir $file
-elif [ -f $file ]; then
-echo "convert $file..."
-convmv -f gbk -t utf-8 $file --notest
-fi
-done
-}
-if [ $# -gt 0 ]; then
-list_dir "$1"
-else
-list_dir "."
-fi
-</pre>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/06/28/post/">Linux批量重命名方法</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-06-28T00:00:00+08:00" pubdate data-updated="true">Jun 28<span>th</span>, 2010</time>
-        
-         | <a href="/blog/2010/06/28/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/linux/'>Linux</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>经常会遇到需要批量重命名文件的情况，用鼠标太夸张了，简单总结两种比较简单的方法：</p>
-<p>问题：</p>
-<p>存在大量html文件，需要重命名为htm文件</p>
-<p>1.rename</p>
-<p>通常重命名的命令是mv，Larry Wall写的rename具有更强大的功能。能够用perl的正则语法结构进行文件重命名。<pre class="brush: css:nogutter">NAME
-       rename - renames multiple files
-SYNOPSIS
-       rename [ -v ] [ -n ] [ -f ] perlexpr [ files ]
-DESCRIPTION
-       &quot;rename&quot; renames the filenames supplied according to the rule specified
-       as the first argument.  The perlexpr argument is a Perl expression
-       which is expected to modify the $_ string in Perl for at least some of
-       the filenames specified.  If a given filename is not modified by the
-       expression, it will not be renamed.  If no filenames are given on the
-       command line, filenames will be read via standard input.
-       For example, to rename all files matching &quot;*.bak&quot; to strip the
-       extension, you might say
-               rename 's//.bak$//' *.bak
-       To translate uppercase names to lower, you'd use
-               rename 'y/A-Z/a-z/' *&nbsp;</pre>
-</p>
-<p>上面是rename的man手册，针对上面重命名html文件的问题，解决如下：</p>
-<p>rename &#8216;s/.html$/.htm/&#8217; *.html</p>
-<p>简单来说就是重命名所有html文件（*.html），将文件名结尾处.html替换为.htm(&#8217;s/.html$/.htm/&#8217;)，其实更简单的表达式可以为&#8217;s/l$//&#8217;</p>
-<p>2.printf</p>
-<p>使用shell命令中的prinf打印出需要的文件名，然后在使用mv重命名</p>
-<p>for i in *.html</p>
-<p>do</p>
-<p>newname=&quot;`printf &quot;%s&quot; ${i/html}`&quot;htm</p>
-<p>mv $i $newname</p>
-<p>done</p>
-<p>&nbsp;</p>
+<p class="p2"><img src="http://hi.csdn.net/attachment/201102/27/0_1298804115LLTM.gif" alt="" /></p>
+<p class="p1">这个流程中存在明显的并发问题，当进程A校验过会员M有资格，并且为创建过活动，但为开始执行创建操作，此时另一个进程B也进行了规则判断，顺利通过，并完成创建操作，此时A继续执行，则会产生两条M的活动。（这个并发场景很简单，很普遍）</p>
+<p class="p2"><strong><span style="font-family: mceinline;">最初的解决方案：</span></strong></p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 计划利用memcached的add操作的原子性来控制并发，具体方式如下：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.申请锁：在校验是否创建过活动前，执行add操作key为memberId，如果add操作失败，则表示有另外的进程在并发的为该memberId创建活动，返回创建失败。否则表示无并发</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.执行创建活动</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 3.释放锁：创建活动完成后，执行delete操作，删除该memberId。</p>
+<p class="p2"><strong><span style="font-family: mceinline;">问题：</span></strong></p>
+<p class="p1"><strong>&nbsp;&nbsp; &nbsp;</strong> 如此实现存在一些问题：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.memcached中存放的值有有效期，即过期后自动失效，如add过M1后，M1失效，可以在此add成功</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.即使通过配置，可以使memcached永久有效，即不设有效期，memcached有容量限制，当容量不够后会进行自动替换，即有可能add过M1后，M1被其他key值置换掉，则再次add可以成功。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 3.此外，memcached是基于内存的，掉电后数据会全部丢失，导致重启后所有memberId均可重新add。</p>
+<p class="p2"><strong><span style="font-family: mceinline;">应对问题：</span></strong></p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 针对上述的几个问题，根本原因是add操作有时效性，过期，被替换，重启，都会是原来的add操作失效。解决该问题有两个方法：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.采用持久化的缓存解决方法，如TT（<span class="s1">Tokyo Tyrant：</span><span class="s2">http://fallabs.com/tokyotyrant/</span>）</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.减轻时效性的影响，使用memcached CAS（check and set）方式。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 第一种不必解释了，很简单，原来的所有问题都是时效性惹得祸，时效性源于memcached是基于内存的，那么采用持久话存储的TT可以彻底根治这个问题。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 第二种方式需要简单介绍下：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; memcached中除了add操作是原子的，还有另外两个操作也是原子的：incr和decr，使用CAS模式即：</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 1.预先在memcached中设置一个key值，假设为CREATKEY＝1</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 2.每次创建活动时，在规则校验前先get出CREATEKEY＝x；</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 3.进行规则校验</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 4.执行incr CREATEKEY操作，检验返回值是否为所期望的x＋1，如果不是，则说明在此期间有另外的进程执行了incr操作，即存在并发，放弃更新。否则</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 5.执行创建活动</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 对比这两种方法，从效果上看可以发现第一种时100％可靠的，不存在问题；第二种，可能存在误判，即本来不存在并发，却被判为并发，如缓存重启，或key值失效后，incr值可能不同于期望值，导致误判。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 但是从成本上考虑，TT是持久化的缓存解决方案，完美意味着高成本，我们必须维护持久化数据，而使用memcached的CAS方式，可以以几乎0成本的方式解决时效性问题，尽管存在一点小缺陷，但这种缺陷可以通过简单的重试即可解决。考虑实际的产出比，采用memcached的CAS方式更适合实际情况。</p>
+<p class="p1">&nbsp;&nbsp; &nbsp; 成本与收益间的平衡，做科学与做工程的区别～</p>
+<p class="p3">&nbsp;</p>
+<p class="p1">&nbsp;</p>
 <p>&nbsp;</p>
 <p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/06/21/post/">查询外网IP并发送邮件的脚本</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2010</time>
-        
-         | <a href="/blog/2010/06/21/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/linux/'>Linux</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>泡论坛时发现的小问题，自己做了下，记录如下：</p>
-<p>问题：如何查询服务器的外网IP并发送到指定邮箱？</p>
-<p>解决办法：</p>
-<p><pre class="brush: c-sharp">  1 #!/bin/sh
-  2 
-  3 
-  4 ip=`curl -s 'http://checkip.dyndns.org' | sed 's/.*Current IP Address: /([0-    9/.]*/).*//1/g'`
-  5 echo &quot;Sending ip $ip...&quot;
-  6 
-  7 to=&quot;yourmail@yourdomain.com&quot;
-  8 subject=&quot;IP&quot;
-  9 message=&quot;IP is $ip&quot;
- 10 headers=&quot;From:server@serverdomain&quot;
- 11 echo $message | mail -s $subject $to -- -f $headers
- 12 echo &quot;Send OK!&quot;
-</pre></p>
-<p>&nbsp;</p>
-<p>大概思路：</p>
-<p>首先通过查询&nbsp; http://checkip.dyndns.org获取外网IP，得到一个HTML页，sed过滤道多余的HTML标签，获得准确的IP</p>
-<p>然后通过sendmail发送邮件到指定邮箱</p>
-<p>需要安装curl和sendmail</p>
-<p>&nbsp;</p>
-<p><pre class="brush: c-sharp:nogutter">sudo apt-get install curl
-sudo apt-get install sendmail</pre>
-</p>
-<p>sendmail的配置比较复杂，不过可以使用默认的配置也能够发送邮件。</p></div>
   
   
 
@@ -878,43 +760,43 @@ sudo apt-get install sendmail</pre>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a>
       </li>
     
   </ul>

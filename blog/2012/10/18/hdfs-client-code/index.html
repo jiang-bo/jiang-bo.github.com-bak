@@ -1,0 +1,387 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS源码学习（14）——Client代码结构 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="Client核心代码有DistributedFileSystem和DFSClient。 DistributedFileSystem扩展子FileSystem，在为客户端提供一个文件系统接口实现。其内部使用DFSClient完成各类文件操作。 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/18/hdfs-client-code">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS源码学习（14）——Client代码结构</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:59:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Client核心代码有DistributedFileSystem和DFSClient。</p>
+
+<p><img src="/images/hdfs/Client.png" alt="Client" /></p>
+
+<p>DistributedFileSystem扩展子FileSystem，在为客户端提供一个文件系统接口实现。其内部使用DFSClient完成各类文件操作。</p>
+
+<p>DFSClient使用ClientProtocol与NameNode通信，完成文件元信息操作。并通过Socket连接完成与DataNode间的block读写操作。</p>
+
+<p>DFSClient代码结构如下：</p>
+
+<p><img src="/images/hdfs/DFSClient.png" alt="DFSClient" /></p>
+
+<ol>
+<li>LeaseChecker主要用于lease检查和续约。</li>
+<li>DFSOutputStream用于提供带buffer的字节流写入功能。client在写入数据时先将数据缓存在本地。并将数据切分成多个packet（默认每个packet为64K）。每个packet又被拆分成多个chunk（默认512Byte），每个chunk都有一个checksum。client写满一个packet后会将该packet加入到一个dataqueue中。由DataStreamer线程负责将每个packet发送给datanode pipeline。发送完一个pakcet，streamer会将其从dataqueue移至ackqueue中。ResponseProcessor负责接收datanode发回的ack信息，每成功接收一个packet的ack信息，ResponseProcessor会将ackqueue中该packet删除。</li>
+<li>DFSInputStream用于提供字节流的读取，其内部封装了与NN和DN的交互</li>
+<li>DataStreamer: 负责向datanode pipeline发送packet。其本身是一个Daemon线程，从namenode获取blockId和block存放位置，将packet发送给pipeline中的datanode，每个packet都有一个seqId，每个packet发送完时都会收到datanode的ack信息。当收到所有packet的ack信息后（表示该block已发送完），streamer关闭该block。</li>
+<li>ResponseProcessor:用于接收datanode返回ack信息，并将响应ackqueue中的packet删除</li>
+</ol>
+
+
+<h2>创建文件</h2>
+
+<ol>
+<li>client向NameNode发起创建文件请求</li>
+<li>NameNode.create（）处理创建文件请求，检查是否有重名，当前是否处于Safe-mode，是否有权限创建文件， 校验通过后创建一个INode记录。</li>
+<li>NameNode将创建文件的事件记录到EditLog中</li>
+<li>INode被创建后，NameNode发放给Client一个lease，Client可以使用这个lease通过ClientProtocol访问，进行只读操作。（写操作需要等文件close）</li>
+</ol>
+
+
+<h2>写入流程</h2>
+
+<p>client写入流程如下图所示：</p>
+
+<p><img src="/images/hdfs/ClientWrite.png" alt="ClientWrite" /></p>
+
+<ol>
+<li>Client向NameNode发起创建文件的RPC请求</li>
+<li>NameNode检查文件是否已经存在，是否有权创建等，成功则创建一个文件记录，并发放给Client一个lease</li>
+<li>Client获得lease之后开始进行数据写入，写入的数据首先被缓存本地，并被拆分为多个packet，放置到dataqueue队列中</li>
+<li>DataStreamer线程负责检查dataqueue队列，发现有数据时且没有可用block时，向NameNode发送addBlock()请求，申请一个分配一个block空间。NameNode返回给DataStreamer一个blockId和用于存放block的datanode list</li>
+<li>DataStreamer将每个packet数据发送给datanode pipeline，并将该packet移至ackqueue</li>
+<li>datanode pipeline中第一个datanode收到packet之后存储到本地block中并穿行备份至后续datanode中</li>
+<li>pipeline中datanode存储好packet之后会逆序返回ack信息，并最终返回给client.</li>
+<li>Client端ResponseProcessor捕获到每个packet的ack信息时会将响应ackqueue中的packet删除</li>
+<li>当所有数据都写入完成后，client会向NameNode发起一个complete RPC请求，告知文件最新的时间戳和已经发送给datanode的block长度。NameNode检查所有block的副本信息，只有所有block的副本数均满足最低要求时，complete会返回成功。</li>
+<li>最后，NameNode将收回client持有的lease。</li>
+</ol>
+
+
+<p>NameNode处理addBlock()请求的流程大致如下：</p>
+
+<ol>
+<li>校验client是否有该文件的lease</li>
+<li>清理上一次写入记录，包括：a.提交上一次写入，b.更新lease有效期；c.将完成的写入记录到EditLog中</li>
+<li>清理完毕之后，使用BlockManager分配指定副本数个block及其对应的datanode信息，返回给client</li>
+</ol>
+
+
+<p>DataNode处理block写入的流程大致如下：</p>
+
+<ol>
+<li>将block复制到本地磁盘</li>
+<li>发送block received消息给NameNode告知写入了一个新的block</li>
+<li>将block数据发送给datanode pipeline中下一个datanode，进行备份</li>
+<li>返回一个ack消息给前一个调用者</li>
+</ol>
+
+
+<p>后续的datanode收到上一个datanode的备份block请求是做类似的操作。</p>
+
+<h2>读取流程</h2>
+
+<p>读取流程相对简单写，如下所示 ：</p>
+
+<p><img src="/images/hdfs/ClientRead.png" alt="ClientWrite" /></p>
+
+<ol>
+<li>client向NameNode发起RPC请求，获取文件的blockLocation信息</li>
+<li>NameNode返回一定长度（10*defaultBlockSize）block的datanode位置信息</li>
+<li>Client根据返回的blockLocation信息选取距自己最近（同一节点&lt;通一机架&lt;同一机房）的datanode读取数据，读完一个block会对该block进行checksum校验。如果校验正确则关闭与该datanode连接，去读下一个block；如果校验失败，则通知NameNode该block在当前datanode上的副本损坏了，并继续从datanode列表中获取一个datanode，重新读取该block。</li>
+<li>当本次获取的blockLocation中的block全部读完，且该文件还有block时，重复1，2，3过程，直至所有blcok全部读完。</li>
+</ol>
+
+
+<h2>关闭文件（complete）</h2>
+
+<ol>
+<li>当Client完成文件写入之后，会调用complete()通知NameNode文件写入完成了，该请求会提交文件写入的最后一个block信息并且告知NameNode写入的block总数以及最新时间戳。</li>
+<li>NameNode收到请求后会检查是否所有的block的事物都已经提交了，并且每个block的副本数都达到了最小值。如果是则返回true，否则返回false。</li>
+<li>Client收到返回值后如果失败则重试几次。</li>
+</ol>
+
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:59:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/10/18/hdfs-datanode-startup/" title="Previous Post: HDFS源码学习（13）——DataNode启动过程">&laquo; HDFS源码学习（13）——DataNode启动过程</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2012/10/18/hdfs-dataxceiver/" title="Next Post: HDFS源码学习（15）——DataXceiverServer">HDFS源码学习（15）——DataXceiverServer &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/18/hdfs-client-code/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/18/hdfs-client-code/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
