@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="HDFS中的副本管理通过FSNameSystem.java中的ReplicationMonitor线程来完成。该线程代码结构较为简单。 class ReplicationMonitor implements Runnable { static final int &hellip;">
+  <meta name="description" content="LeaseManagement是HDFS中的一个同步机制，用于保证同一时刻只有一个client对一个文件进行写或创建操作。如当新建一个文件f时，client向NameNode发起一个create请求，那么leaseManager会想该client分配一个f文件的lease。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,317 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease Management)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:44:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-lease-management/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>LeaseManagement是HDFS中的一个同步机制，用于保证同一时刻只有一个client对一个文件进行写或创建操作。如当新建一个文件f时，client向NameNode发起一个create请求，那么leaseManager会想该client分配一个f文件的lease。client凭借该lease完成文件的创建操作。此时其他client无法获得f的当client长时间（默认为超过1min）不进行操作时，发放的lease将被收回。</p>
+
+<p>LeaseManager主要完成两部分工作：</p>
+
+<ol>
+<li>文件create，write，complete操作时，创建lease、更新时间戳、回收lease</li>
+<li>一个后台线程定期检查是否有过期的lease</li>
+</ol>
+
+
+<p>LeaseManager的代码结构如下</p>
+
+<p><img src="/images/hdfs/LeaseManager.png" alt="LeaseManager" /></p>
+
+<p>其中Lease表示一个租约，包括一个client(holder)所拥有的所有文件锁(paths)。</p>
+
+<p>Monitor是检查是否有过期租约的线程。</p>
+
+<p>LeaseManager中有几个主要数据结构：</p>
+
+<ol>
+<li>leases（TreeMap&lt;String, Lease>）：维护holder -> leased的映射集合</li>
+<li>sortedLeases (TreeSet<Lease>): lease集合</li>
+<li>sortedLeaseByPath(TreeMap&lt;String, Lease>): 维护paths->lease的映射集合</li>
+</ol>
+
+
+<h2>一、创建lease</h2>
+
+<p>当client向NameNode发起create操作时，NameNode.create()调用FSNameSystem.startFile()->FSNameSystem.startFileInternal()，该方法最终会调用leaseManager.addLease(cons.clientName, src)来创建lease。</p>
+
+<p>LeaseManager.addLease()方法如下：</p>
+
+<pre><code>  synchronized Lease addLease(String holder, String src
+      ) throws IOException {
+    Lease lease = getLease(holder);
+    if (lease == null) {
+      lease = new Lease(holder);
+      leases.put(holder, lease);
+      sortedLeases.add(lease);
+    } else {
+      renewLease(lease);
+    }
+    sortedLeasesByPath.put(src, lease);
+    lease.paths.add(src);
+    return lease;
+  }
+</code></pre>
+
+<p>代码结构简单：判断该client是否有lease，没有则新建一个lease，并将起加到leases集合中。否则更新lease。更新sortedLeasesByPath，将filepath加入到该lease的paths集合中</p>
+
+<h2>二、更新时间戳</h2>
+
+<p>针对已经存在的lease，通过LeasemManager.renewLease()来更新该lease的时间戳。代码如下：</p>
+
+<pre><code>  synchronized void renewLease(Lease lease) {
+    if (lease != null) {
+      sortedLeases.remove(lease);
+      lease.renew();
+      sortedLeases.add(lease);
+    }
+  }
+</code></pre>
+
+<p>lease.renew()代码如下：</p>
+
+<pre><code>/** Only LeaseManager object can renew a lease */
+private void renew() {
+  this.lastUpdate = FSNamesystem.now();
+}
+</code></pre>
+
+<h2>三、compelete时回收lease</h2>
+
+<p>当client调用NameNode.complete()方法时，最终会调用FSNameSystem.completeFileInternal()方法。其中执行finalizeINodeFileUnderConstruction()是调用leaseManager.removeLease()释放lease。</p>
+
+<p>代码结构如下：</p>
+
+<pre><code>  synchronized void removeLease(String holder, String src) {
+    Lease lease = getLease(holder);
+    if (lease != null) {
+      removeLease(lease, src);
+    }
+  }
+</code></pre>
+
+<p> removeLease(lease, src);代码如下：</p>
+
+<pre><code>  /**
+   * Remove the specified lease and src.
+   */
+  synchronized void removeLease(Lease lease, String src) {
+    sortedLeasesByPath.remove(src);
+    if (!lease.removePath(src)) {
+      LOG.error(src + " not found in lease.paths (=" + lease.paths + ")");
+    }
+
+    if (!lease.hasPath()) {
+      leases.remove(lease.holder);
+      if (!sortedLeases.remove(lease)) {
+        LOG.error(lease + " not found in sortedLeases");
+      }
+    }
+  }
+</code></pre>
+
+<h2>四、后台线程回收过期lease</h2>
+
+<p>Monitor回收lease线程代码结构如下：</p>
+
+<pre><code> class Monitor implements Runnable {
+    final String name = getClass().getSimpleName();
+
+    /** Check leases periodically. */
+    public void run() {
+      for(; fsnamesystem.isRunning(); ) {
+        fsnamesystem.writeLock();
+        try {
+          checkLeases();
+        } finally {
+          fsnamesystem.writeUnlock();
+        }
+
+        try {
+          Thread.sleep(2000);
+        } catch(InterruptedException ie) {
+          if (LOG.isDebugEnabled()) {
+            LOG.debug(name + " is interrupted", ie);
+          }
+        }
+      }
+    }
+  }
+</code></pre>
+
+<p>代码结构简单，每个2s周期性执行checkLeases()。</p>
+
+<h3>4.1 checkLeases()</h3>
+
+<pre><code>  /** Check the leases beginning from the oldest. */
+  synchronized void checkLeases() {
+    for(; sortedLeases.size() &gt; 0; ) {
+      final Lease oldest = sortedLeases.first();
+      if (!oldest.expiredHardLimit()) {
+        return;
+      }
+
+      LOG.info("Lease " + oldest + " has expired hard limit");
+
+      final List&lt;String&gt; removing = new ArrayList&lt;String&gt;();
+      // need to create a copy of the oldest lease paths, becuase 
+      // internalReleaseLease() removes paths corresponding to empty files,
+      // i.e. it needs to modify the collection being iterated over
+      // causing ConcurrentModificationException
+      String[] leasePaths = new String[oldest.getPaths().size()];
+      oldest.getPaths().toArray(leasePaths);
+      for(String p : leasePaths) {
+        try {
+          fsnamesystem.internalReleaseLeaseOne(oldest, p);
+        } catch (IOException e) {
+          LOG.error("Cannot release the path "+p+" in the lease "+oldest, e);
+          removing.add(p);
+        }
+      }
+
+      for(String p : removing) {
+        removeLease(oldest, p);
+      }
+    }
+  }
+</code></pre>
+
+<h2>Lease Recovery ——租约回收</h2>
+
+<h3>lease recovery时机</h3>
+
+<p>lease发放之后，在不用时会被回收，回收的产经除上述Monitor线程检测lease过期是回收外，还有：</p>
+
+<ol>
+<li>NameNode收到DataNode的Sync block command时</li>
+<li>DFSClient主动关闭一个流时</li>
+<li>创建文件时，如果该DFSClient的lease超过soft limit时</li>
+</ol>
+
+
+<h3>lease recovery 算法</h3>
+
+<p>1) NameNode查找lease信息</p>
+
+<p>2) 对于lease中的每个文件f，令b为f的最后一个block，作如下操作：</p>
+
+<p>2.1) 获取b所在的datanode列表</p>
+
+<p>2.2) 令其中一个datanode作为primary datanode p</p>
+
+<p>2.3) p 从NameNode获取最新的时间戳</p>
+
+<p>2.4) p 从每个DataNode获取block信息</p>
+
+<p>2.5) p 计算最小的block长度</p>
+
+<p>2.6) p 用最小的block长度和最新的时间戳来更新具有有效时间戳的datanode</p>
+
+<p>2.7) p 通知NameNode更新结果</p>
+
+<p>2.8) NameNode更新BlockInfo</p>
+
+<p>2.9) NameNode从lease中删除f，如果此时该lease中所有文件都已被删除，将删除该lease</p>
+
+<p>2.10) Name提交修改的EditLog</p>
+
+<h2>Client续约 —— DFSClient.LeaseChecker</h2>
+
+<p>在NameNode上的LeaseManager.Monitor线程负责检查过期的lease，那么client为了防止尚在使用的lease过期，需要定期想NameNode发起续约请求。该任务有DFSClient中的LeaseChecker完成。</p>
+
+<p>LeaseChecker结构如下：</p>
+
+<p><img src="/images/hdfs/LeaseChecker.png" alt="LeaseChecker" /></p>
+
+<p>其中pendingCreates是一个TreeMap&lt;String, OutputStream>用来维护src->当前正在写入的文件的DFSOutputStream的映射。</p>
+
+<p>其核心是周期性（每个1s）调用run()方法来对租约过半的lease进行续约</p>
+
+<pre><code>public void run() {
+  long lastRenewed = 0;
+  while (clientRunning &amp;&amp; !Thread.interrupted()) {
+    //当租约周期过半时需要进行续约
+    if (System.currentTimeMillis() - lastRenewed &gt; (LEASE_SOFTLIMIT_PERIOD / 2)) {
+      try {
+        renew();
+        lastRenewed = System.currentTimeMillis();
+      } catch (IOException ie) {
+        LOG.warn("Problem renewing lease for " + clientName, ie);
+      }
+    }
+
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException ie) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(this + " is interrupted.", ie);
+      }
+      return;
+    }
+  }
+}
+</code></pre>
+
+<p>其中renew()方法如下：</p>
+
+<pre><code>    private void renew() throws IOException {
+      synchronized(this) {
+        //如果当前创建中的文件列表为空，则不需要续约
+        if (pendingCreates.isEmpty()) {
+          return;
+        }
+      }
+      //向NameNode发起续约请求
+      namenode.renewLease(clientName);
+    }
+</code></pre>
+
+<p>NameNode接收到renewLease请求后，调用FSNameSystem.renewLease()并最终调用LeaseManager.renewLease()完成续约。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1380,228 +1691,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-datastructure/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>FSNameSystem</h2>
-
-<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
-
-<ol>
-<li>fsname->block列表的映射</li>
-<li>所有有效blocks集合</li>
-<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
-<li>每个datanode与其上的blocklist的映射</li>
-<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
-</ol>
-
-
-<h3>FSDirectory</h3>
-
-<p>FSDirectory用于维护当前系统中的文件树。</p>
-
-<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
-
-<h4>INode</h4>
-
-<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
-
-<p><img src="/images/hdfs/INode.png" alt="INode" /></p>
-
-<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
-
-<h3>BlocksMap</h3>
-
-<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
-<img src="/images/hdfs/BlocksMap.png" alt="BlocksMap" />
-BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
-
-<h4>Block</h4>
-
-<p>Block是HDFS中的基本读写单元，主要包括：</p>
-
-<ol>
-<li>blockId: 一个long类型的块id</li>
-<li>numBytes: 块大小</li>
-<li>generationStamp: 块更新的时间戳</li>
-</ol>
-
-
-<h4>BlockInfo</h4>
-
-<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
-
-<p><img src="/images/hdfs/triplets.png" alt="triplets" /></p>
-
-<ol>
-<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
-<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
-<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
-</ol>
-
-
-<p>DN2,DN3的prev-blk和next-blk类似。
-HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
-
-<h4>FSImage</h4>
-
-<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
-HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
-FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
-
-<p><img src="/images/hdfs/FSImage.png" alt="FSImage" /></p>
-
-<h5>FSImage头部信息</h5>
-
-<ol>
-<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
-<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
-<li>numberItemOfTree(long): 系统中的文件总数</li>
-<li>generationTimeStamp: 生成image的时间戳</li>
-</ol>
-
-
-<h5>INode信息</h5>
-
-<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
-
-<p><strong>INode头</strong></p>
-
-<ol>
-<li>nameLen(short): 文件名长度</li>
-<li>filename(String): 文件名</li>
-<li>replication(short): 备份数量</li>
-<li>modificationTime(long): 最近修改时间</li>
-<li>accessTime(long): 最近访问时间</li>
-<li>preferedBlockSize(long): 块大小（目录为0）</li>
-<li>block num(int): 块数量（目录为-1）</li>
-</ol>
-
-
-<p><strong>Blocks区</strong></p>
-
-<ol>
-<li>blockId(long)</li>
-<li>numBytes(long,block大小)</li>
-<li>generationTimeStamp(long, 更新时间戳）</li>
-</ol>
-
-
-<p><strong>文件权限</strong></p>
-
-<ol>
-<li>username(String): 文件用户名</li>
-<li>group(String): 所属组</li>
-<li>fileperm(short): 文件权限</li>
-</ol>
-
-
-<h5>underconstructionFile区</h5>
-
-<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
-
-<p><strong>client信息</strong></p>
-
-<ol>
-<li>clientName：client明</li>
-<li>clientMachine： client机器名</li>
-</ol>
-
-
-<p><strong>已分配的datanode信息</strong></p>
-
-<ol>
-<li>ipcport： 服务端口</li>
-<li>capacity: 容量</li>
-<li>dfsuse： 已使用的空间</li>
-<li>remaining： 剩余空间</li>
-<li>lastupdate： 最新更新时间</li>
-<li>xceiverCount</li>
-<li>location： datanode位置</li>
-<li>hostName：主机名</li>
-<li>state： admin管理状态</li>
-</ol>
-
-
-<h2>其他结构</h2>
-
-<h3>CorruptReplicasMap</h3>
-
-<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
-
-<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
-
-<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
-
-<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
-
-<p>datanodeMap用于维护datanode->block的映射</p>
-
-<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
-
-<p>维护多有当前活着的节点</p>
-
-<h3>UnderReplicatedBlocks neededReplications</h3>
-
-<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
-
-<h3>PendingReplicationBlocks pendingReplications;</h3>
-
-<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
-<img src="/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
-
-<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
-
-<p>当前需要检查是否备份过多的block集合</p>
-
-<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
-
-<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/4/">&larr; Older</a>
@@ -1617,6 +1706,10 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -1652,10 +1745,6 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

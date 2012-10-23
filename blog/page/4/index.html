@@ -9,8 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="Git源码 git clone git://git.apache.org/hadoop-common.git 视网速不通，略慢 编译 cd hadoop-common
-mvn install -DskipTests 抛异常： [ERROR] Failed to execute goal org. &hellip;">
+  <meta name="description" content="FSNameSystem FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系： fsname->block列表的映射
+所有有效blocks集合
+block与其所属的datanodes之间的映射（该映射是通过block &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +80,228 @@ mvn install -DskipTests 抛异常： [ERROR] Failed to execute goal org. &hellip
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-datastructure/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>FSNameSystem</h2>
+
+<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
+
+<ol>
+<li>fsname->block列表的映射</li>
+<li>所有有效blocks集合</li>
+<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
+<li>每个datanode与其上的blocklist的映射</li>
+<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
+</ol>
+
+
+<h3>FSDirectory</h3>
+
+<p>FSDirectory用于维护当前系统中的文件树。</p>
+
+<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
+
+<h4>INode</h4>
+
+<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
+
+<p><img src="/images/hdfs/INode.png" alt="INode" /></p>
+
+<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
+
+<h3>BlocksMap</h3>
+
+<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
+<img src="/images/hdfs/BlocksMap.png" alt="BlocksMap" />
+BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
+
+<h4>Block</h4>
+
+<p>Block是HDFS中的基本读写单元，主要包括：</p>
+
+<ol>
+<li>blockId: 一个long类型的块id</li>
+<li>numBytes: 块大小</li>
+<li>generationStamp: 块更新的时间戳</li>
+</ol>
+
+
+<h4>BlockInfo</h4>
+
+<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
+
+<p><img src="/images/hdfs/triplets.png" alt="triplets" /></p>
+
+<ol>
+<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
+<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
+<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
+</ol>
+
+
+<p>DN2,DN3的prev-blk和next-blk类似。
+HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
+
+<h4>FSImage</h4>
+
+<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
+HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
+FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
+
+<p><img src="/images/hdfs/FSImage.png" alt="FSImage" /></p>
+
+<h5>FSImage头部信息</h5>
+
+<ol>
+<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
+<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
+<li>numberItemOfTree(long): 系统中的文件总数</li>
+<li>generationTimeStamp: 生成image的时间戳</li>
+</ol>
+
+
+<h5>INode信息</h5>
+
+<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
+
+<p><strong>INode头</strong></p>
+
+<ol>
+<li>nameLen(short): 文件名长度</li>
+<li>filename(String): 文件名</li>
+<li>replication(short): 备份数量</li>
+<li>modificationTime(long): 最近修改时间</li>
+<li>accessTime(long): 最近访问时间</li>
+<li>preferedBlockSize(long): 块大小（目录为0）</li>
+<li>block num(int): 块数量（目录为-1）</li>
+</ol>
+
+
+<p><strong>Blocks区</strong></p>
+
+<ol>
+<li>blockId(long)</li>
+<li>numBytes(long,block大小)</li>
+<li>generationTimeStamp(long, 更新时间戳）</li>
+</ol>
+
+
+<p><strong>文件权限</strong></p>
+
+<ol>
+<li>username(String): 文件用户名</li>
+<li>group(String): 所属组</li>
+<li>fileperm(short): 文件权限</li>
+</ol>
+
+
+<h5>underconstructionFile区</h5>
+
+<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
+
+<p><strong>client信息</strong></p>
+
+<ol>
+<li>clientName：client明</li>
+<li>clientMachine： client机器名</li>
+</ol>
+
+
+<p><strong>已分配的datanode信息</strong></p>
+
+<ol>
+<li>ipcport： 服务端口</li>
+<li>capacity: 容量</li>
+<li>dfsuse： 已使用的空间</li>
+<li>remaining： 剩余空间</li>
+<li>lastupdate： 最新更新时间</li>
+<li>xceiverCount</li>
+<li>location： datanode位置</li>
+<li>hostName：主机名</li>
+<li>state： admin管理状态</li>
+</ol>
+
+
+<h2>其他结构</h2>
+
+<h3>CorruptReplicasMap</h3>
+
+<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
+
+<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
+
+<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
+
+<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
+
+<p>datanodeMap用于维护datanode->block的映射</p>
+
+<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
+
+<p>维护多有当前活着的节点</p>
+
+<h3>UnderReplicatedBlocks neededReplications</h3>
+
+<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
+
+<h3>PendingReplicationBlocks pendingReplications;</h3>
+
+<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
+<img src="/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
+
+<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
+
+<p>当前需要检查是否备份过多的block集合</p>
+
+<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
+
+<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -960,252 +1183,6 @@ java.io.FileSystem
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-02-14T00:26:00+08:00" pubdate data-updated="true">Feb 14<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/02/14/jetty-classloader/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/jvm/'>JVM</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>什么是类加载器？</h2>
-
-<p>类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。</p>
-
-<h2>类加载器分类</h2>
-
-<p>类加载器主要分为：</p>
-
-<ul>
-<li>启动类加载器(Bootstrap ClassLoader)：主要负责加载<JAVA_HOME>\lib目录中或者-Xbootclasspath中指定的，并且被虚拟机识别的类库加载到VM中。这个加载器是JVM自身的一部分，用本地代码实现的(openjdk中源码位于hotspot/src/share/vm/classfile/classLoader.cpp中)，无法直接被java代码引用。</li>
-<li>扩展类加载器(Extension ClassLoader)：主要负责加载jdk扩展类库<JAVA_HOME>\lib\ext或者java.ext.dirs系统属性指定的目录中jar文件，由sun.misc.Launcher$ExtClassLoader实现</li>
-<li>系统类加载器(System ClassLoader)：用于加载CLASSPATH中指定的类，由sun.misc.Launcher$AppClassLoader实现。该类即ClassLoader.getSystemLoader()的返回值，是应用程序默认的类加载器。</li>
-<li>自定义加载器(User ClassLoader)：用户可以自定义自己的类加载器</li>
-</ul>
-
-
-<h2>双亲委托模型</h2>
-
-<p>JDK中要求所有的自定义ClassLoader 必须扩展自抽象类java.lang.ClassLoader。该类的文档说名中有一个段关于delegate model的描述：</p>
-
-<blockquote><p>The ClassLoader class uses a <code>delegation model</code> to search for classes and resources. Each instance of ClassLoader has an associated parent class loader. When requested to find a class or resource, a ClassLoader instance will delegate the search for the class or resource to its parent class loader before attempting to find the class or resource itself. The virtual machine&#8217;s built-in class loader, called the &#8220;bootstrap class loader&#8221;, does not itself have a parent but may serve as the parent of a ClassLoader instance.</p></blockquote>
-
-<p>简单来说这个delegate model要求除了Bootstrap ClassLoader之外，其余ClassLoader都需要关联一个parent ClassLoader（这种关联方式采用的时组合而非继承），在执行加载class时，首先委托给parent ClassLoader加载，只有当parent ClassLoader无法加载时，再由自身加载。各加载器的关联关系如下：</p>
-
-<pre><code>        Bootstrap ClassLoader
-                 |
-        Extension ClassLoader
-                 |
-        System ClassLoader
-            /           \
-    User1 ClassLoader   User2 ClassLoader
-</code></pre>
-
-<p>Bootstrap ClassLoader是最根层的加载器，用户自定义加载器建议使用系统类加载器作为parent。
-这种委托模型的好处显而易见，它维护了类加载器之间的层次优先级关系。使所有的类加载优先由parent加载，这保证了java基础类库中的加载只会有一份。以java.lang.Object为例，委托模式保证了这个类最终只会由BootstrapClassLoader来加载，以此来保证所有环境中只有同一个类。否则由各加载器自由发挥，当用户自己定义各同名的java.lang.Object类时，系统会出现多分Objec类，最根基的行为出现混乱。（当然，你还是可以自定义出一个同名的java.lang.Object，并且顺利通过编译，但是它正常情况下永远不会被加载）。</p>
-
-<p><strong><em>这个委托模型并非jvm的强制规范，只是jdk中建议的一种模式，有时会发现不遵守这种模式的行为却能产生奇妙的效果，如热部署，OSGI等。</em></strong></p>
-
-<h2>Jetty中的ClassLoader</h2>
-
-<p>jetty，tomcat等web容器通常都会对classloader做扩展，因为一个正常的容器至少要保证其内部运行的多个webapp之间：私有的类库不受影响，并且公有的类库可以共享。这正好发挥classloader的层级划分优势。
-jetty中有一个org.mortbay.jetty.webapp.WebAppClassLoader，负责加载一个webapp context中的应用类，WebAppClassLoader以系统类加载器作为parent，用于加载系统类。不过servlet规范使得web容器的classloader比正常的classloader委托模型稍稍复杂，servlet规范要求：</p>
-
-<ol>
-<li>WEB-INF/lib 和 WEB-INF/classes优先于父容器中的类加载，比如WEB-INF/classes下有个XYZ类，CLASSPATH下也有个XYZ类，jetty中优先加载的是WEB-INF/classes下的，这与正常的父加载器优先相反。</li>
-<li>系统类比如java.lang.String不遵循第一条， WEB-INF/classes或WEB-INF/lib下的类不能替换系统类。不过规范中没有明确规定哪些是系统类，jetty中的实现是按照类的全路径名判断。</li>
-<li>Server的实现类不被应用中的类引用，即Server的实现类不能被人和应用类加载器加载。不过，同样的，规范里没有明确规定哪些是Server的实现类，jetty中同样是按照类的全路径名判断。</li>
-</ol>
-
-
-<p>为了处理上述三个问题，jetty的应用类加载器(org.mortbay.jetty.webapp.WebAppClassLoader)做了些特殊处理。</p>
-
-<h3>WebAppClassLoader的实现</h3>
-
-<p>首先看WebAppClassLoader的实现，WebAppClassLoader的构造器中有如下代码：</p>
-
-<pre><code>super(new URL[]{},parent!=null?parent
-            :(Thread.currentThread().getContextClassLoader()!=null?Thread.currentThread().getContextClassLoader()
-                    :(WebAppClassLoader.class.getClassLoader()!=null?WebAppClassLoader.class.getClassLoader()
-                            :ClassLoader.getSystemClassLoader())));
-</code></pre>
-
-<p>表明WebAppClassLoader还是按照正常的范式设置parent classloader
-然后看重要的loadclass方法实现：</p>
-
-<pre><code>@Override
-protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException
-{
-    Class&lt;?&gt; c= findLoadedClass(name);
-    ClassNotFoundException ex= null;
-    boolean tried_parent= false;
-
-    boolean system_class=_context.isSystemClass(name);
-    boolean server_class=_context.isServerClass(name);
-
-    if (system_class &amp;&amp; server_class)
-    {
-        return null;
-    }
-
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; (_context.isParentLoaderPriority() || system_class) &amp;&amp; !server_class)
-    {
-        tried_parent= true;
-        try
-        {
-            c= _parent.loadClass(name);
-            if (LOG.isDebugEnabled())
-                LOG.debug("loaded " + c);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
-    }
-
-    if (c == null)
-    {
-        try
-        {
-            c= this.findClass(name);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
-    }
-
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; !tried_parent &amp;&amp; !server_class )
-        c= _parent.loadClass(name);
-
-    if (c == null)
-        throw ex;
-
-    if (resolve)
-        resolveClass(c);
-
-    if (LOG.isDebugEnabled())
-        LOG.debug("loaded " + c+ " from "+c.getClassLoader());
-
-    return c;
-}
-</code></pre>
-
-<p>loadclass按照：</p>
-
-<ol>
-<li>findLoadedClass(name)-检查类是否已经加载</li>
-<li>判断该类是否为系统类或server类</li>
-<li>如果该类未加载且父加载器不为空且设置了父加载器优先或类类为系统类，且该类不是server类，则尝试使用父加载器加载该类</li>
-<li>如果不是父加载器优先或者父加载器未加载到该类，使用WebAppClassLoader加载该类</li>
-<li>如果是不是父加载器优先，并且WebAppClassLoader未加载到该类，尝试使用父加载器加载该类</li>
-<li>找到则返回，否则抛出ClassNotFoundException</li>
-</ol>
-
-
-<h3>ClassLoader Priority</h3>
-
-<p>上述过程涉及一个加载器优先级的概念，这也是针对前述第一条规范中WEB-INF/lib和WEB-INF/classes类优先的处理。jetty中父加载器优先的配置项可以通过环境变量</p>
-
-<pre><code>org.eclipse.jetty.server.webapp.parentLoaderPriority=false(默认)/true来设置
-</code></pre>
-
-<p>也可以通过</p>
-
-<pre><code>org.eclipse.jetty.webapp.WebAppContext.setParentLoaderPriority(boolean)方法来设置
-</code></pre>
-
-<p>优于该配置默认是false，因此在load class过程中优先使用WebAppClassLoader加载WEB-INF/lib和WEB-INF/classes中的类。
-当将该配置项设为true时需要确认类加载顺序没有问题。</p>
-
-<h3>设置系统类</h3>
-
-<p>规范2中约定系统类不能被应用类覆盖，但是没有明确规定哪些时系统类，jetty中以类的package路径名来区分，当类的package路径名位包含于</p>
-
-<pre><code>  public final static String[] __dftSystemClasses =
-    {
-        "java.",                            
-        "javax.",                           
-        "org.xml.",                         
-        "org.w3c.",                         
-        "org.apache.commons.logging.",      
-        "org.eclipse.jetty.continuation.",  
-        "org.eclipse.jetty.jndi.",          
-        "org.eclipse.jetty.plus.jaas.",     
-        "org.eclipse.jetty.websocket.WebSocket", 
-        "org.eclipse.jetty.websocket.WebSocketFactory", 
-        "org.eclipse.jetty.servlet.DefaultServlet" 
-    } ;
-</code></pre>
-
-<p>时，会被认为是系统类。（该定义位于<a href="https://github.com/eclipse/jetty.project/blob/master/jetty-webapp/src/main/java/org/eclipse/jetty/webapp/WebAppContext.java">WebAppContext@github</a>中）</p>
-
-<p>因此，我们可以通过 org.eclipse.jetty.webapp.WebAppContext.setSystemClasses(String Array)或者org.eclipse.jetty.webapp.WebAppContext.addSystemClass(String)来设置系统类。
-再次提醒，系统类是对多有应用都可见。</p>
-
-<h3>设置Server类</h3>
-
-<p>规范3中约定Server类不对任何应用可见。jetty同样是用package路径名来区分哪些是Server类。Server类包括：</p>
-
-<pre><code>public final static String[] __dftServerClasses =
-{
-    "-org.eclipse.jetty.continuation.", 
-    "-org.eclipse.jetty.jndi.",         
-    "-org.eclipse.jetty.plus.jaas.",    
-    "-org.eclipse.jetty.websocket.WebSocket", 
-    "-org.eclipse.jetty.websocket.WebSocketFactory", 
-    "-org.eclipse.jetty.servlet.DefaultServlet", 
-    "-org.eclipse.jetty.servlet.listener.", 
-    "org.eclipse.jetty."                
-} ;
-</code></pre>
-
-<p>我们可以通过， org.eclipse.jetty.webapp.WebAppContext.setServerClasses(String Array) 或org.eclipse.jetty.webapp.WebAppContext.addServerClass(String)方法设置Server类。
-注意，Server类是对所有应用都不可见的，但是WEB-INF/lib下的类可以替换Server类。</p>
-
-<h3>自定义WebApp ClassLoader</h3>
-
-<p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/5/">&larr; Older</a>
@@ -1221,6 +1198,10 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -1256,10 +1237,6 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

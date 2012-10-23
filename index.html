@@ -9,7 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="HDFS中有两种类型的通信机制，一种是进行消息传递的Hadoop IPC机制，一种是用于处理数据传输的DataXceiver机制。前者包括clientnamenode之间的通信，以及datanodenamenode间通信，后者包括clientdatanode, &hellip;">
+  <meta name="description" content="介绍 Hadooop源码中自带了contrib/fuse-dfs模块，用于实现通过libhdfs和fuse将HDFS mount到*inux的本地。 编译 环境 Linux: 2.6.18-164.el5 x86_64
+JDK: 1.6.0_23 64bit
+Hadoop: 0.19.1 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +80,177 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS Mount HDFS</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-23T10:24:00+08:00" pubdate data-updated="true">Oct 23<span>rd</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>介绍</h2>
+
+<p>Hadooop源码中自带了contrib/fuse-dfs模块，用于实现通过libhdfs和fuse将HDFS mount到*inux的本地。</p>
+
+<h2>编译</h2>
+
+<h3>环境</h3>
+
+<ol>
+<li>Linux: 2.6.18-164.el5 x86_64</li>
+<li>JDK: 1.6.0_23 64bit</li>
+<li>Hadoop: 0.19.1 下面假设源码目录为$HADOOP_SRC_HOME</li>
+<li>Ant: 1.8.4</li>
+<li>GCC: 4.1.2(系统默认)</li>
+</ol>
+
+
+<h3>编译libhdfs</h3>
+
+<h4>修改configure执行权限</h4>
+
+<pre><code>$chmod +x $HADOOP_SRC_HOME/src/c++/pipes/configure
+$chmod +x $HADOOP_SRC_HOME/src/c++/utils/configure
+</code></pre>
+
+<h4>修改Makefile，调整编译模式</h4>
+
+<p>64位机中，需要修改libhdfs的Makefile，将GCC编译的输出模式由32(-m32)位改为64(-m64)位</p>
+
+<pre><code>CC = gcc
+LD = gcc
+CFLAGS =  -g -Wall -O2 -fPIC
+LDFLAGS = -L$(JAVA_HOME)/jre/lib/$(OS_ARCH)/server -ljvm -shared -m64(这里) -Wl,-x
+PLATFORM = $(shell echo $$OS_NAME | tr [A-Z] [a-z])
+CPPFLAGS = -m64(还有这里) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(PLATFORM)
+</code></pre>
+
+<h4>编译</h4>
+
+<p>在$HADOOP_HOME目录下执行</p>
+
+<pre><code>$ ant compile -Dcompile.c++=true -Dlibhdfs=true
+</code></pre>
+
+<p>编译结果将生成libhdfs库，位于$HADOOP_SRC_HOME/build/libhdfs目录下</p>
+
+<h3>编译fuse-dfs</h3>
+
+<h4>安装fuse库</h4>
+
+<p>fuse-dfs依赖fuse库，可通过</p>
+
+<pre><code>sudo lsmod|grep fuse
+</code></pre>
+
+<p>检查是否已经安装，如没有，可通过：</p>
+
+<pre><code>yum -y install fuse fuse-devel fuse-libs
+</code></pre>
+
+<p>安装相关依赖库。</p>
+
+<h4>设置编译库路径</h4>
+
+<p>设置编译库路径，将libhdfs的库加入到编译路径中</p>
+
+<pre><code>export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$HADOOP_SRC_HOME/build/c++/Linux-amd64-64/lib:$JAVA_HOME/jre/lib/amd64/server
+</code></pre>
+
+<h4>编译</h4>
+
+<p>编译contrib/fuse-dfs模块：</p>
+
+<pre><code>ant compile-contrib -Dlibhdfs=1 -Dfusedfs=1
+</code></pre>
+
+<p>编译完成将会生成$HADOOP_HOME/build/contrib/fuse-dfs/目录，内有：</p>
+
+<pre><code>fuse-dfs]$ ls
+fuse_dfs  fuse_dfs_wrapper.sh  test
+</code></pre>
+
+<p>其中fuse_dfs是可执行程序，fuse_dfs_wrapper.sh是包含一些环境变量设置的脚本，不过其中大部分需要修改:(</p>
+
+<h4>修改fuse_dfs_warpper.sh</h4>
+
+<pre><code>#Hadoop安装目录
+export HADOOP_HOME=/home/bo.jiangb/yunti-trunk/build/hadoop-0.19.1-dc
+#将fuse_dfs加入到PATH
+export PATH=$HADOOP_HOME/contrib/fuse_dfs:$PATH
+#将hadoop的jar加入到CLASSPATH
+for f in ls $HADOOP_HOME/lib/*.jar $HADOOP_HOME/*.jar ; do
+export  CLASSPATH=$CLASSPATH:$f
+done
+#设置机器模式
+export OS_ARCH=amd64
+#设置JAVA_HOME
+export  JAVA_HOME=/home/admin/tools/jdk1.6
+#将libhdfs加入到链接库路径中
+export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/$OS_ARCH/server:/home/bo.jiangb/yunti-trunk/build/libhdfs:/usr/local/lib
+./fuse_dfs $@
+</code></pre>
+
+<h2>使用</h2>
+
+<h3>mount</h3>
+
+<ol>
+<li><p>新建一个空目录</p>
+
+<p> $mkdir /tmp/dfs</p></li>
+<li><p>挂载dfs
+$./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
+-d表示debug模式，如果正常，可以将-d参数去掉。</p></li>
+</ol>
+
+
+<h3>unmount</h3>
+
+<p>卸载可通过：</p>
+
+<pre><code>fusermount -u /tmp/dfs
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -906,406 +1079,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:55:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-secondary-namenode/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>概述</h2>
-
-<p>SecondaryNameNode在HDFS中的主要作用是帮助master NameNode周期性执行checkpoint操作。</p>
-
-<p>NameNode将运行过程中对文件的修改记录保存在EditLog中。当NameNode重新启动时会从FSImage中加载命名空间镜像，并将EditLog中的内容合并到FSImage中，将合并后的FSImage写入到磁盘，同时清空EditLog，共后续使用。但如果NameNode长时间不重启，随时间增长，EditLog将会越来越大（每次文件操作都要记录），大量占用NameNode磁盘空间，且会导致下一次重启花费大量时间在合并Editlog上。</p>
-
-<p>为了解决这个问题，SecondaryNameNode会定期从NameNode下载最新的FSImage和EditLog，合并editLog日志到FSImage，将合并后的FSImage上传到NameNode，并清空NameNode上的Editlog，将EditLog日志大小控制在一定限度下。</p>
-
-<h2>代码解析</h2>
-
-<p>SecondaryNameNode代码结构如下：</p>
-
-<p><img src="/images/hdfs/SecondaryNameNode.png" alt="SecondaryNameNode" /></p>
-
-<p>SecondaryNameNode本身就是实现了Runnable接口，即一个可执行线程。</p>
-
-<p>checkpointImage表示当前SecondNameNode上的FsImage镜像，该类CheckpointStorage扩展自FSImage。</p>
-
-<p>其中有两个主要的可配置属性：</p>
-
-<ol>
-<li>checkpointPeriod: 两次检查点的间隔时间，可通过fs.checkpoint.period配置</li>
-<li>checkpointSize: EditLog文件的最大值，当EditLog超过这个最大值时会强制之行checkpoint，可通过fs.checkpoint.size配置，默认是64M</li>
-</ol>
-
-
-<h3>run()</h3>
-
-<p>run方法代码如下：</p>
-
-<pre><code>  public void run() {
-
-    //
-    // Poll the Namenode (once every 5 minutes) to find the size of the
-    // pending edit log.
-    //
-    long period = 5 * 60;              // 5 minutes
-    long lastCheckpointTime = 0;
-    if (checkpointPeriod &lt; period) {
-      period = checkpointPeriod;
-    }
-
-    while (shouldRun) {
-      try {
-        Thread.sleep(1000 * period);
-      } catch (InterruptedException ie) {
-        // do nothing
-      }
-      if (!shouldRun) {
-        break;
-      }
-      try {
-        long now = System.currentTimeMillis();
-
-        long size = namenode.getEditLogSize();
-        if (size &gt;= checkpointSize || 
-            now &gt;= lastCheckpointTime + 1000 * checkpointPeriod) {
-          doCheckpoint();
-          lastCheckpointTime = now;
-        }
-      } catch (IOException e) {
-        LOG.error("Exception in doCheckpoint: ");
-        LOG.error(StringUtils.stringifyException(e));
-        e.printStackTrace();
-      } catch (Throwable e) {
-        LOG.error("Throwable Exception in doCheckpoint: ");
-        LOG.error(StringUtils.stringifyException(e));
-        e.printStackTrace();
-        Runtime.getRuntime().exit(-1);
-      }
-    }
-  }
-</code></pre>
-
-<p>其核心就是周期性（默认每个5分钟)调用doCheckpoint().</p>
-
-<h3>doCheckpoint()</h3>
-
-<pre><code>  void doCheckpoint() throws IOException {
-
-    // 准备合并所需的空间
-    startCheckpoint();
-
-    // 通知NameNode将修改信息记录到新的editlog中，并获取一个用于上传合并后的fsimage的token
-    CheckpointSignature sig = (CheckpointSignature)namenode.rollEditLog();
-
-    // error simulation code for junit test
-    if (ErrorSimulator.getErrorSimulation(0)) {
-      throw new IOException("Simulating error0 " +
-                            "after creating edits.new");
-    }
-    //从NameNode获取fsimage和editslog
-    downloadCheckpointFiles(sig);   // Fetch fsimage and edits
-    //合并editlog到fsimage
-    doMerge(sig);                   // Do the merge
-
-    //上传合并后的fsimage到NameNode
-    putFSImage(sig);
-
-    // error simulation code for junit test
-    if (ErrorSimulator.getErrorSimulation(1)) {
-      throw new IOException("Simulating error1 " +
-                            "after uploading new image to NameNode");
-    }
-    // 通知NameNode使用该fsimage作为最新的镜像
-    namenode.rollFsImage();
-    checkpointImage.endCheckpoint();
-
-    LOG.warn("Checkpoint done. New Image Size: " 
-              + checkpointImage.getFsImageName().length());
-  }
-</code></pre>
-
-<h4>1. startCheckpoint()</h4>
-
-<p>该方法主要用于准备合并所需的磁盘空间，代码如下：</p>
-
-<pre><code>  private void startCheckpoint() throws IOException {
-    checkpointImage.unlockAll();
-    // 关闭当前Editlog
-    checkpointImage.getEditLog().close();
-    // 检查当前checkpoints目录，如果不存在则创建一个新目录，如果目录中存在异常，则尝试恢复该目录
-    checkpointImage.recoverCreate(checkpointDirs, checkpointEditsDirs);
-    // 为新的checkpoint准备目录空间，将当前的目录空间更名为lastcheckpoint.™p，新建一个current目录 
-    checkpointImage.startCheckpoint();
-  }
-</code></pre>
-
-<h4>2. namenode.rollEditLog();</h4>
-
-<p>namenode.rollEditLog()实际通过NameNodeProtocol调用NameNode.rollEditLog()方法，并最终调用FSImage.rollEditLog()，该方法主要完成：</p>
-
-<ol>
-<li>调用FSEditLog.rollEditLog()关闭当前editLog，新建一个editLog：edits.new</li>
-<li>返回一个CheckpointSignature做为上传合并后镜像的token</li>
-</ol>
-
-
-<h5>2.1. FSEditLog.rollEditLog()</h5>
-
-<p>该方法主要完成：</p>
-
-<ol>
-<li>关闭当前editlog， 打开一个新的editlog： edit.new</li>
-<li>返回editlog的最新更新时间</li>
-</ol>
-
-
-<p>代码结构如下</p>
-
-<pre><code>  synchronized void rollEditLog() throws IOException {
-    //检查edit.new是否已经存在，如果存在，检查是否所有目录都存在，如果是则认为edits.new已经建好了，直接返回
-    //
-    if (existsNew()) {
-      for (Iterator&lt;StorageDirectory&gt; it = 
-               fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
-        File editsNew = getEditNewFile(it.next());
-     if (!editsNew.exists()) { 
-          throw new IOException("Inconsistent existance of edits.new " +
-                                editsNew);
-        }
-      }
-      return; // nothing to do, edits.new exists!
-    }
-
-    //关闭当前的editLog
-    close();                     // close existing edit log
-
-    //
-    // 新建一个editLog： edits.new
-    //
-    for (Iterator&lt;StorageDirectory&gt; it = 
-           fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      try {
-        EditLogFileOutputStream eStream = 
-             new EditLogFileOutputStream(getEditNewFile(sd));
-        eStream.create();
-        editStreams.add(eStream);
-      } catch (IOException e) {
-        // remove stream and this storage directory from list
-        processIOError(sd);
-       it.remove();
-      }
-    }
-  }
-</code></pre>
-
-<h4>3. downloadCheckpointFiles()</h4>
-
-<p>该方法用于从NameNode下载FSImage和FSEditLog，代码结构如下：</p>
-
-<pre><code>  private void downloadCheckpointFiles(CheckpointSignature sig
-                                      ) throws IOException {
-
-    checkpointImage.cTime = sig.cTime;
-    checkpointImage.checkpointTime = sig.checkpointTime;
-
-    // 获取fsimage
-    String fileid = "getimage=1";
-    File[] srcNames = checkpointImage.getImageFiles();
-    assert srcNames.length &gt; 0 : "No checkpoint targets.";
-    TransferFsImage.getFileClient(fsName, fileid, srcNames);
-    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
-             srcNames[0].length() + " bytes.");
-
-    // 获取editlog
-    fileid = "getedit=1";
-    srcNames = checkpointImage.getEditsFiles();
-    assert srcNames.length &gt; 0 : "No checkpoint targets.";
-    TransferFsImage.getFileClient(fsName, fileid, srcNames);
-    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
-        srcNames[0].length() + " bytes.");
-
-    // 标示checkpoint所需文件已经准备完成
-    checkpointImage.checkpointUploadDone();
-  }
-</code></pre>
-
-<h4>4. doMerge()</h4>
-
-<p>doMerge主要完成editLog与fsimage的合并，实际调用的checkpointImage.doMerge(sig);</p>
-
-<pre><code>private void doMerge(CheckpointSignature sig) throws IOException {
-  getEditLog().open();
-  StorageDirectory sdName = null;
-  StorageDirectory sdEdits = null;
-  Iterator&lt;StorageDirectory&gt; it = null;
-  it = dirIterator(NameNodeDirType.IMAGE);
-  if (it.hasNext())
-    sdName = it.next();
-  it = dirIterator(NameNodeDirType.EDITS);
-  if (it.hasNext())
-    sdEdits = it.next();
-  if ((sdName == null) || (sdEdits == null))
-    throw new IOException("Could not locate checkpoint directories");
-  // 加载fsimage
-  loadFSImage(FSImage.getImageFile(sdName, NameNodeFile.IMAGE));
-  // 加载editlog，并合并到fsimage
-
-  loadFSEdits(sdEdits);
-  // 校验新fsimage的一致性，主要包括版本，更新时间，namespaceId
-  sig.validateStorageInfo(this);
-  // 将fsImage存储到本地，并创建新edits
-  saveFSImage();
-}
-</code></pre>
-
-<p>该方法与NameNode启动时类似:</p>
-
-<ol>
-<li>加载fsiamge</li>
-<li>加载editslog，并作用到fsimage中</li>
-<li>校验合并后的fsimage</li>
-<li>将新fsimage存储到本地，并新建空的edit是目录</li>
-</ol>
-
-
-<h4>5. putFSImage(sig);</h4>
-
-<p>该方法比较简单，主要通过TransferFsImage工具类将合并后的fsimage上传到NameNode</p>
-
-<pre><code>  private void putFSImage(CheckpointSignature sig) throws IOException {
-    String fileid = "putimage=1&amp;port=" + infoPort +
-      "&amp;machine=" +
-      InetAddress.getLocalHost().getHostAddress() +
-      "&amp;token=" + sig.toString();
-    LOG.info("Posted URL " + fsName + fileid);
-    TransferFsImage.getFileClient(fsName, fileid, (File[])null);
-  }
-</code></pre>
-
-<h4>6. namenode.rollFsImage();</h4>
-
-<p>上传完新fsiamge之后，SecondaryNameNode通过namenode.rollFsImage()通知NameNode使用新的fsimage.ckpt作为最新镜像，并清空editslog。该请求最终由NameNode上的FsImage.rollFsImage()处理，代码如下：</p>
-
-<pre><code> void rollFSImage() throws IOException {
-    if (ckptState != CheckpointStates.UPLOAD_DONE) {
-      throw new IOException("Cannot roll fsImage before rolling edits log.");
-    }
-    //
-    // 校验fsimage.ckpt和edits.new是否存在于所有目录
-    if (!editLog.existsNew()) {
-      throw new IOException("New Edits file does not exist");
-    }
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
-      if (!ckpt.exists()) {
-        throw new IOException("Checkpoint file " + ckpt +
-                              " does not exist");
-      }
-    }
-    //删除旧的edits，并将edits.new重命名为edits
-    editLog.purgeEditLog(); // renamed edits.new to edits
-
-    //
-    // 重命名fsimage
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
-      File curFile = getImageFile(sd, NameNodeFile.IMAGE);
-      // renameTo fails on Windows if the destination file 
-      // already exists.
-      if (!ckpt.renameTo(curFile)) {
-        curFile.delete();
-        if (!ckpt.renameTo(curFile)) {
-          // Close edit stream, if this directory is also used for edits
-          if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
-            editLog.processIOError(sd);
-        // add storage to the removed list
-          removedStorageDirs.add(sd);
-          it.remove();
-        }
-      }
-    }
-
-    //
-    // 更新所有目录的fstime
-    //
-    this.layoutVersion = FSConstants.LAYOUT_VERSION;
-    this.checkpointTime = FSNamesystem.now();
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                           dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      // delete old edits if sd is the image only the directory
-      if (!sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
-        File editsFile = getImageFile(sd, NameNodeFile.EDITS);
-        editsFile.delete();
-      }
-      // delete old fsimage if sd is the edits only the directory
-      if (!sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
-        File imageFile = getImageFile(sd, NameNodeFile.IMAGE);
-        imageFile.delete();
-      }
-      try {
-        sd.write();
-      } catch (IOException e) {
-        LOG.error("Cannot write file " + sd.getRoot(), e);
-        // Close edit stream, if this directory is also used for edits
-        if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
-          editLog.processIOError(sd);
-      //add storage to the removed list
-        removedStorageDirs.add(sd);
-        it.remove();
-      }
-    }
-    ckptState = FSImage.CheckpointStates.START;
-  }
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -1319,6 +1092,10 @@
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -1354,10 +1131,6 @@
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

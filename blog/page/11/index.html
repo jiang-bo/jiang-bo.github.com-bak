@@ -9,11 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="这段时间在学Python，今天开始进入到CGI编程，示例中有个简单CGI Server的例子，代码如下：
-webserver.py:
-webdir = &quot;.&quot; #html files directory
-port = 8000 ＃server port
-import os, &hellip;">
+  <meta name="description" content="今天第一次使用JBoss，解压运行时出现了如下错误：
+Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/server/jvm.dll&#8217;
+原因是JAVA_HOME设置的不对 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -82,6 +80,53 @@ import os, &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/04/07/post/">Error: No &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-04-07T00:00:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/04/07/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天第一次使用JBoss，解压运行时出现了如下错误：</p>
+<p>Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/server/jvm.dll&#8217;</p>
+<p>原因是JAVA_HOME设置的不对</p>
+<p>临时解决办法是重新设置下JAVA_HOME，set JAVA_HOME=&#8221;C:/Program Files/Java/jdk1.6.0_19&#8221;就行了，最好是在环境变量里添加一个。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -557,90 +602,6 @@ OSError: [Errno 13] Permission denied
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/11/15/post/">Android示例HelloGallery中R.styleable Unresolved的解决办法</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-11-15T00:00:00+08:00" pubdate data-updated="true">Nov 15<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/11/15/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/android/'>Android</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>&nbsp; &nbsp;&nbsp; 今天尝试编译Android SDK中APIDemos中的程序，调试到HelloGallery的时候，在下面这段代码中：<pre class="brush: java">public ImageAdapter(Context c) {
-        mContext = c;
-        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
-        mGalleryItemBackground = a.getResourceId(
-                android.R.styleable.Theme_galleryItemBackground, 0);
-        a.recycle();
-    }</pre>
-&nbsp;</p>
-<p>&nbsp;&nbsp;&nbsp; 编译出错，提示说android.R.styleable unresolved，在网上查了下，说R.styleable在SDK1.5中已经不再支持，所以会出现这个错误。解决方法如下：</p>
-<p>1.在res/values目录下新建attrs.xml，在其中添加如下内容：</p>
-<p><pre class="brush: xhtml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
-&lt;resources&gt;
-	&lt;declare-styleable name=&quot;Gallery&quot;&gt;
-        &lt;attr name=&quot;android:galleryItemBackground&quot;&gt;
-        &lt;/attr&gt;
-    &lt;/declare-styleable&gt;
-&lt;/resources&gt;</pre>
-</p>
-<p>2.修改HelloGallery.java，将出错的那段代码：</p>
-<p><pre class="brush: java">public ImageAdapter(Context c) {
-        mContext = c;
-        TypedArray a = obtainStyledAttributes(android.R.styleable.Theme);
-        mGalleryItemBackground = a.getResourceId(
-                android.R.styleable.Theme_galleryItemBackground, 0);
-        a.recycle();
-    }</pre>
-</p>
-<p>修改为：</p>
-<p><pre class="brush: java">public ImageAdapter(Context c) {
-        	mContext = c;
-            TypedArray a = obtainStyledAttributes(R.styleable.Gallery);
-            mGalleryItemBackground = a.getResourceId(
-                    R.styleable.Gallery_android_galleryItemBackground, 0);
-            a.recycle();
-        }</pre>
-</p>
-<p>3.重新运行就可以了</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/12/">&larr; Older</a>
@@ -656,6 +617,10 @@ OSError: [Errno 13] Permission denied
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -691,10 +656,6 @@ OSError: [Errno 13] Permission denied
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

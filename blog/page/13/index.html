@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、 目的： 将一个类的接口转换成客户希望的另一个接口。Adapter 模式使原本由于接口不兼容而不能一起工作的那些类可以一起工作。 ——GoF 《Design Pattern 》 二、 描述： 其实个人觉得Adapter模式在所有的模式当中算是比较简单的那种，也比较容易理解， &hellip;">
+  <meta name="description" content="目的： 保证一个类仅有一个实例，并为该实例提供也个安全的全局访问点 用途： 在很多时候，系统中需要某个类只有一个实例，例如连接数据库时的驱动程序注册，加载属性文件等。 实现的核心是要有一个私有的构造方法，静态实例变量，以及返回该静态变量的公有静态方法作为全局访问接口。 一个最基本的实现： &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,126 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/08/28/singleton-desgin-pattern/">设计模式学习笔记(1)——单例模式</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-08-28T16:48:00+08:00" pubdate data-updated="true">Aug 28<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/08/28/singleton-desgin-pattern/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/design/'>Design</a>, <a class='category' href='/blog/categories/pattern/'>Pattern</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>目的：</h4>
+
+<p>保证一个类仅有一个实例，并为该实例提供也个安全的全局访问点</p>
+
+<h4>用途：</h4>
+
+<p>在很多时候，系统中需要某个类只有一个实例，例如连接数据库时的驱动程序注册，加载属性文件等。</p>
+
+<p>实现的核心是要有一个私有的构造方法，静态实例变量，以及返回该静态变量的公有静态方法作为全局访问接口。</p>
+
+<p>一个最基本的实现：</p>
+
+<pre><code>public class Singleton { 
+    private static Singleton instance = null; // 静态实例变量
+
+    private Singleton() { // 私有的构造方法 
+    }
+
+    public static Singleton getInstance() { // 公有的全局访问接口 
+       if (instance == null) { // 检查是否已经实例化，以保证只有一个实例 
+            instance = new Singleton(); 
+        } 
+        return instance; 
+    } 
+}
+</code></pre>
+
+<p>这种实现在单线程环境下是没有什么问题的，但是在多线程环境下就会出现问题，例如现在有两个线程A，B，当A执行完红色的判断语句后切换到线程B，假设此时instance尚未实例化，B执行判断，条件为真，进行实例化instance，返回，当再次切换到线程A时，继续上一次的执行，实例化instance，这是系统中就存在了两个实例。</p>
+
+<p>最简单的改进方法就是在对getInstance方法进行同步限制，也就是</p>
+
+<pre><code>public static synchronized Singleton getInstance() {…}
+</code></pre>
+
+<p>但是这样synchronized的效率很差，存在更好的改进方法</p>
+
+<h4>1.直接加载</h4>
+
+<p>通常使用的都是晚加载（Lazy mode），需要时在实例化，但是，有时能够确定系统中肯定要存在一个该类的实例，直接加载是一种简单的实现方式</p>
+
+<pre><code>public class SingletonEagerInstantiation { 
+    private static SingletonEagerInstantiation instance = new SingletonEagerInstantiation(); //直接静态实例化
+
+    private SingletonEagerInstantiation() { 
+    }
+
+    public static SingletonEagerInstantiation getInstance() { 
+        return instance;//直接返回 
+    } 
+}
+</code></pre>
+
+<h4>2.双重检查</h4>
+
+<p>刚才使用synchronized关键字时，出现了效率差的现象，是因为无论instance是否已经实例化了都要进行同步，synchronized效率很差，而使用双重检查，先判断instance是否已经实例化，如果为空在进行同步，这样就提高了效率，而且这种实现方式也提供了晚加载的能力，但是注意volatile关键字限制了该种实现方式只能用于jdk1.5以上版本</p>
+
+<pre><code>public class SingletonDoubleCheck { 
+    private static volatile SingletonDoubleCheck instance = null; 
+    private SingletonDoubleCheck() { 
+    } 
+    public static SingletonDoubleCheck getInstance() { 
+        if (instance == null) {//先判断 
+            synchronized (SingletonDoubleCheck.class) {//如果没有实例化，同步 
+                if (instance == null) {//再次判断 
+                    instance = new SingletonDoubleCheck();//实例化 
+                } 
+            } 
+        } 
+        return instance; 
+    } 
+}
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -414,54 +534,6 @@ WildTurkey gobble</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/08/20/post/">Android文档（二）-应用基础（1）应用组件（Application Components）</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-08-20T00:00:00+08:00" pubdate data-updated="true">Aug 20<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/08/20/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/android/'>Android</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h4>应用基础</h4> <p>Android应用程序由Java语言编写。Java字节码以及应用所需的所有数据资源文件都通过aapt工具打包成Android package，一种被标记问.apk的归档文件。这类文件是在移动设备上发布和安装应用程序的基础；用户下载这种文件到他们的设备上。一个.apk文件中所有的代码被认为是一个应用。</p> <p>在很多情况下，每个Android应用程序处于自己的生存空间内：</p> <p>1.默认情况下，每个应用运行在它自己的独立的linux进程环境中。当任何应用的代码需要被执行的时候，Android启动这个进程，当不再需要这个进程并且有其他的应用请求他的系统资源时，关闭该进程。</p> <p>2.每个进程有他自己的Java VM，因此应用之间的执行代码是相互隔离的。</p> <p>3.默认情况下，每个应用被赋给唯一的用户ID。通过权限设置使得这个应用的文件只对相应用户及应用本身可见。当然，也可以通过某种方式将这些文件导出给其它应用。</p> <p>可以通过两个应用共享同一个用户ID，使他们可以共享彼此的文件。为了节约系统资源，相同用户ID的应用可以运行在同一个Linux进程中，共享同一个VM。</p> <h5>应用组件（Application Components）</h5> <p>Android的一个核心特性就是一个应用可以利用其他应用的元素（得到这些应用的允许）。例如，你的应用需要显示一个滚动的图像列表，而另外一个应用已经开发了一个可用的滚动条，并且是其他应用可以应用这个滚动条，你可以调用这个滚动条，而不用自己开发一个。你的应用并不和其他应用的代码混合或连接，而是简单的启动其他应用所需的一部分。</p> <p>为了实现这种机制，当任何应用的某一部分被请求时，系统必须能够启动该应用的一个进程，并且为该进程实例化一个Java对象。这与大部分其他系统上的应用不同。Android应用不需要为每个应用设立入口点（无main()函数)。相对而言，只是一些核心组件，系统能够实例化这些组件，并且在需要时运行。</p> <p>共有4类组件：</p> <p><b>活动（Activities</b><b>）</b></p> <p>一个活动表示为一个与用户交互用户图形界面。例如，一个活动可以表示为一个菜单项组成的列表，用户能够从中选择，或者表示为一个可以显示带有标题的照片。一个文本消息应用可能拥有一个显示联系人的列表，另一个活动负责像这个被选中的联系人写消息，还有另外的一个活动负责查看已有的消息或者更改设置。尽管他们一起形成一个完整的用户界面，但是每个活动还是相互独立的。每一个都是基类Activity的子类。</p> <p>一个应用可能有一个或多个活动。这些活动是什么以及数量有多少取决于不同应用的设计。典型的，当应用启动时活动中的被标记为第一的应该第一个展现给用户。活动间的传递是通过当前活动启动下一活动来实现的。</p> <p>每个活动都被会旨在一个给定的窗口（window）上。典型的，一个窗口一改填充满整个屏幕（screen），但是，有时也可能小于屏幕或者漂浮（float）在其他窗口上。一个活动能够利用额外的窗口-例如，一个弹出窗口或者一个当用户在屏幕上选择了特定项是，用于显示重要信息的窗口。</p> <p>窗口的可视内容都是通过继承视图基类View实现的。每个视图控制着窗口内一个特定的矩形区域。父视图负责承接子视图并组织子视图的布局。叶视图（继承树中最低层的）绘制在矩形区域内负责直接控制和响应用户在该区域内的活动。也就是说，视图是活动与用户发生交互的地方。例如，一个试图可能显示一个小图片并且当用户查看该图片时初始化一个动作。Android有一些内置的视图共开发者使用-包括按钮（buttons），文本框（text field），滚动条（scroll bar)，菜单栏（menu items），选择框（check box），等等。</p> <p>视图通过活动窗口的Activity.setContentView()方法设置一个视图。content view是位于继承树根的View对象。</p> <p><b>服务（Services</b><b>）</b></p> <p>一个服务（service)没有可视用户界面，而是在一个不确定的时期内运行于后台。例如，在用户试图处理其他事物时，一个服务可能用于在后台播放音乐，或者从网络中接收数据或者计算一些事情并将结果发送给需要的活动。每个服务都是扩展于基类Service。</p> <p>一个初级的例子就是媒体播放器按照播放列表播放音乐。播放器应用可能拥有一个或多个活动，例如允许哦那个湖选择曲目并且开始播放等活动。然而，在后台播放的音乐并不由活动来处理，因为用户会希望在他们离开播放器，或者处理其他事务时，音乐能够持续播放。为了保持音乐播放，播放器活动必须能够开启一个服务用语在后台运行。当活动开启服务后并离开屏幕后，系统会保持循环播放的服务。</p> <p>可以连接一个正在运行的服务（如果服务没有开启，箱开启服务）。在连接时，你可以通过服务导出的接口与服务进行通信。对于音乐服务，这个接口可能允许用户暂停，倒退，停止，或者重启虚幻播放。</p> <p>类似于活动和其他组件，服务可以运行在应用进程的主线程中。因此他们不会影响其他组件或者用户接口。他们通常产生另外的线程用于耗时任务（例如音乐播放）。</p> <p><b>广播接收者（Broadcast receivers)</b></p> <p>一个广播接收者是一个仅用来接收和反射广播布告的组件。许多广播起源于系统代码-例如，通知说，时区已发生了变化，电池电量低，该图片已经采取，或用户改变了语言偏好。一个应用可以有任意数量的广播接收机，以应付任何它认为重要的通知。所有接收器扩展BroadcastReceiver基类。广播接收机不显示用户界面。然而，他们可能会启动一项活动去响应收到的信息，或者他们可以使用NotificationManager提醒用户。通知可以以各种方式引起用户的注意-闪动的背光，振动设备，播放声音，等等。它们通常在状态栏放置一个图标，用户可以打开它获得的信息。</p> <p><b>内容提供者</b><b>(</b><b>Content providers)</b></p> <p>内容提供商将一系列具体的应用程序数据提供给其他应用程序。这些数据可以存储在文件系统或 SQLite数据库中，或以任何其他有意义的方式存储 。内容提供商扩展于ContentProvider基类，实现了一组标准方法，使其他应用程序来检索和存储它所控制的数据类型。然而，应用程序不直接调用这些方法。相反，他们使用ContentResolver对象，并调用其方法。一个ContentResolver可以与任何内容提供商交互，它与供应商共同管理任何进程间通信。</p> <p>每当有一个请求需要被某一特定组件处理时，Android确保该组件的应用进程的正在运行，否则启动一个新进程，并确保该组件的一个适当实例可用，否则创建一个新的实例。</p> <p><b>活动组件：意图</b><b>(Intents)</b></p> <p>内容供应商在一个ContentResolver向其发出请求时被激活 。其他三个组成部分-活动，服务和广播接收机-被称为意图的异步消息激活 。一个意图是一种持有的内容信息的Intent对象。对于活动和服务，它意味着一个被请求的动作和指定位于其他事物中的所要使用的数据的URI。例如，它可能转达活动提出的请求去想用户展示一幅图片或使用户可以编辑一些文字。对于广播接收机，Intent对象意味着一个被宣布的活动。例如，它可能会向有关各方宣布相机按钮已被按下。</p> <p>有不同的方法激活各种类型的组件：</p> <p>Ÿ 可以通过向Context.startActivity()或Activity.startActivityForResult()传递一个Intent对象 激活一个活动。作出答复的活动可以通过调用getIntent()方法查询导致其激活的最初的意图，Android通过调用活动的onNewIntent()方法，传递intents。一项活动往往启动下一活动。如果期望从启动的活动返回结果，它必须调用startActivityForResult()而不是startActivity() 。例如，如果启动了一个可以让用户选择一个照片的活动，它可能会希望返回所选择的照片。</p> <p>Ÿ 启动一个服务（或新的指示被发送给正在进行的服务）是通过传递一个Intent对象给Context.startService() 。Android调用该服务的onStart()方法并且向其传递Intent对象。同样，一个intent可以被传递给Context.bindService()用于在请求组件和目标服务之间建立一个持续连接。服务通过onBind()调用获得这个intent对象。 （如果该服务尚未运行， bindService()可以有选择地启动它。 ）举例来说，一项活动可能与前面提到的音乐播放服务建立连接，以便它可以为用户提供的手段（用户界面）来控制播放。这项活动将调用bindService()建立连接，然后调用服务所定义的方法影响到播放。在后面的部分中， 远程过程调用（ Remote procedure calls ），有更多细关于绑定到服务的细节。</p> <p>Ÿ 一个应用程序就可以通过向Context.sendBroadcast() ， Context.sendOrderedBroadcast() ，和Context.sendStickyBroadcast()方法传递Intent对象初始化一个广播。Android是通过调用onReceive()方法，向所有有兴趣的广播接收机传递intent对象。</p> <p><b>关闭组件</b><b></b></p> <p>内容提供商只有在回应ContentResolver发出的请求时才被激活 。广播接收器只有在回应一个广播讯息时被激活。因此，没有必要显式地关闭这些组件。</p> <p>另一方面，活动提供了用户界面。他们处于长时间运行的用户会话中，并可能保持活跃，甚至在闲置，只要谈话继续进行。同样，服务也可能持续运行了很长一段时间。因此，Android需要适当方法来有条不紊地关闭活动和服务：</p> <p>Ÿ 一项活动可以通过调用finish()方法关闭。一项活动可以通过调用finishActivity() 关闭其他活动（一个通过startActivityForResult()启动的活动 ）。</p> <p>Ÿ 服务可以通过调用stopSelf()或Context.stopService()方法停止 。</p> <p>当组件不再被使用，或当Android必须收回内存去激活其他组件时，也可能被系统关闭。在后面的部分中， 组件生命周期（Component Lifecycles） ，讨论这种可能性及其影响的更多细节。</p> <p><b>manifest</b><b>文件</b><b></b></p> <p>在Android启动应用组件之前，它必须知道该组件的存在。因此，应用在一个捆绑在Android包中的清单文件中声明其组件， .apk文件还拥有应用程序的代码，文件和资源。</p> <p>该清单文件是一个XML文件和对所有的应用命名总是AndroidManifest.xml。除了声明该应用程序的组件，该文件还处理其他事情，如命名任何应用需要链接的库（除了默认的Android库） ，并确保应用的任何权限设置按预期执行。</p> <p>但其主要任务是主要是要通知Android的应用程序的组件。例如，一项活动可能会声明如下：</p> <p><i><?xml version='1.0' encoding='utf-8'?></i></p> <p><i><manifest></manifest></i></p> <p><i><application></application></i></p> <p><i><activity android:name="com.example.project.FreneticActivity"></activity></i></p> <p><i>android:icon=&#8221;@drawable/small_pic.png&#8221;</i></p> <p><i>android:label=&#8221;@string/freneticLabel&#8221; </i></p> <p><i>&#8230; &gt;</i></p> <p><i></i></p> <p><i>&#8230;</i></p> <p><i></i></p> <p><i></i></p> <p><activity>元素的name属性声明了实现活动的Activity的子类。icon和label属性指向包含一个图标和标签的资源文件，可显示给用户的展示活动。其它组件以同样的方式被生命- <service>元素表示服务， <receiver>元素表示广播接收机，<provider>元素表示内容提供商。没有在manifest中声明的活动，服务和内容提供商是对系统不可见，因此无法运行。</provider></receiver></service></activity></p> <p>然而，广播接收机既可以被声明在manifest中，或者他们可以在代码中动态创建（如BroadcastReceiver对象）和通过系统调用Context.registerReceiver()注册 。</p> <p><b>Intent</b><b>过滤器</b></p> <p>一个Intent对象可以显式的声明一个目标组件。这样一来，Android将查找这个组建（根据manifest文件中的声明） ，并激活它。但是，如果目标没有显式命名，Android必须找到最好的组件对该Intent作出反应。这是通过比较Intent对象和Intent过滤器中的潜在目标来实现的。一个组成部分的Intent过滤器通知Android组建能够处理的各种intent。像其他关于组件的基本信息一样，他们宣布在manifest文件。</p> <p>以下是扩展前面的例子，向活动中增加了两个Intent过滤器：</p> <p><i><?xml version='1.0' encoding='utf-8'?></i></p> <p><i><manifest></manifest></i></p> <p><i><application></application></i></p> <p><i><activity android:name="com.example.project.FreneticActivity"></activity></i></p> <p><i>android:icon=&#8221;@drawable/small_pic.png&#8221;</i></p> <p><i>android:label=&#8221;@string/freneticLabel&#8221; </i></p> <p><i>&#8230; &gt;</i></p> <p><i><intent-filter></intent-filter></i></p> <p><i><action android:name="android.intent.action.MAIN"></action></i></p> <p><i><category android:name="android.intent.category.LAUNCHER"></category></i></p> <p><i></i></p> <p><i><intent-filter></intent-filter></i></p> <p><i><action android:name="com.example.project.BOUNCE"></action></i></p> <p><i><data android:mimetype="image/jpeg"></data></i></p> <p><i><category android:name="android.intent.category.DEFAULT"></category></i></p> <p><i></i></p> <p><i></i></p> <p><i>&#8230;</i></p> <p><i></i></p> <p>事例中第一个过滤器——活动的结合“ android.intent.action.MAIN ”和类别“android.intent.category.LAUNCHER ” -是一种常见的过滤器。它标志着活动应在应用启动器上展示，屏幕列表应用的用户可以在设备上启动。换句话说，该活动是应用的切入点，当用户在应用启动器上选择是他们将能够看到一个初始的活动。</p> <p>第二个过滤器声明了一项，该活动可以在某一特定类型的数据上执行的动作。</p> <p>组件可以有任意数量的Intent过滤器，每一个宣布了一声明了不同的功能。如果它没有任何过滤器，它只能通过Intent显式的声明目标组建的方式激活。</p> <p>对于像广播接收器，在代码中创建和注册，Intent过滤器直接实例化一个IntentFilter对象。所有其他的过滤器的设置在manifest中。</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/14/">&larr; Older</a>
@@ -477,6 +549,10 @@ WildTurkey gobble</p>
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -512,10 +588,6 @@ WildTurkey gobble</p>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

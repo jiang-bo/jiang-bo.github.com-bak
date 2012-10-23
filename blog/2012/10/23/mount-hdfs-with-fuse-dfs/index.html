@@ -5,14 +5,13 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar - 非纯种程序猿</title>
+  <title>使用FUSE-DFS mount HDFS - 非纯种程序猿</title>
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /
--DartifactId=simple /
--DpackageName=org.sonatype.mavenbook
-结果报错Build &hellip;">
+  <meta name="description" content="介绍 Hadooop源码中自带了contrib/fuse-dfs模块，用于实现通过libhdfs和fuse将HDFS mount到*inux的本地。 编译 环境 Linux: 2.6.18-164.el5 x86_64
+JDK: 1.6.0_23 64bit
+Hadoop: 0.19.1 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -21,7 +20,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://jiangbo.me/blog/2010/04/24/post">
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/10/23/mount-hdfs-with-fuse-dfs">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -84,7 +83,7 @@
   
   <header>
     
-      <h1 class="entry-title">maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</h1>
+      <h1 class="entry-title">使用FUSE-DFS Mount HDFS</h1>
     
     
       <p class="meta">
@@ -100,7 +99,7 @@
   
 
 
-<time datetime="2010-04-24T00:00:00+08:00" pubdate data-updated="true">Apr 24<span>th</span>, 2010</time>
+<time datetime="2012-10-23T10:24:00+08:00" pubdate data-updated="true">Oct 23<span>rd</span>, 2012</time>
         
          | <a href="#disqus_thread">Comments</a>
         
@@ -110,13 +109,130 @@
   </header>
 
 
-<div class="entry-content"><p>今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /</p>
-<p>-DartifactId=simple /</p>
-<p>-DpackageName=org.sonatype.mavenbook</p>
-<p>结果报错Build Error：</p>
-<p>Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</p>
-<p>查了半天也不知道为什么，明明存在archetypes插件，却说找不到，最后决定把本地库全部都删除，然后重新创建项目，没问题了&hellip;&hellip;</p>
-<p>神奇~</p></div>
+<div class="entry-content"><h2>介绍</h2>
+
+<p>Hadooop源码中自带了contrib/fuse-dfs模块，用于实现通过libhdfs和fuse将HDFS mount到*inux的本地。</p>
+
+<h2>编译</h2>
+
+<h3>环境</h3>
+
+<ol>
+<li>Linux: 2.6.18-164.el5 x86_64</li>
+<li>JDK: 1.6.0_23 64bit</li>
+<li>Hadoop: 0.19.1 下面假设源码目录为$HADOOP_SRC_HOME</li>
+<li>Ant: 1.8.4</li>
+<li>GCC: 4.1.2(系统默认)</li>
+</ol>
+
+
+<h3>编译libhdfs</h3>
+
+<h4>修改configure执行权限</h4>
+
+<pre><code>$chmod +x $HADOOP_SRC_HOME/src/c++/pipes/configure
+$chmod +x $HADOOP_SRC_HOME/src/c++/utils/configure
+</code></pre>
+
+<h4>修改Makefile，调整编译模式</h4>
+
+<p>64位机中，需要修改libhdfs的Makefile，将GCC编译的输出模式由32(-m32)位改为64(-m64)位</p>
+
+<pre><code>CC = gcc
+LD = gcc
+CFLAGS =  -g -Wall -O2 -fPIC
+LDFLAGS = -L$(JAVA_HOME)/jre/lib/$(OS_ARCH)/server -ljvm -shared -m64(这里) -Wl,-x
+PLATFORM = $(shell echo $$OS_NAME | tr [A-Z] [a-z])
+CPPFLAGS = -m64(还有这里) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(PLATFORM)
+</code></pre>
+
+<h4>编译</h4>
+
+<p>在$HADOOP_HOME目录下执行</p>
+
+<pre><code>$ ant compile -Dcompile.c++=true -Dlibhdfs=true
+</code></pre>
+
+<p>编译结果将生成libhdfs库，位于$HADOOP_SRC_HOME/build/libhdfs目录下</p>
+
+<h3>编译fuse-dfs</h3>
+
+<h4>安装fuse库</h4>
+
+<p>fuse-dfs依赖fuse库，可通过</p>
+
+<pre><code>sudo lsmod|grep fuse
+</code></pre>
+
+<p>检查是否已经安装，如没有，可通过：</p>
+
+<pre><code>yum -y install fuse fuse-devel fuse-libs
+</code></pre>
+
+<p>安装相关依赖库。</p>
+
+<h4>设置编译库路径</h4>
+
+<p>设置编译库路径，将libhdfs的库加入到编译路径中</p>
+
+<pre><code>export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$HADOOP_SRC_HOME/build/c++/Linux-amd64-64/lib:$JAVA_HOME/jre/lib/amd64/server
+</code></pre>
+
+<h4>编译</h4>
+
+<p>编译contrib/fuse-dfs模块：</p>
+
+<pre><code>ant compile-contrib -Dlibhdfs=1 -Dfusedfs=1
+</code></pre>
+
+<p>编译完成将会生成$HADOOP_HOME/build/contrib/fuse-dfs/目录，内有：</p>
+
+<pre><code>fuse-dfs]$ ls
+fuse_dfs  fuse_dfs_wrapper.sh  test
+</code></pre>
+
+<p>其中fuse_dfs是可执行程序，fuse_dfs_wrapper.sh是包含一些环境变量设置的脚本，不过其中大部分需要修改:(</p>
+
+<h4>修改fuse_dfs_warpper.sh</h4>
+
+<pre><code>#Hadoop安装目录
+export HADOOP_HOME=/home/bo.jiangb/yunti-trunk/build/hadoop-0.19.1-dc
+#将fuse_dfs加入到PATH
+export PATH=$HADOOP_HOME/contrib/fuse_dfs:$PATH
+#将hadoop的jar加入到CLASSPATH
+for f in ls $HADOOP_HOME/lib/*.jar $HADOOP_HOME/*.jar ; do
+export  CLASSPATH=$CLASSPATH:$f
+done
+#设置机器模式
+export OS_ARCH=amd64
+#设置JAVA_HOME
+export  JAVA_HOME=/home/admin/tools/jdk1.6
+#将libhdfs加入到链接库路径中
+export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/$OS_ARCH/server:/home/bo.jiangb/yunti-trunk/build/libhdfs:/usr/local/lib
+./fuse_dfs $@
+</code></pre>
+
+<h2>使用</h2>
+
+<h3>mount</h3>
+
+<ol>
+<li><p>新建一个空目录</p>
+
+<p> $mkdir /tmp/dfs</p></li>
+<li><p>挂载dfs
+$./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
+-d表示debug模式，如果正常，可以将-d参数去掉。</p></li>
+</ol>
+
+
+<h3>unmount</h3>
+
+<p>卸载可通过：</p>
+
+<pre><code>fusermount -u /tmp/dfs
+</code></pre>
+</div>
 
 
   <footer>
@@ -138,12 +254,12 @@
   
 
 
-<time datetime="2010-04-24T00:00:00+08:00" pubdate data-updated="true">Apr 24<span>th</span>, 2010</time>
+<time datetime="2012-10-23T10:24:00+08:00" pubdate data-updated="true">Oct 23<span>rd</span>, 2012</time>
       
 
 <span class="categories">
   
-    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
   
 </span>
 
@@ -159,14 +275,18 @@
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2010/04/07/post/" title="Previous Post: Error: no &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;">&laquo; Error: no &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;</a>
+        <a class="basic-alignment left" href="/blog/2012/10/18/hdfs-dataxceiver/" title="Previous Post: HDFS源码学习（15）——DataXceiverServer">&laquo; HDFS源码学习（15）——DataXceiverServer</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2010/06/21/post/" title="Next Post: 查询外网IP并发送邮件的脚本">查询外网IP并发送邮件的脚本 &raquo;</a>
       
     </p>
   </footer>
 </article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
 
 </div>
 
@@ -270,7 +390,10 @@
       var disqus_shortname = 'jiangbo';
       
         
-        var disqus_script = 'count.js';
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/10/23/mount-hdfs-with-fuse-dfs/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/10/23/mount-hdfs-with-fuse-dfs/';
+        var disqus_script = 'embed.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;

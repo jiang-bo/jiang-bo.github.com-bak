@@ -9,8 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、何为Introspection Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。
-Introspection is the self-observation and reporting of conscious inner &hellip;">
+  <meta name="description" content="一、让ubuntu支持GBK编码
+Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。 首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +79,65 @@ Introspection is the self-observation and reporting of conscious inner &hellip;"
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/09/08/vim_gbk/">vim支持GBK编码</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-09-08T00:00:00+08:00" pubdate data-updated="true">Sep 8<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/09/08/vim_gbk/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><h2><strong>一、让ubuntu支持GBK编码</strong></h2>
+Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。</p>
+
+<p>首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件，在文件中添加如下内容：<br />
+zh_CN.UTF- 8 UTF- 8<br />
+en_US.UTF- 8 UTF- 8<br />
+zh_CN.GBK GBK<br />
+zh_CN.GB2312 GB2312<br />
+接着用sudo dpkg-reconfigure &#8211;force locales强制更新设置
+<h2><strong>二、设置Vimrc支持GBK</strong></h2>
+set fileencodings=utf-8,gbk,gb2312</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -848,182 +907,6 @@ Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，�
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/09/mac-config-docbook-tool-chain/">Mac配置docbook工具链</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-08-09T00:00:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/08/09/mac-config-docbook-tool-chain/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/mac/'>Mac</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
-<strong>一、安装工具链</strong>
-docbook工具链包含三部分<br />
-1.xsltproc（mac自带）<br />
-2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
-3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
-下载解压后得到：<br />
-docbook-xsl-1.76.1<br />
-fop-1.0<br />
-两个目录。<br />
-此时可以已经可以进行docbook撰写了，不过只限英文:)
-<strong>二、撰写docbook，并生成pdf</strong>
-使用文本编辑器编写如下xml，保存为webx.xml
-<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
-
-<p>&lt;!DOCTYPE book PUBLIC &#8220;-//OASIS//DTD DocBook XML V4.0//EN&#8221;  &#8220;http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd&#8221;&gt;</p>
-
-<p>&lt;book&gt;<br />
-&lt;bookinfo&gt;<br />
-&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
-&lt;author&gt;<br />
-&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
-&lt;surname&gt;Jiang&lt;/surname&gt;<br />
-&lt;affiliation&gt;<br />
-&lt;address&gt;<br />
-&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
-&lt;/address&gt;<br />
-&lt;/affiliation&gt;<br />
-&lt;/author&gt;<br />
-&lt;copyright&gt;<br />
-&lt;year&gt;2011&lt;/year&gt;<br />
-&lt;/copyright&gt;<br />
-&lt;abstract&gt;<br />
-&lt;para&gt;Webx&lt;/para&gt;<br />
-&lt;/abstract&gt;<br />
-&lt;/bookinfo&gt;<br />
-&lt;part&gt;<br />
-&lt;title&gt;Part1&lt;/title&gt;<br />
-&lt;chapter&gt;<br />
-&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
-&lt;sect1&gt;<br />
-&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
-&lt;para&gt;     Your Text &lt;/para&gt;<br />
-&lt;/sect1&gt;<br />
-&lt;/chapter&gt;<br />
-&lt;chapter&gt;<br />
-&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
-&lt;sect1&gt;<br />
-&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
-&lt;para&gt;     Your Text &lt;/para&gt;<br />
-&lt;/sect1&gt;<br />
-&lt;/chapter&gt;<br />
-&lt;/part&gt;<br />
-&lt;/book&gt;
-使用xsltproc转换为中间文件<br />
-$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
-此时会生成中间文件inter.fo<br />
-使用fop生成pdf<br />
-$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
-最终生成了名为webx.pdf的pdf文件</p>
-
-<p><strong>三、设置FOP支持中文</strong>
-但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
-找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
-<strong>1.生成字体矩阵</strong></p>
-
-<p>进入到fop安装目录，执行</p>
-
-<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr &#8217; &#8217; &#8216;:&#8217;` org.apache.fop.fonts.apps.TTFReader -ttcanme &#8220;SimHei&#8221; /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
-
-<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
-
-<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
-<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
-
-<p>&lt;filterList&gt;</p>
-
-<p>……</p>
-
-<p>&lt;/filterList&gt;</p>
-
-<p>&lt;fonts&gt;</p>
-
-<p>&lt;font metrics-url=&#8221;file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml&#8221; kerning=&#8221;yes&#8221; embed-url=&#8221;file:///Library/Fonts/Microsoft/SimHei.ttf&#8221;&gt;</p>
-
-<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
-
-<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
-
-<p>&lt;/font&gt;</p>
-
-<p>&lt;!&#8211;&lt;directory recursive=&#8221;true&#8221;&gt;/Library/Fonts/&lt;/directory&gt;&#8211;&gt;</p>
-
-<p>&lt;!&#8211;    &lt;auto-detect/&gt;&#8211;&gt;</p>
-
-<p>&lt;/fonts&gt;</p>
-
-<p>……
-<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
-
-<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
-<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
-&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-                xmlns:exsl="http://exslt.org/common"
-                xmlns:fo="http://www.w3.org/1999/XSL/Format"
-                xmlns:ng="http://docbook.org/docbook-ng"
-                xmlns:db="http://docbook.org/ns/docbook"
-                exclude-result-prefixes="db ng exsl"
-                version='1.0'&gt;</pre></p>
-
-<p>&lt;xsl:import href=&#8221;/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl&#8221;/&gt;<br />
-&lt;xsl:param name=&#8221;body.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;xsl:param name=&#8221;monospace.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;xsl:param name=&#8221;title.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
-&lt;/xsl:stylesheet&gt;
-<strong>4.使用新样式表进行转换</strong></p>
-
-<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
-
-<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/8/">&larr; Older</a>
@@ -1039,6 +922,10 @@ $~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -1074,10 +961,6 @@ $~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

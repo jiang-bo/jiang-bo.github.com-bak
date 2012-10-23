@@ -4,7 +4,7 @@
   <title><![CDATA[非纯种程序猿]]></title>
   <link href="http://jiangbo.me/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-10-18T22:01:47+08:00</updated>
+  <updated>2012-10-23T13:32:23+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -12,6 +12,137 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[使用FUSE-DFS mount HDFS]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/23/mount-hdfs-with-fuse-dfs/"/>
+    <updated>2012-10-23T10:24:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/23/mount-hdfs-with-fuse-dfs</id>
+    <content type="html"><![CDATA[<h2>介绍</h2>
+
+<p>Hadooop源码中自带了contrib/fuse-dfs模块，用于实现通过libhdfs和fuse将HDFS mount到*inux的本地。</p>
+
+<h2>编译</h2>
+
+<h3>环境</h3>
+
+<ol>
+<li>Linux: 2.6.18-164.el5 x86_64</li>
+<li>JDK: 1.6.0_23 64bit</li>
+<li>Hadoop: 0.19.1 下面假设源码目录为$HADOOP_SRC_HOME</li>
+<li>Ant: 1.8.4</li>
+<li>GCC: 4.1.2(系统默认)</li>
+</ol>
+
+
+<h3>编译libhdfs</h3>
+
+<h4>修改configure执行权限</h4>
+
+<pre><code>$chmod +x $HADOOP_SRC_HOME/src/c++/pipes/configure
+$chmod +x $HADOOP_SRC_HOME/src/c++/utils/configure
+</code></pre>
+
+<h4>修改Makefile，调整编译模式</h4>
+
+<p>64位机中，需要修改libhdfs的Makefile，将GCC编译的输出模式由32(-m32)位改为64(-m64)位</p>
+
+<pre><code>CC = gcc
+LD = gcc
+CFLAGS =  -g -Wall -O2 -fPIC
+LDFLAGS = -L$(JAVA_HOME)/jre/lib/$(OS_ARCH)/server -ljvm -shared -m64(这里) -Wl,-x
+PLATFORM = $(shell echo $$OS_NAME | tr [A-Z] [a-z])
+CPPFLAGS = -m64(还有这里) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(PLATFORM)
+</code></pre>
+
+<h4>编译</h4>
+
+<p>在$HADOOP_HOME目录下执行</p>
+
+<pre><code>$ ant compile -Dcompile.c++=true -Dlibhdfs=true
+</code></pre>
+
+<p>编译结果将生成libhdfs库，位于$HADOOP_SRC_HOME/build/libhdfs目录下</p>
+
+<h3>编译fuse-dfs</h3>
+
+<h4>安装fuse库</h4>
+
+<p>fuse-dfs依赖fuse库，可通过</p>
+
+<pre><code>sudo lsmod|grep fuse
+</code></pre>
+
+<p>检查是否已经安装，如没有，可通过：</p>
+
+<pre><code>yum -y install fuse fuse-devel fuse-libs
+</code></pre>
+
+<p>安装相关依赖库。</p>
+
+<h4>设置编译库路径</h4>
+
+<p>设置编译库路径，将libhdfs的库加入到编译路径中</p>
+
+<pre><code>export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$HADOOP_SRC_HOME/build/c++/Linux-amd64-64/lib:$JAVA_HOME/jre/lib/amd64/server
+</code></pre>
+
+<h4>编译</h4>
+
+<p>编译contrib/fuse-dfs模块：</p>
+
+<pre><code>ant compile-contrib -Dlibhdfs=1 -Dfusedfs=1
+</code></pre>
+
+<p>编译完成将会生成$HADOOP_HOME/build/contrib/fuse-dfs/目录，内有：</p>
+
+<pre><code>fuse-dfs]$ ls
+fuse_dfs  fuse_dfs_wrapper.sh  test
+</code></pre>
+
+<p>其中fuse_dfs是可执行程序，fuse_dfs_wrapper.sh是包含一些环境变量设置的脚本，不过其中大部分需要修改:(</p>
+
+<h4>修改fuse_dfs_warpper.sh</h4>
+
+<pre><code>#Hadoop安装目录
+export HADOOP_HOME=/home/bo.jiangb/yunti-trunk/build/hadoop-0.19.1-dc
+#将fuse_dfs加入到PATH
+export PATH=$HADOOP_HOME/contrib/fuse_dfs:$PATH
+#将hadoop的jar加入到CLASSPATH
+for f in ls $HADOOP_HOME/lib/*.jar $HADOOP_HOME/*.jar ; do
+export  CLASSPATH=$CLASSPATH:$f
+done
+#设置机器模式
+export OS_ARCH=amd64
+#设置JAVA_HOME
+export  JAVA_HOME=/home/admin/tools/jdk1.6
+#将libhdfs加入到链接库路径中
+export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/$OS_ARCH/server:/home/bo.jiangb/yunti-trunk/build/libhdfs:/usr/local/lib
+./fuse_dfs $@
+</code></pre>
+
+<h2>使用</h2>
+
+<h3>mount</h3>
+
+<ol>
+<li><p>新建一个空目录</p>
+
+<p> $mkdir /tmp/dfs</p></li>
+<li><p>挂载dfs
+$./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
+-d表示debug模式，如果正常，可以将-d参数去掉。</p></li>
+</ol>
+
+
+<h3>unmount</h3>
+
+<p>卸载可通过：</p>
+
+<pre><code>fusermount -u /tmp/dfs
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[HDFS源码学习（15）——DataXceiverServer]]></title>
@@ -3893,212 +4024,6 @@ java.io.FileSystem
 
 
 <p><strong> 当一个代理jar包中的manifest文件中既有Premain-Class又有Agent-Class时，如果以命令行方式在VM启动前指定代理jar，则使用Premain-Class；反之如果在VM启动后，动态添加代理jar，则使用Agent-Class </strong></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[Jetty ClassLoader解析]]></title>
-    <link href="http://jiangbo.me/blog/2012/02/14/jetty-classloader/"/>
-    <updated>2012-02-14T00:26:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/02/14/jetty-classloader</id>
-    <content type="html"><![CDATA[<h2>什么是类加载器？</h2>
-
-<p>类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。</p>
-
-<h2>类加载器分类</h2>
-
-<p>类加载器主要分为：</p>
-
-<ul>
-<li>启动类加载器(Bootstrap ClassLoader)：主要负责加载<JAVA_HOME>\lib目录中或者-Xbootclasspath中指定的，并且被虚拟机识别的类库加载到VM中。这个加载器是JVM自身的一部分，用本地代码实现的(openjdk中源码位于hotspot/src/share/vm/classfile/classLoader.cpp中)，无法直接被java代码引用。</li>
-<li>扩展类加载器(Extension ClassLoader)：主要负责加载jdk扩展类库<JAVA_HOME>\lib\ext或者java.ext.dirs系统属性指定的目录中jar文件，由sun.misc.Launcher$ExtClassLoader实现</li>
-<li>系统类加载器(System ClassLoader)：用于加载CLASSPATH中指定的类，由sun.misc.Launcher$AppClassLoader实现。该类即ClassLoader.getSystemLoader()的返回值，是应用程序默认的类加载器。</li>
-<li>自定义加载器(User ClassLoader)：用户可以自定义自己的类加载器</li>
-</ul>
-
-
-<h2>双亲委托模型</h2>
-
-<p>JDK中要求所有的自定义ClassLoader 必须扩展自抽象类java.lang.ClassLoader。该类的文档说名中有一个段关于delegate model的描述：</p>
-
-<blockquote><p>The ClassLoader class uses a <code>delegation model</code> to search for classes and resources. Each instance of ClassLoader has an associated parent class loader. When requested to find a class or resource, a ClassLoader instance will delegate the search for the class or resource to its parent class loader before attempting to find the class or resource itself. The virtual machine&#8217;s built-in class loader, called the &#8220;bootstrap class loader&#8221;, does not itself have a parent but may serve as the parent of a ClassLoader instance.</p></blockquote>
-
-<p>简单来说这个delegate model要求除了Bootstrap ClassLoader之外，其余ClassLoader都需要关联一个parent ClassLoader（这种关联方式采用的时组合而非继承），在执行加载class时，首先委托给parent ClassLoader加载，只有当parent ClassLoader无法加载时，再由自身加载。各加载器的关联关系如下：</p>
-
-<pre><code>        Bootstrap ClassLoader
-                 |
-        Extension ClassLoader
-                 |
-        System ClassLoader
-            /           \
-    User1 ClassLoader   User2 ClassLoader
-</code></pre>
-
-<p>Bootstrap ClassLoader是最根层的加载器，用户自定义加载器建议使用系统类加载器作为parent。
-这种委托模型的好处显而易见，它维护了类加载器之间的层次优先级关系。使所有的类加载优先由parent加载，这保证了java基础类库中的加载只会有一份。以java.lang.Object为例，委托模式保证了这个类最终只会由BootstrapClassLoader来加载，以此来保证所有环境中只有同一个类。否则由各加载器自由发挥，当用户自己定义各同名的java.lang.Object类时，系统会出现多分Objec类，最根基的行为出现混乱。（当然，你还是可以自定义出一个同名的java.lang.Object，并且顺利通过编译，但是它正常情况下永远不会被加载）。</p>
-
-<p><strong><em>这个委托模型并非jvm的强制规范，只是jdk中建议的一种模式，有时会发现不遵守这种模式的行为却能产生奇妙的效果，如热部署，OSGI等。</em></strong></p>
-
-<h2>Jetty中的ClassLoader</h2>
-
-<p>jetty，tomcat等web容器通常都会对classloader做扩展，因为一个正常的容器至少要保证其内部运行的多个webapp之间：私有的类库不受影响，并且公有的类库可以共享。这正好发挥classloader的层级划分优势。
-jetty中有一个org.mortbay.jetty.webapp.WebAppClassLoader，负责加载一个webapp context中的应用类，WebAppClassLoader以系统类加载器作为parent，用于加载系统类。不过servlet规范使得web容器的classloader比正常的classloader委托模型稍稍复杂，servlet规范要求：</p>
-
-<ol>
-<li>WEB-INF/lib 和 WEB-INF/classes优先于父容器中的类加载，比如WEB-INF/classes下有个XYZ类，CLASSPATH下也有个XYZ类，jetty中优先加载的是WEB-INF/classes下的，这与正常的父加载器优先相反。</li>
-<li>系统类比如java.lang.String不遵循第一条， WEB-INF/classes或WEB-INF/lib下的类不能替换系统类。不过规范中没有明确规定哪些是系统类，jetty中的实现是按照类的全路径名判断。</li>
-<li>Server的实现类不被应用中的类引用，即Server的实现类不能被人和应用类加载器加载。不过，同样的，规范里没有明确规定哪些是Server的实现类，jetty中同样是按照类的全路径名判断。</li>
-</ol>
-
-
-<p>为了处理上述三个问题，jetty的应用类加载器(org.mortbay.jetty.webapp.WebAppClassLoader)做了些特殊处理。</p>
-
-<h3>WebAppClassLoader的实现</h3>
-
-<p>首先看WebAppClassLoader的实现，WebAppClassLoader的构造器中有如下代码：</p>
-
-<pre><code>super(new URL[]{},parent!=null?parent
-            :(Thread.currentThread().getContextClassLoader()!=null?Thread.currentThread().getContextClassLoader()
-                    :(WebAppClassLoader.class.getClassLoader()!=null?WebAppClassLoader.class.getClassLoader()
-                            :ClassLoader.getSystemClassLoader())));
-</code></pre>
-
-<p>表明WebAppClassLoader还是按照正常的范式设置parent classloader
-然后看重要的loadclass方法实现：</p>
-
-<pre><code>@Override
-protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException
-{
-    Class&lt;?&gt; c= findLoadedClass(name);
-    ClassNotFoundException ex= null;
-    boolean tried_parent= false;
-
-    boolean system_class=_context.isSystemClass(name);
-    boolean server_class=_context.isServerClass(name);
-
-    if (system_class &amp;&amp; server_class)
-    {
-        return null;
-    }
-
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; (_context.isParentLoaderPriority() || system_class) &amp;&amp; !server_class)
-    {
-        tried_parent= true;
-        try
-        {
-            c= _parent.loadClass(name);
-            if (LOG.isDebugEnabled())
-                LOG.debug("loaded " + c);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
-    }
-
-    if (c == null)
-    {
-        try
-        {
-            c= this.findClass(name);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
-    }
-
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; !tried_parent &amp;&amp; !server_class )
-        c= _parent.loadClass(name);
-
-    if (c == null)
-        throw ex;
-
-    if (resolve)
-        resolveClass(c);
-
-    if (LOG.isDebugEnabled())
-        LOG.debug("loaded " + c+ " from "+c.getClassLoader());
-
-    return c;
-}
-</code></pre>
-
-<p>loadclass按照：</p>
-
-<ol>
-<li>findLoadedClass(name)-检查类是否已经加载</li>
-<li>判断该类是否为系统类或server类</li>
-<li>如果该类未加载且父加载器不为空且设置了父加载器优先或类类为系统类，且该类不是server类，则尝试使用父加载器加载该类</li>
-<li>如果不是父加载器优先或者父加载器未加载到该类，使用WebAppClassLoader加载该类</li>
-<li>如果是不是父加载器优先，并且WebAppClassLoader未加载到该类，尝试使用父加载器加载该类</li>
-<li>找到则返回，否则抛出ClassNotFoundException</li>
-</ol>
-
-
-<h3>ClassLoader Priority</h3>
-
-<p>上述过程涉及一个加载器优先级的概念，这也是针对前述第一条规范中WEB-INF/lib和WEB-INF/classes类优先的处理。jetty中父加载器优先的配置项可以通过环境变量</p>
-
-<pre><code>org.eclipse.jetty.server.webapp.parentLoaderPriority=false(默认)/true来设置
-</code></pre>
-
-<p>也可以通过</p>
-
-<pre><code>org.eclipse.jetty.webapp.WebAppContext.setParentLoaderPriority(boolean)方法来设置
-</code></pre>
-
-<p>优于该配置默认是false，因此在load class过程中优先使用WebAppClassLoader加载WEB-INF/lib和WEB-INF/classes中的类。
-当将该配置项设为true时需要确认类加载顺序没有问题。</p>
-
-<h3>设置系统类</h3>
-
-<p>规范2中约定系统类不能被应用类覆盖，但是没有明确规定哪些时系统类，jetty中以类的package路径名来区分，当类的package路径名位包含于</p>
-
-<pre><code>  public final static String[] __dftSystemClasses =
-    {
-        "java.",                            
-        "javax.",                           
-        "org.xml.",                         
-        "org.w3c.",                         
-        "org.apache.commons.logging.",      
-        "org.eclipse.jetty.continuation.",  
-        "org.eclipse.jetty.jndi.",          
-        "org.eclipse.jetty.plus.jaas.",     
-        "org.eclipse.jetty.websocket.WebSocket", 
-        "org.eclipse.jetty.websocket.WebSocketFactory", 
-        "org.eclipse.jetty.servlet.DefaultServlet" 
-    } ;
-</code></pre>
-
-<p>时，会被认为是系统类。（该定义位于<a href="https://github.com/eclipse/jetty.project/blob/master/jetty-webapp/src/main/java/org/eclipse/jetty/webapp/WebAppContext.java">WebAppContext@github</a>中）</p>
-
-<p>因此，我们可以通过 org.eclipse.jetty.webapp.WebAppContext.setSystemClasses(String Array)或者org.eclipse.jetty.webapp.WebAppContext.addSystemClass(String)来设置系统类。
-再次提醒，系统类是对多有应用都可见。</p>
-
-<h3>设置Server类</h3>
-
-<p>规范3中约定Server类不对任何应用可见。jetty同样是用package路径名来区分哪些是Server类。Server类包括：</p>
-
-<pre><code>public final static String[] __dftServerClasses =
-{
-    "-org.eclipse.jetty.continuation.", 
-    "-org.eclipse.jetty.jndi.",         
-    "-org.eclipse.jetty.plus.jaas.",    
-    "-org.eclipse.jetty.websocket.WebSocket", 
-    "-org.eclipse.jetty.websocket.WebSocketFactory", 
-    "-org.eclipse.jetty.servlet.DefaultServlet", 
-    "-org.eclipse.jetty.servlet.listener.", 
-    "org.eclipse.jetty."                
-} ;
-</code></pre>
-
-<p>我们可以通过， org.eclipse.jetty.webapp.WebAppContext.setServerClasses(String Array) 或org.eclipse.jetty.webapp.WebAppContext.addServerClass(String)方法设置Server类。
-注意，Server类是对所有应用都不可见的，但是WEB-INF/lib下的类可以替换Server类。</p>
-
-<h3>自定义WebApp ClassLoader</h3>
-
-<p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
 ]]></content>
   </entry>
   

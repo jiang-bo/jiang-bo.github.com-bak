@@ -9,8 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="简要记录一下今天遇到的问题和解决方法
-主函数需要创建一个监听网络端口的守护进程，并将监听到的数据传递给主函数，用于显示。其中，主函数有Qt实现，因此需要采用多线程来维护显示界面，即用一个线程维护显示界面，另一个线程负责向界面上添加数据。（坦白说，我觉得肯定有很简单的方法就能够实现显示数据，不过， &hellip;">
+  <meta name="description" content="最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。
+Ubuntu默认安装的是DHCP
+# The primary network interface auto eth0 iface eth0 inet dhcp &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +80,126 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/19/post/">Ubuntu在机房上网</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-19T00:00:00+08:00" pubdate data-updated="true">Jun 19<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/19/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/linux/'>Linux</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。</p>
+<p>Ubuntu默认安装的是DHCP<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+先要取消DHCP<br />
+编辑/etc/network/interfaces
+<br />
+$sudo vim /etc/network/interfaces<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+#iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+设置IP地址和网关地址<br />
+# The primary network interface
+<br />
+iface eth0 inet static
+<br />
+address 192.168.4.148
+<br />
+netmask 255.255.255.0
+<br />
+gateway 192.168.4.254</p>
+<p>设置DNS服务器地址,编辑文件/etc/resolv.conf<br />
+$sudo vim /etc/resolv.conf
+<br />
+nameserver 202.118.224.101
+<br />
+nameserver 202.106.0.20
+<br />
+&nbsp;<br />
+重启eth0<br />
+$sudo ifdown eth0
+<br />
+$sudo ifup eth0</p>
+<p>机房有时会限制MAC地址，修改MAC地址命令如下<br />
+$sudo ifconfig eth0 up
+<br />
+$sudo ifconfig eth0 hw ether 00:10:5C:E1:63:E1
+<br />
+$sudo ifconfig eth0 down</p>
+<p>
+不过每次重启后都会失效<br />
+&nbsp;自己写了一个脚本</p>
+<p>#!/bin/sh<br />
+echo &quot; **************************************************************&quot;<br />
+echo &quot; *&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Configure IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; * Copyright by Jiang Bo &lt;jiang_eis@hotmail.com&gt; 2009.6.10&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; **************************************************************&quot;<br />
+<br />
+echo &quot; shut down eth0&#8230;&quot;<br />
+ifconfig eth0 down<br />
+<br />
+echo &quot; configure MAC&#8230;&quot;<br />
+ifconfig eth0 hw ether 00:10:5C:E1:63:E1<br />
+<br />
+echo &quot; configure ip address&#8230;&quot;<br />
+ifconfig eth0 192.168.4.148 netmask 255.255.255.0<br />
+<br />
+echo &quot; configure gateway address&#8230;&quot;<br />
+route add default gw 192.168.4.254<br />
+<br />
+echo &quot; set up eth0&#8230;&quot;<br />
+ifconfig eth0 up</p>
+<p>&nbsp;</p>
+<p>每次重启后直接执行这个脚本就行了^^</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -347,73 +468,6 @@ int main(void)<br />
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/05/05/post/">Android SDK1.5开发体验</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-05-05T00:00:00+08:00" pubdate data-updated="true">May 5<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/05/05/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/android/'>Android</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>&nbsp;</p>
-<p>今天在机房尝试了一下<a onclick="tagshow(event, 'Android');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>Android</strong></span></a> SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去<a href="http://developer.android.com/sdk/1.5_r1/index.html">http://developer.android.com/sdk/1.5_r1/index.html</a>上自己看吧。</p>
-<p>下面说个小问题，之前版本的SDK，你写个HelloWorld，按照<a onclick="tagshow(event, 'google');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>google</strong></span></a>网站上说的，run的时候，会出现</p>
-<p>[2009-05-05 16:18:13 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:18:13 - HelloWorld] Android Launch!<br />[2009-05-05 16:18:13 - HelloWorld] adb is running normally.<br />[2009-05-05 16:18:13 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:18:13 - HelloWorld] Failed to find an <a onclick="tagshow(event, 'AVD');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>AVD</strong></span></a> compatible with target &#8216;Android 1.1&#8217;. Launch aborted.</p>
-<p>针对这个问题官方的解释在</p>
-<p><a href="http://developer.android.com/guide/developing/eclipse-adt.html#Running">http://developer.android.com/guide/developing/eclipse-adt.html#Running</a></p>
-<p>看懂了之后其实很容易，就是在运行模拟器之前必须要自己创建一个AVD（Android Virtual Device，Android虚拟设备），相当于配置你要模拟的目标平台一样，方法如下：</p>
-<p>1.打开CMD，输入命令android list targets，查看所有可用的目标平台（如果出现android命令无法找到，是因为你的PATH变量没配置，这就不用我多说了），显示结果为</p>
-<p>Available Android targets:</p>
-<p>id: 1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
-<p>id: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.5<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
-<p>id: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Add-On<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Vendor: Google Inc.<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Description: Android + Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Based on Android 1.5 (API level 3)<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Libraries:<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />* com.google.android.maps (maps.jar)<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />API for Google Maps<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: QVGA-P, HVGA-L, HVGA (default), QVGA-L, HVGA-P</p>
-<p>2.创建一个你想要的AVD，使用如下<a onclick="tagshow(event, '%C3%FC%C1%EE');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>命令</strong></span></a>：</p>
-<p>android create avd &#8211;name<em>&lt;your_avd_name&gt;</em>&#8211;target<em>&lt;targetID&gt;</em></p>
-<p>例如：andorid create avd &#8211;name adt15 &#8211;target 2命令，创建了一个名为adt15的2号（Android1.5）平台的AVD。</p>
-<p>3.然后会询问是否配置硬件设备，我没有硬件，就没配置，默认是NO，如果你想配置的话，输入yes就行。</p>
-<p>4.回到Eclipse里，继续RUN，这是就能搞定了。</p>
-<p>PS一下：模拟器编译装载实在是太慢了，一个HelloWorld要用7分钟，才能运行，不过好歹是能运行了，一下是Eclipse里的输出：</p>
-<p>[2009-05-05 16:35:26 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:35:26 - HelloWorld] Android Launch!<br />[2009-05-05 16:35:26 - HelloWorld] adb is running normally.<br />[2009-05-05 16:35:26 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:35:26 - HelloWorld] Automatic Target Mode: launching new emulator with compatible AVD &#8216;android15r1&#8217;<br />[2009-05-05 16:35:26 - HelloWorld] Launching a new emulator with Virtual Device &#8216;android15r1&#8217;<br />[2009-05-05 16:35:30 - HelloWorld] New emulator found: emulator-5554<br />[2009-05-05 16:35:30 - HelloWorld] Waiting for HOME (&#8216;android.process.acore&#8217;) to be launched&#8230;<br />[2009-05-05 16:40:28 - HelloWorld] HOME is up on device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:28 - HelloWorld] Uploading HelloWorld.apk onto device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:29 - HelloWorld] Installing HelloWorld.apk&#8230;<br />[2009-05-05 16:42:11 - HelloWorld] Success!<br />[2009-05-05 16:42:11 - HelloWorld] Starting activity com.jiang.android.HelloWorld on device<br />[2009-05-05 16:42:51 - HelloWorld] ActivityManager: Starting: Intent { comp={com.jiang.android/com.jiang.android.HelloWorld} }</p>
-<p>这时你在模拟器里就能看到Helloworld了，注意，一定要耐心等待。</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/16/">&larr; Older</a>
@@ -429,6 +483,10 @@ int main(void)<br />
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -464,10 +522,6 @@ int main(void)<br />
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

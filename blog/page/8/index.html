@@ -9,8 +9,11 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包
-3 &hellip;">
+  <meta name="description" content="docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+一、安装工具链
+docbook工具链包含三部分
+1.xsltproc（mac自带）
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +82,182 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/09/mac-config-docbook-tool-chain/">Mac配置docbook工具链</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-09T00:00:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/08/09/mac-config-docbook-tool-chain/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/mac/'>Mac</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+<strong>一、安装工具链</strong>
+docbook工具链包含三部分<br />
+1.xsltproc（mac自带）<br />
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
+3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
+下载解压后得到：<br />
+docbook-xsl-1.76.1<br />
+fop-1.0<br />
+两个目录。<br />
+此时可以已经可以进行docbook撰写了，不过只限英文:)
+<strong>二、撰写docbook，并生成pdf</strong>
+使用文本编辑器编写如下xml，保存为webx.xml
+<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
+
+<p>&lt;!DOCTYPE book PUBLIC &#8220;-//OASIS//DTD DocBook XML V4.0//EN&#8221;  &#8220;http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd&#8221;&gt;</p>
+
+<p>&lt;book&gt;<br />
+&lt;bookinfo&gt;<br />
+&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
+&lt;author&gt;<br />
+&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
+&lt;surname&gt;Jiang&lt;/surname&gt;<br />
+&lt;affiliation&gt;<br />
+&lt;address&gt;<br />
+&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
+&lt;/address&gt;<br />
+&lt;/affiliation&gt;<br />
+&lt;/author&gt;<br />
+&lt;copyright&gt;<br />
+&lt;year&gt;2011&lt;/year&gt;<br />
+&lt;/copyright&gt;<br />
+&lt;abstract&gt;<br />
+&lt;para&gt;Webx&lt;/para&gt;<br />
+&lt;/abstract&gt;<br />
+&lt;/bookinfo&gt;<br />
+&lt;part&gt;<br />
+&lt;title&gt;Part1&lt;/title&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;/part&gt;<br />
+&lt;/book&gt;
+使用xsltproc转换为中间文件<br />
+$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
+此时会生成中间文件inter.fo<br />
+使用fop生成pdf<br />
+$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
+最终生成了名为webx.pdf的pdf文件</p>
+
+<p><strong>三、设置FOP支持中文</strong>
+但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
+找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
+<strong>1.生成字体矩阵</strong></p>
+
+<p>进入到fop安装目录，执行</p>
+
+<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr &#8217; &#8217; &#8216;:&#8217;` org.apache.fop.fonts.apps.TTFReader -ttcanme &#8220;SimHei&#8221; /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
+
+<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
+
+<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
+<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
+
+<p>&lt;filterList&gt;</p>
+
+<p>……</p>
+
+<p>&lt;/filterList&gt;</p>
+
+<p>&lt;fonts&gt;</p>
+
+<p>&lt;font metrics-url=&#8221;file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml&#8221; kerning=&#8221;yes&#8221; embed-url=&#8221;file:///Library/Fonts/Microsoft/SimHei.ttf&#8221;&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;/font&gt;</p>
+
+<p>&lt;!&#8211;&lt;directory recursive=&#8221;true&#8221;&gt;/Library/Fonts/&lt;/directory&gt;&#8211;&gt;</p>
+
+<p>&lt;!&#8211;    &lt;auto-detect/&gt;&#8211;&gt;</p>
+
+<p>&lt;/fonts&gt;</p>
+
+<p>……
+<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
+
+<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
+<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
+&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:exsl="http://exslt.org/common"
+                xmlns:fo="http://www.w3.org/1999/XSL/Format"
+                xmlns:ng="http://docbook.org/docbook-ng"
+                xmlns:db="http://docbook.org/ns/docbook"
+                exclude-result-prefixes="db ng exsl"
+                version='1.0'&gt;</pre></p>
+
+<p>&lt;xsl:import href=&#8221;/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl&#8221;/&gt;<br />
+&lt;xsl:param name=&#8221;body.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;monospace.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;title.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;/xsl:stylesheet&gt;
+<strong>4.使用新样式表进行转换</strong></p>
+
+<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
+
+<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -653,96 +832,6 @@ class GT&lt;T&gt;{
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/02/27/post/">使用memcached进行并发控制</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-02-27T00:00:00+08:00" pubdate data-updated="true">Feb 27<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/02/27/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/javaee/'>JavaEE</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><strong><span style="font-family: mceinline;">引子</span></strong></p>
-<p>
-</p><p class="p2">一个使用缓存进行并发控制的讨论，让我学习到成本与收益间的平衡，以及何为真正的可用性&#8230;&#8230;</p>
-<p class="p2">防止并发有多种方式，本文只涉及使用缓存memcached控制。</p>
-<p class="p1" style="font-weight: bold;"><span style="font-family: mceinline;"><strong>并发场景</strong><span class="s1"><strong>：</strong></span></span></p>
-<p class="p2"><strong>&nbsp;&nbsp; </strong>&nbsp; 用例：SNS系统中具有高级会员资格的人发起活动。</p>
-<p class="p2">&nbsp;&nbsp; &nbsp; 业务规则：1.一个人同时只能创建一个活动。2.具有高级会员资格。</p>
-<p class="p2">&nbsp;&nbsp; &nbsp; 基本流程如下：</p>
-<p style="font-weight: bold;">&nbsp;</p>
-<p class="p1" style="font-weight: bold;">&nbsp;</p>
-
-<p>&nbsp;</p>
-<p class="p2"><img src="http://hi.csdn.net/attachment/201102/27/0_1298804115LLTM.gif" alt="" /></p>
-<p class="p1">这个流程中存在明显的并发问题，当进程A校验过会员M有资格，并且为创建过活动，但为开始执行创建操作，此时另一个进程B也进行了规则判断，顺利通过，并完成创建操作，此时A继续执行，则会产生两条M的活动。（这个并发场景很简单，很普遍）</p>
-<p class="p2"><strong><span style="font-family: mceinline;">最初的解决方案：</span></strong></p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 计划利用memcached的add操作的原子性来控制并发，具体方式如下：</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 1.申请锁：在校验是否创建过活动前，执行add操作key为memberId，如果add操作失败，则表示有另外的进程在并发的为该memberId创建活动，返回创建失败。否则表示无并发</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 2.执行创建活动</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 3.释放锁：创建活动完成后，执行delete操作，删除该memberId。</p>
-<p class="p2"><strong><span style="font-family: mceinline;">问题：</span></strong></p>
-<p class="p1"><strong>&nbsp;&nbsp; &nbsp;</strong> 如此实现存在一些问题：</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 1.memcached中存放的值有有效期，即过期后自动失效，如add过M1后，M1失效，可以在此add成功</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 2.即使通过配置，可以使memcached永久有效，即不设有效期，memcached有容量限制，当容量不够后会进行自动替换，即有可能add过M1后，M1被其他key值置换掉，则再次add可以成功。</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 3.此外，memcached是基于内存的，掉电后数据会全部丢失，导致重启后所有memberId均可重新add。</p>
-<p class="p2"><strong><span style="font-family: mceinline;">应对问题：</span></strong></p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 针对上述的几个问题，根本原因是add操作有时效性，过期，被替换，重启，都会是原来的add操作失效。解决该问题有两个方法：</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 1.采用持久化的缓存解决方法，如TT（<span class="s1">Tokyo Tyrant：</span><span class="s2">http://fallabs.com/tokyotyrant/</span>）</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 2.减轻时效性的影响，使用memcached CAS（check and set）方式。</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 第一种不必解释了，很简单，原来的所有问题都是时效性惹得祸，时效性源于memcached是基于内存的，那么采用持久话存储的TT可以彻底根治这个问题。</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 第二种方式需要简单介绍下：</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; memcached中除了add操作是原子的，还有另外两个操作也是原子的：incr和decr，使用CAS模式即：</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 1.预先在memcached中设置一个key值，假设为CREATKEY＝1</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 2.每次创建活动时，在规则校验前先get出CREATEKEY＝x；</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 3.进行规则校验</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 4.执行incr CREATEKEY操作，检验返回值是否为所期望的x＋1，如果不是，则说明在此期间有另外的进程执行了incr操作，即存在并发，放弃更新。否则</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 5.执行创建活动</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 对比这两种方法，从效果上看可以发现第一种时100％可靠的，不存在问题；第二种，可能存在误判，即本来不存在并发，却被判为并发，如缓存重启，或key值失效后，incr值可能不同于期望值，导致误判。</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 但是从成本上考虑，TT是持久化的缓存解决方案，完美意味着高成本，我们必须维护持久化数据，而使用memcached的CAS方式，可以以几乎0成本的方式解决时效性问题，尽管存在一点小缺陷，但这种缺陷可以通过简单的重试即可解决。考虑实际的产出比，采用memcached的CAS方式更适合实际情况。</p>
-<p class="p1">&nbsp;&nbsp; &nbsp; 成本与收益间的平衡，做科学与做工程的区别～</p>
-<p class="p3">&nbsp;</p>
-<p class="p1">&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/9/">&larr; Older</a>
@@ -758,6 +847,10 @@ class GT&lt;T&gt;{
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -793,10 +886,6 @@ class GT&lt;T&gt;{
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>

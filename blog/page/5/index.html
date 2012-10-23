@@ -9,9 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="Windows上默认使用的GBK编码，Mac上默认使用的unicode编码，因此Win上的压缩包再Mac上解压会出现文件名乱码:(
-下面是用ruby写的一个解决方法： source@github require 'zip/zip'
-require 'iconv' # To unzip &hellip;">
+  <meta name="description" content="什么是类加载器？ 类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。 类加载器分类 类加载器主要分为： 启动类加载器( &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +78,252 @@ require 'iconv' # To unzip &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-14T00:26:00+08:00" pubdate data-updated="true">Feb 14<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/02/14/jetty-classloader/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>什么是类加载器？</h2>
+
+<p>类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。</p>
+
+<h2>类加载器分类</h2>
+
+<p>类加载器主要分为：</p>
+
+<ul>
+<li>启动类加载器(Bootstrap ClassLoader)：主要负责加载<JAVA_HOME>\lib目录中或者-Xbootclasspath中指定的，并且被虚拟机识别的类库加载到VM中。这个加载器是JVM自身的一部分，用本地代码实现的(openjdk中源码位于hotspot/src/share/vm/classfile/classLoader.cpp中)，无法直接被java代码引用。</li>
+<li>扩展类加载器(Extension ClassLoader)：主要负责加载jdk扩展类库<JAVA_HOME>\lib\ext或者java.ext.dirs系统属性指定的目录中jar文件，由sun.misc.Launcher$ExtClassLoader实现</li>
+<li>系统类加载器(System ClassLoader)：用于加载CLASSPATH中指定的类，由sun.misc.Launcher$AppClassLoader实现。该类即ClassLoader.getSystemLoader()的返回值，是应用程序默认的类加载器。</li>
+<li>自定义加载器(User ClassLoader)：用户可以自定义自己的类加载器</li>
+</ul>
+
+
+<h2>双亲委托模型</h2>
+
+<p>JDK中要求所有的自定义ClassLoader 必须扩展自抽象类java.lang.ClassLoader。该类的文档说名中有一个段关于delegate model的描述：</p>
+
+<blockquote><p>The ClassLoader class uses a <code>delegation model</code> to search for classes and resources. Each instance of ClassLoader has an associated parent class loader. When requested to find a class or resource, a ClassLoader instance will delegate the search for the class or resource to its parent class loader before attempting to find the class or resource itself. The virtual machine&#8217;s built-in class loader, called the &#8220;bootstrap class loader&#8221;, does not itself have a parent but may serve as the parent of a ClassLoader instance.</p></blockquote>
+
+<p>简单来说这个delegate model要求除了Bootstrap ClassLoader之外，其余ClassLoader都需要关联一个parent ClassLoader（这种关联方式采用的时组合而非继承），在执行加载class时，首先委托给parent ClassLoader加载，只有当parent ClassLoader无法加载时，再由自身加载。各加载器的关联关系如下：</p>
+
+<pre><code>        Bootstrap ClassLoader
+                 |
+        Extension ClassLoader
+                 |
+        System ClassLoader
+            /           \
+    User1 ClassLoader   User2 ClassLoader
+</code></pre>
+
+<p>Bootstrap ClassLoader是最根层的加载器，用户自定义加载器建议使用系统类加载器作为parent。
+这种委托模型的好处显而易见，它维护了类加载器之间的层次优先级关系。使所有的类加载优先由parent加载，这保证了java基础类库中的加载只会有一份。以java.lang.Object为例，委托模式保证了这个类最终只会由BootstrapClassLoader来加载，以此来保证所有环境中只有同一个类。否则由各加载器自由发挥，当用户自己定义各同名的java.lang.Object类时，系统会出现多分Objec类，最根基的行为出现混乱。（当然，你还是可以自定义出一个同名的java.lang.Object，并且顺利通过编译，但是它正常情况下永远不会被加载）。</p>
+
+<p><strong><em>这个委托模型并非jvm的强制规范，只是jdk中建议的一种模式，有时会发现不遵守这种模式的行为却能产生奇妙的效果，如热部署，OSGI等。</em></strong></p>
+
+<h2>Jetty中的ClassLoader</h2>
+
+<p>jetty，tomcat等web容器通常都会对classloader做扩展，因为一个正常的容器至少要保证其内部运行的多个webapp之间：私有的类库不受影响，并且公有的类库可以共享。这正好发挥classloader的层级划分优势。
+jetty中有一个org.mortbay.jetty.webapp.WebAppClassLoader，负责加载一个webapp context中的应用类，WebAppClassLoader以系统类加载器作为parent，用于加载系统类。不过servlet规范使得web容器的classloader比正常的classloader委托模型稍稍复杂，servlet规范要求：</p>
+
+<ol>
+<li>WEB-INF/lib 和 WEB-INF/classes优先于父容器中的类加载，比如WEB-INF/classes下有个XYZ类，CLASSPATH下也有个XYZ类，jetty中优先加载的是WEB-INF/classes下的，这与正常的父加载器优先相反。</li>
+<li>系统类比如java.lang.String不遵循第一条， WEB-INF/classes或WEB-INF/lib下的类不能替换系统类。不过规范中没有明确规定哪些是系统类，jetty中的实现是按照类的全路径名判断。</li>
+<li>Server的实现类不被应用中的类引用，即Server的实现类不能被人和应用类加载器加载。不过，同样的，规范里没有明确规定哪些是Server的实现类，jetty中同样是按照类的全路径名判断。</li>
+</ol>
+
+
+<p>为了处理上述三个问题，jetty的应用类加载器(org.mortbay.jetty.webapp.WebAppClassLoader)做了些特殊处理。</p>
+
+<h3>WebAppClassLoader的实现</h3>
+
+<p>首先看WebAppClassLoader的实现，WebAppClassLoader的构造器中有如下代码：</p>
+
+<pre><code>super(new URL[]{},parent!=null?parent
+            :(Thread.currentThread().getContextClassLoader()!=null?Thread.currentThread().getContextClassLoader()
+                    :(WebAppClassLoader.class.getClassLoader()!=null?WebAppClassLoader.class.getClassLoader()
+                            :ClassLoader.getSystemClassLoader())));
+</code></pre>
+
+<p>表明WebAppClassLoader还是按照正常的范式设置parent classloader
+然后看重要的loadclass方法实现：</p>
+
+<pre><code>@Override
+protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException
+{
+    Class&lt;?&gt; c= findLoadedClass(name);
+    ClassNotFoundException ex= null;
+    boolean tried_parent= false;
+
+    boolean system_class=_context.isSystemClass(name);
+    boolean server_class=_context.isServerClass(name);
+
+    if (system_class &amp;&amp; server_class)
+    {
+        return null;
+    }
+
+    if (c == null &amp;&amp; _parent!=null &amp;&amp; (_context.isParentLoaderPriority() || system_class) &amp;&amp; !server_class)
+    {
+        tried_parent= true;
+        try
+        {
+            c= _parent.loadClass(name);
+            if (LOG.isDebugEnabled())
+                LOG.debug("loaded " + c);
+        }
+        catch (ClassNotFoundException e)
+        {
+            ex= e;
+        }
+    }
+
+    if (c == null)
+    {
+        try
+        {
+            c= this.findClass(name);
+        }
+        catch (ClassNotFoundException e)
+        {
+            ex= e;
+        }
+    }
+
+    if (c == null &amp;&amp; _parent!=null &amp;&amp; !tried_parent &amp;&amp; !server_class )
+        c= _parent.loadClass(name);
+
+    if (c == null)
+        throw ex;
+
+    if (resolve)
+        resolveClass(c);
+
+    if (LOG.isDebugEnabled())
+        LOG.debug("loaded " + c+ " from "+c.getClassLoader());
+
+    return c;
+}
+</code></pre>
+
+<p>loadclass按照：</p>
+
+<ol>
+<li>findLoadedClass(name)-检查类是否已经加载</li>
+<li>判断该类是否为系统类或server类</li>
+<li>如果该类未加载且父加载器不为空且设置了父加载器优先或类类为系统类，且该类不是server类，则尝试使用父加载器加载该类</li>
+<li>如果不是父加载器优先或者父加载器未加载到该类，使用WebAppClassLoader加载该类</li>
+<li>如果是不是父加载器优先，并且WebAppClassLoader未加载到该类，尝试使用父加载器加载该类</li>
+<li>找到则返回，否则抛出ClassNotFoundException</li>
+</ol>
+
+
+<h3>ClassLoader Priority</h3>
+
+<p>上述过程涉及一个加载器优先级的概念，这也是针对前述第一条规范中WEB-INF/lib和WEB-INF/classes类优先的处理。jetty中父加载器优先的配置项可以通过环境变量</p>
+
+<pre><code>org.eclipse.jetty.server.webapp.parentLoaderPriority=false(默认)/true来设置
+</code></pre>
+
+<p>也可以通过</p>
+
+<pre><code>org.eclipse.jetty.webapp.WebAppContext.setParentLoaderPriority(boolean)方法来设置
+</code></pre>
+
+<p>优于该配置默认是false，因此在load class过程中优先使用WebAppClassLoader加载WEB-INF/lib和WEB-INF/classes中的类。
+当将该配置项设为true时需要确认类加载顺序没有问题。</p>
+
+<h3>设置系统类</h3>
+
+<p>规范2中约定系统类不能被应用类覆盖，但是没有明确规定哪些时系统类，jetty中以类的package路径名来区分，当类的package路径名位包含于</p>
+
+<pre><code>  public final static String[] __dftSystemClasses =
+    {
+        "java.",                            
+        "javax.",                           
+        "org.xml.",                         
+        "org.w3c.",                         
+        "org.apache.commons.logging.",      
+        "org.eclipse.jetty.continuation.",  
+        "org.eclipse.jetty.jndi.",          
+        "org.eclipse.jetty.plus.jaas.",     
+        "org.eclipse.jetty.websocket.WebSocket", 
+        "org.eclipse.jetty.websocket.WebSocketFactory", 
+        "org.eclipse.jetty.servlet.DefaultServlet" 
+    } ;
+</code></pre>
+
+<p>时，会被认为是系统类。（该定义位于<a href="https://github.com/eclipse/jetty.project/blob/master/jetty-webapp/src/main/java/org/eclipse/jetty/webapp/WebAppContext.java">WebAppContext@github</a>中）</p>
+
+<p>因此，我们可以通过 org.eclipse.jetty.webapp.WebAppContext.setSystemClasses(String Array)或者org.eclipse.jetty.webapp.WebAppContext.addSystemClass(String)来设置系统类。
+再次提醒，系统类是对多有应用都可见。</p>
+
+<h3>设置Server类</h3>
+
+<p>规范3中约定Server类不对任何应用可见。jetty同样是用package路径名来区分哪些是Server类。Server类包括：</p>
+
+<pre><code>public final static String[] __dftServerClasses =
+{
+    "-org.eclipse.jetty.continuation.", 
+    "-org.eclipse.jetty.jndi.",         
+    "-org.eclipse.jetty.plus.jaas.",    
+    "-org.eclipse.jetty.websocket.WebSocket", 
+    "-org.eclipse.jetty.websocket.WebSocketFactory", 
+    "-org.eclipse.jetty.servlet.DefaultServlet", 
+    "-org.eclipse.jetty.servlet.listener.", 
+    "org.eclipse.jetty."                
+} ;
+</code></pre>
+
+<p>我们可以通过， org.eclipse.jetty.webapp.WebAppContext.setServerClasses(String Array) 或org.eclipse.jetty.webapp.WebAppContext.addServerClass(String)方法设置Server类。
+注意，Server类是对所有应用都不可见的，但是WEB-INF/lib下的类可以替换Server类。</p>
+
+<h3>自定义WebApp ClassLoader</h3>
+
+<p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -565,102 +809,6 @@ sleep 1
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/12/31/my2011and2012/">我的2011&2012</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-12-31T00:00:00+08:00" pubdate data-updated="true">Dec 31<span>st</span>, 2011</time>
-        
-         | <a href="/blog/2011/12/31/my2011and2012/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/生活/'>生活</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>一眨眼，一年又过去了，奔三的步伐又向前迈进了一步…</p>
-
-<p><h2>2011流水账</h2></p>
-
-<p>1月～3月，入职来第一次正是参加了大项目，中间夹杂个春节，据说每年年底做大项目是部门的传统，今年也不例外啊:(，项目苦了写，不过学了不少</p>
-
-<p><p>4月～6月，公司进行服务化改造，作为主力开发参与了部门的服务化建设，期间送走了两个同事好友，一个去了厦门，一个回了宁波，各自寻找自己的幸福去了。<br />
-附加一句，上半年基本还处在阴霾期，期间养成了去酒吧喝酒的习惯，有钱去酒吧，没钱去地摊，酒量现在还可以。</p></p>
-
-<p>7月～8月，参加了另外一个项目，8月底的时候由于上半年持续表现不错，连续两个3.75，所以被升了一级，薪水也有了不错的涨幅:)。同时部门也组织了一次outing，去了舟山嵊泗岛，很祥和的小渔村，很不错。中间的时候李辉来杭州玩，许久不见的兄弟啊</p>
-
-<p>9月第一次自己带了一个小项目。同时又送走一位同事。</p>
-
-<p>十一期间，休了半个月的假，和同事几人一起去了趟西藏，花光了半年多的积蓄，感觉无法用语言形容，还会再去的，一定</p>
-
-<p>11月～12月，需求不断，每日都投入在工作中，有些疲惫哈</p>
-
-<p><h2>2011总结</h2></p>
-
-<p>回顾下11年初定的三个目标：</p>
-
-<p><em>1. 工作顺利挺进，争取升一级</em></p>
-
-<p><em>2. 保养皮肤，争取帅一点</em></p>
-
-<p><em>3. 去西藏，无论如何，我一定会去的</em></p>
-
-<p><p>第一点顺利完成；第二点除了痘少些，人也老些，基本没变；第三点纠结许久也顺利完成，而且收获远超期望。<br />
-除了以上三点，还有些额外收获，譬如结束单身生活啥的:)，老家盖新房啥的<br />
-总的来说11年过的还算不错，基本算是从阴霾走向光明，逐渐奔向幸福，哈哈</p></p>
-
-<p><h2>2012的三件事</h2></p>
-
-<p>按照惯例，还是列下明年的目标把，不多，还是三个：</p>
-
-<p><ol>
-<li>自己做个网站</li>
-<li>再一次长途旅行（环青海湖或这挺进新疆，诚征驴友）</li>
-<li>还有一个很重要的事，一时想不起来了，暂定“顺利度过2012吧！”</li>
-</ol></p>
-
-<p><h2>祝福</h2></p>
-
-<p>还是按照惯例，最后送上祝福：</p>
-
-<p><p>亲们，尽管我这个人平时很少和大家联系，但我内心真的很想念你们，大家都要幸福啊！<br />
-2012，幸福快乐！</p>
-</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/6/">&larr; Older</a>
@@ -676,6 +824,10 @@ sleep 1
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
@@ -711,10 +863,6 @@ sleep 1
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease management)</a>
       </li>
     
   </ul>
