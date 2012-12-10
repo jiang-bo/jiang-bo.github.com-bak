@@ -4,7 +4,7 @@
   <title><![CDATA[Category: HDFS | 非纯种程序猿]]></title>
   <link href="http://jiangbo.me/blog/categories/hdfs/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-10-23T13:32:23+08:00</updated>
+  <updated>2012-12-10T16:15:22+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -12,6 +12,118 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS-2246:使用BlockReaderLocal优化本地block读取]]></title>
+    <link href="http://jiangbo.me/blog/2012/12/10/hdfs-blockreaderlocal/"/>
+    <updated>2012-12-10T16:09:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/12/10/hdfs-blockreaderlocal</id>
+    <content type="html"><![CDATA[<h2>一、背景</h2>
+
+<p>HDFS中对Block的读取使用DataXceiver通过Socket发送Packet数据进行，client端通过一个BlockReader来接收Socket中的Block数据。详见<a href="">HDFS数据读取流程</a>。大致流程如下：</p>
+
+<ol>
+<li>client端调用FileSystem.open()获取一个DFSInputStream</li>
+<li>client端调用DFSInputStream.read(byte[] buffer, int off, int len)读取数据</li>
+<li>client端通过DFSInputStream.blockSeekTo()向NameNode发起请求，定位到需要读取的block所在的Datanode，构建一个BlockReader用于读去对应DataNode上的block数据，返回该DataNodeInfo</li>
+<li>BlockReader主要负责同DataNode间建立一个Socket链接用于读取数据，BlockReader首先向DataNode发送请求头（包括操作类型，blockId，block时间戳，起始偏移量，读取数据的长度，client名）</li>
+<li>DataNode接收到DataXceiverServer接收到client端请求后，构建一个DataXceiver处理该请求。</li>
+<li>DataXceiver首先解析请求头，获取请求操作类型，当发现是READ_BLOCK操作后，调用相应的readBlock()方法处理</li>
+<li>readBlock方法解析请求中需要的blockId，构建一个BlockSender用于读取磁盘上的block文件数据并发送给client</li>
+<li>BlockSender读取磁盘上的block文件，将数据按照chunk通过socket发送给client的blockReader，同时，BlockSender在发送chunk后需要从meta文件中读取该chunk的checksum数据，同样发送给client，用于该chunk的checksum校验。</li>
+<li>client端通过BlockReader.readChunks()接收BlockSender发送的chunk数据，并进行checksum校验，校验成功后向DataNode发送checksumOk。</li>
+<li>循环6-10，直至当前block的数据全部被读取完成。</li>
+<li>循环执行3-11, 直至需要读取的文件数据都被读取完。</li>
+</ol>
+
+
+<p>这个过程是在集群环境想，client读取datanode上数据的一个正常流程，但事实上当client和datanode位于同一个物理节点上时（如Hadoop集群中，task运行在datanode上），这个过程显的有些多余，client可以直接通过本地文件系统api读取文件，而不需要走繁杂的socket流程。</p>
+
+<h2>二、设计实现</h2>
+
+<p>HDFS-2246中提供了一个BlockReaderLocal的实现，当client发现从NameNode返回的Block所属的datanode和client位于同一节点上时，构建一个BlockReaderLocal用于读取本地文件。
+上述3-10的流程将简化为：</p>
+
+<ol>
+<li>client端向NameNode发起请求获取block所属的datanode信息后，判断该datanode是否和client位于同一节点，是且开启了本地读取功能，则构建一个BlockReaderLocal读取本地文件，否则构建一个BlockReader按照原流程进行。</li>
+<li>BlockReaderLocal通过DataNode.getBlockLocaPathInfo()从DataNode获取block的本地文件路径信息。</li>
+<li>BlockReaderLocal构建InputStream读取block文件和meta文件信息</li>
+<li>对于需要checksum的场景（默认），通过blockReaderLocal.readChunks()按chunk读取本地文件，同时读取meta文件中该chunk的checksum数据，进行校验</li>
+<li>对于跳过checksum的场景，直接通过InputStream.read()读取block数据。</li>
+</ol>
+
+
+<h3>扩展DataNode协议接口</h3>
+
+<p>client端需要能够从DataNode获取block文件的本地文件路径信息。因此扩展ClientDataNodeProtocol，增加一个</p>
+
+<pre><code>BlockLocalPathInfo getBlockLocalPathInfo(Block block) throws IOException;
+</code></pre>
+
+<p>接口用于获取block的本地路径信息</p>
+
+<h3>本地文件读取</h3>
+
+<p>BlockReaderLocal共过BufferedInputStream直接读取本地文件，注意此处HDFS-2246的patch中使用的是FileInputStream，实际测试过程中发现，FileInputStream对本地文件的读取性能较差， 替换为使用BufferedInputStream</p>
+
+<h3>checksum较验</h3>
+
+<p>为了完成checksum校验，BlockReaderLocal同时需要读取block的meta文件，每当block文件读取一个chunk时需要从meta文件读取一个checksum数据，进行checksum校验，通过校验后进行下一个chunk的读取和校验。由于BlockReaderLocal读取的是本地文件，避免的网络传输对数据的影响，因此可以配置跳过checksum检查，以提高读取性能。默认是需要做checksum的。</p>
+
+<h3>本机判断</h3>
+
+<p>当前patch中的实现主要用IP来判断是否block所在的datanode与client是否位于同一节点上。</p>
+
+<h2>测试</h2>
+
+<p>通过TestDFSIO工具测试一个单节点的集群，2个文件，每个文件1000M
+./bin/hadoop jar hadoop-0.19.1-dc-test.jar TestDFSIO -read -nrFiles 2 -fileSize 1000
+测试结果对比:
+socket读取：</p>
+
+<pre><code>---
+12/12/07 13:52:57 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:52:57 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:52:57 CST 2012
+12/12/07 13:52:57 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:52:57 INFO mapred.FileInputFormat:      Throughput mb/sec: 283.5270768358378
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Average IO rate mb/sec: 283.5281982421875
+12/12/07 13:52:57 INFO mapred.FileInputFormat:  IO rate std deviation: 0.5685961122141402
+</code></pre>
+
+<p>本地读取</p>
+
+<pre><code>---
+12/12/07 13:48:59 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:48:59 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:48:59 CST 2012
+12/12/07 13:48:59 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:48:59 INFO mapred.FileInputFormat:      Throughput mb/sec: 369.61744594344856
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Average IO rate mb/sec: 369.6180725097656
+12/12/07 13:48:59 INFO mapred.FileInputFormat:  IO rate std deviation: 0.4800772
+</code></pre>
+
+<p>另外通过Patch中提供的TestShortCircuitLocalRead工具，测试结果如下：</p>
+
+<p>本地读取并进行checksum校验</p>
+
+<pre><code>true no 1 32000000
+---
+Iteration 20 took 115453
+Iteration 20 took 115803
+Iteration 20 took 115748
+</code></pre>
+
+<p>socket读取并进行checksum校验（默认）</p>
+
+<pre><code>no no 1 32000000
+---
+Iteration 20 took 128820
+Iteration 20 took 135305
+Iteration 20 took 129145
+</code></pre>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[使用FUSE-DFS mount HDFS]]></title>
@@ -629,185 +741,6 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
     } // while (shouldRun)
   } // offerService
 </code></pre>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[HDFS源码学习（12）——DataNode主要数据结构]]></title>
-    <link href="http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure/"/>
-    <updated>2012-10-18T21:56:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/10/18/hdfs-datanode-structure</id>
-    <content type="html"><![CDATA[<p>HDFS中DataNode主要负责维护block->stream bytes的映射关系，即实际block数据的存储。
-一个datanode的磁盘上存储目录下实际的文件部署结构如下：</p>
-
-<pre><code>data/
-├── blocksBeingWritten
-├── current
-│   ├── VERSION
-│   ├── blk_-1148021215131449924
-│   ├── blk_-1148021215131449924_1001.meta
-│   ├── blk_-8598609183581346893
-│   ├── blk_-8598609183581346893_1002.meta
-│   ├── blk_6693595845022390257
-│   ├── blk_6693595845022390257_1003.meta
-│   └── dncp_block_verification.log.curr
-├── detach
-├── storage
-└── tmp
-</code></pre>
-
-<p>data目录的路径是hdfs-site.xml中配置的dfs.data.dir的路径，表示每个datanode上数据存储的目录</p>
-
-<p>1) blocksBeingWritten：当前正在写入的block，写完之后会将block移至current目录</p>
-
-<p>2) current：当前已经写入的block文件目录</p>
-
-<p>2.1) VERSION为存储的VERSION文件，包括namespaceId，存储Id，存储版本，存储类型，创建时间戳等信息</p>
-
-<p>2.2）blk-*:文件为实际的block数据文件</p>
-
-<p>2.3）blk-*_xxx.meta: block的元信息文件</p>
-
-<p>2.4）dncp_*.log.curr: 当前copy文件</p>
-
-<p>3) detach：copy-on-write使用的目录</p>
-
-<p>4) tmp： 临时目录，DataNode启动时会检查 tmp的数据并删除。</p>
-
-<h2>Storage相关</h2>
-
-<p>Storage用于描述存储的类型，状态，目录等信息。
-其主要结构如下：
-<img src="/images/hdfs/Storage.png" alt="Storage" /></p>
-
-<h3>StorageInfo</h3>
-
-<p>StorageInfo表示一个存储的通用信息，包括：</p>
-
-<ol>
-<li>layoutVersion： 存储文件中的版本号</li>
-<li>namespaceId： 存储所属的命名空间ID</li>
-<li>ctime： 该存储创建的时间戳</li>
-</ol>
-
-
-<h3>Storage</h3>
-
-<p>存储信息的抽象类，管理一个server（NameNode或DataNode）上的存储目录。</p>
-
-<p>Storage有两个关键属性：</p>
-
-<ol>
-<li>storageType: 表示该存储所属的节点类型（NameNode或是DataNode）</li>
-<li>storageDirs: 该存储上存储目录的列表(ArrayList<StorageDirectory>),StorageDirectory表示一个存储目录。</li>
-</ol>
-
-
-<h4>StorageDirectory</h4>
-
-<p>表示一个存储目录，有三个属性：</p>
-
-<ol>
-<li>root：根目录</li>
-<li>lock：当前目录的文件锁</li>
-<li>dirType：目录类型</li>
-</ol>
-
-
-<h4>StorageSate</h4>
-
-<p>表示存储的状态：</p>
-
-<ol>
-<li>NON_EXISTENT: 目录不存在</li>
-<li>NOT_FORMATTED: 目录未格式化</li>
-<li>COMPLETE_UPGRADE: 升级完成</li>
-<li>RECOVER_UPGRADE: 撤销升级</li>
-<li>COMPLETE_FINALIZE: 提交完成</li>
-<li>COMPLETE_ROLLBACK: 回滚完成</li>
-<li>RECOVER_ROLLBACK: 撤销回滚</li>
-<li>COMPLETE_CHECKPOINT: checkpoint完成</li>
-<li>RECOVER_CHECKPOINT: 撤销checkpoint</li>
-<li>NORMAL: 正常</li>
-</ol>
-
-
-<h3>DataStorage</h3>
-
-<p>DataStorage是DataNode上使用的存储类，指定了datanode上各类存储文件的前缀：</p>
-
-<ol>
-<li>subdir：子目录前缀</li>
-<li>blk_：块文件前缀</li>
-<li>dncp_：拷贝文件前缀</li>
-</ol>
-
-
-<h2>DatanodeBlockInfo</h2>
-
-<p>DataNode使用DatanodeBlockInfo管理block和其元数据之间的映射关系，结构如下：</p>
-
-<p><img src="/images/hdfs/DatanodeBlockInfo.png" alt="DatanodeBlockInfo" /></p>
-
-<ol>
-<li>volmun：block所属的卷</li>
-<li>file：block文件</li>
-<li>detached：是否完成copy-on-write</li>
-</ol>
-
-
-<h2>FSDataSet相关</h2>
-
-<p>DataNode通过FSDataSet来完成数据的存储。FSDataset类结构如下：
-<img src="/images/hdfs/FSDataset.png" alt="FSDataset" /></p>
-
-<h3>FSVolume</h3>
-
-<p>FSVolumne用于进行block文件所属的卷管理，统计存储目录额使用情况，其中：</p>
-
-<ol>
-<li>currentDir： 当前数据目录, 对应data/current目录</li>
-<li>dataDir： 数据目录</li>
-<li>tmpDir： 临时目录, 对应data/tmp目录</li>
-<li>dtacheDir: 用于实现写时复制的文件，对应data/detach目录</li>
-<li>usage: 目录使用的空间</li>
-<li>dfsusage: dfs使用的空间</li>
-<li>reseved: 空余空间</li>
-<li>blocksBeingWritten: 正在写入的block，对应data/blocksBeingWritten目录</li>
-</ol>
-
-
-<h3>FSVolumeSet</h3>
-
-<p>FSVolumeSet是FSVolume的集合，提供了所有容量，剩余空间等方法。其中getNextVolume中提供了round-robin策略选取下一个volume，从而实现简单的IO负载均衡，提高IO处理能力。</p>
-
-<h3>FSDataSet</h3>
-
-<p>FSDataSet是在FSVolumeSet之上进行封装实现FSDatasetInterface借口，向外提供块查询和操作方法。</p>
-
-<p>其中有几个主要属性:</p>
-
-<ol>
-<li>volumes: 卷集合（FSVolumeSet）</li>
-<li>ongoingCreates: 当前活动的文件</li>
-<li>maxBlocksPerDir: 每个目录下最多能存放发block数，可通过dfs.datanode.numblocks配置</li>
-<li>volumeMap：块与块文件的映射信息(HashMap&lt;Block, DatanodeBlockInfo>)，当前集合中所有的块信息均维护在该map中</li>
-</ol>
-
-
-<h3>FSDir</h3>
-
-<p>用于构建block块在datanode磁盘上的层次结构，默认情况下每个目录下最多64个子目录，最多能存储64个块。目录初始化时会递归扫描目录下的所有子目录和文件，构建一个树形结构。</p>
-
-<p>addBlock时，首先尝试在当前目录新加块，如果当前目录没有空闲空间，则尝试在子目录中添加，如果没有子目录，则新建一个子目录。</p>
-
-<h3>BlockAndFile</h3>
-
-<p>Block与其文件名的封装</p>
-
-<h3>ActiveFile</h3>
-
-<p>表示一个当前活动中的文件</p>
 ]]></content>
   </entry>
   

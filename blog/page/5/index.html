@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="什么是类加载器？ 类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。 类加载器分类 类加载器主要分为： 启动类加载器( &hellip;">
+  <meta name="description" content="问题现象 现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例： public class VasViewVO { private &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,522 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-04-08T11:23:00+08:00" pubdate data-updated="true">Apr 8<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/java/'>Java</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h3>问题现象</h3>
+
+<p>现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例：</p>
+
+<pre><code>public class VasViewVO {
+
+    private String description;
+
+    private Date gmtOpen;
+
+    private Date gmtClose;
+
+    private CreditVasType serviceType;
+
+    private CreditVasMemberStatus creditVasMemberStatus;
+    ...//此处省略getter和setter方法
+}
+</code></pre>
+
+<p>通常按照如下方式构造一个VasViewVO实例：</p>
+
+<pre><code>    VasViewVO vasViewVO = new VasViewVO();
+    vasViewVO.setCreditVasMemberStatus(CreditVasMemberStatus.OPEN);
+    vasViewVO.setGmtOpen(new Date());
+    vasViewVO.setServiceType(CreditVasType.fastpay);
+    vasViewVO.setDescription("open fastpay");
+    //do something with vasViewVO
+</code></pre>
+
+<p>如此构造VasViewVO的实例并非有严重的逻辑错误或者其他的问题，只是不够简洁易懂（贴近自然语言）。
+最近学习过jQuery的都知道，jQuery中可以按如下方式连续调用api</p>
+
+<pre><code>    $("p").hide().fadeIn("slow").slideUp("slow").slideDown("slow");
+</code></pre>
+
+<p>如果Java程序中也可以使用类似的方式将会简洁许多。</p>
+
+<h3>解决方法</h3>
+
+<h4>使用方法链</h4>
+
+<p>jQuery中之所以能够连续调用api，主要是因为每个方法返回的都是一个jQuery对象。Java本身也可这样做，即返回一个this(自身引用)，也就是常说的<a href="http://en.wikipedia.org/wiki/Method_chaining">方法链</a>。
+方法链的实现非常简单，通常的setter方法返回void，方法链返回的是this引用，如下：</p>
+
+<pre><code>    public VasViewVO description(String description) {
+        this.description = description;
+        return this;
+    }
+
+    public VasViewVO gmtOpen(Date gmtOpen) {
+        this.gmtOpen = gmtOpen;
+        return this;
+    }
+
+    public VasViewVO gmtClose(Date gmtClose) {
+        this.gmtClose = gmtClose;
+        return this;
+    }
+
+    public VasViewVO serviceType(CreditVasType serviceType) {
+        this.serviceType = serviceType;
+        return this;
+    }
+</code></pre>
+
+<p>如此一来在调用时只需要新建一个对象，连续调用赋值方法即可：</p>
+
+<pre><code>    VasViewVO vasView = new VasViewVO();
+    vasView.creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
+            .description("Commoent cxxx").gmtClose(new Date())
+            .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
+</code></pre>
+
+<p>如此相比连续调用5次setter方法简洁的多。</p>
+
+<h4>使用静态工厂和static import优化</h4>
+
+<p>使用方法链之后简化了setter调用，但是每次还必须要先new一个实例，略显繁琐。这个问题可以通过Effectvie Java的第一条静态工厂来解决，即在VasViewVO内部实现一个静态工厂方法。</p>
+
+<pre><code>    public static VasViewVO with() {
+        return new VasViewVO();
+    }
+</code></pre>
+
+<p>这个with的方法名与一般的静态工厂所用的getInstance，newInstance不同，主要时为了更加贴近自然语言。
+如此，构造一个VasViewVO实例就可简化为</p>
+
+<pre><code>    VasViewVO vasViewVO = VasViewVO.with()
+                .creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
+                .description("Commoent cxxx").gmtClose(new Date())
+                .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
+</code></pre>
+
+<p>代码已经很简洁，不过每次都是用枚举类长长的类名，感觉很是不雅，可以通过static import解决，最终的到的简化后构造一个VasViewVO实例的代码如下：</p>
+
+<pre><code>import static  com.alibaba.china.credit.common.constants.CreditVasType.*;
+import static com.alibaba.china.credit.vas.dal.constant.CreditVasMemberStatus.*;
+public class Test{
+    public static void main(String[] args) {
+        . . .
+
+        VasViewVO vasViewVO = VasViewVO.with()
+            .creditVasMemberStatus(CLOSE)
+            .description("Commoent cxxx").gmtClose(new Date())
+            .gmtOpen(new Date()).serviceType(fastpay);
+        . . .
+    }
+}
+</code></pre>
+
+<h3>进阶总结</h3>
+
+<p>程序设计要解决的是讲现实世界中的问题描述转化为计算机可识别的计算机语言（二进制码），因此编程语言必须为这一转化过程提供有效的抽像机制。现有编程语言提供的抽象机制侧重各有不同，在C，C++，JAVA等通用语言中更关注语言的基本语义，离实际的问题域描述较远；SQL，CSS等特定领域语言更关注特定问题域问题的抽象，更贴近实际的问题描述。</p>
+
+<p>站在人的角度，语言越是贴近实际问题的描述越是容易理解，对问题的描述也更加准确。但现有的特定领域语言又不具备通用变成语言解决问题的的通用性，因此我们更希望能够在通用语言上进行更高层次的抽象，使其更加贴近具体的问题域。某种程度上讲语言提供的API或者方法库就是对基本问题的更高层次抽象，但离具体的问题域还是太远，有时我们更渴望更加贴近具体问题的语言来解决问题并兼具通用语言的通用性，因此诞生了通用语言的内部DSL。
+<a href="http://www.martinfowler.com/bliki/FluentInterface.html">流畅接口（Fluent Interface）</a>是实现内部DSL的重要手段，<a href="http://en.wikipedia.org/wiki/Fluent_interface">wikipedia上如此描述</a>Fluent Interface：</p>
+
+<pre><code>A fluent interface (as first coined by Eric Evans and Martin Fowler) is an implementation of an object oriented API that aims to provide for more readable code. A fluent interface is normally implemented by using method chaining to relay the instruction context of a subsequent call (but a fluent interface entails more than just method chaining)。
+</code></pre>
+
+<p>方法链（method chain）是实现Fluent Interface的重要手段（注意，method chain!= Fluent Interface!=DSL）。但仅仅有方法链是不足够构建有效的DSL的，除此之外还需要一些且他编程技巧，比如static factory和static import等，具体请参见<a href="http://www.infoq.com/articles/internal-dsls-java">《An Approach to Internal Domain－Specific Languages in Java》</a></p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/02/21/java-lang-instrument/">java.lang.instrument笔记</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-21T17:13:00+08:00" pubdate data-updated="true">Feb 21<span>st</span>, 2012</time>
+        
+         | <a href="/blog/2012/02/21/java-lang-instrument/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>什么是Instrumentation？</h2>
+
+<p>java Instrumentation指的是可以用独立于应用程序之外的代理（agent）程序来监测和协助运行在JVM上的应用程序。这种监测和协助包括但不限于获取JVM运行时状态，替换和修改类定义等。
+Java SE5中使用JVM TI替代了JVM PI和JVM DI。提供一套代理机制，支持独立于JVM应用程序之外的程序以代理的方式连接和访问JVM。java.lang.instrument是在JVM TI的基础上提供的Java版本的实现。
+Instrumentation提供的主要功能是修改jvm中类的行为。
+Java SE6中由两种应用Instrumentation的方式，premain（命令行）和agentmain（运行时）</p>
+
+<h2>premain方式</h2>
+
+<p>在Java SE5时代，Instrument只提供了premain一种方式，即在真正的应用程序（包含main方法的程序）main方法启动前启动一个代理程序。例如使用如下命令：</p>
+
+<pre><code>java -javaagent:agent_jar_path[=options] java_app_name
+</code></pre>
+
+<p>可以在启动名为java_app_name的应用之前启动一个agent_jar_path指定位置的agent jar。
+实现这样一个agent jar包，必须满足两个条件：</p>
+
+<ol>
+<li>在这个jar包的manifest文件中包含Premain-Class属性，并且改属性的值为代理类全路径名。</li>
+<li>代理类必须提供一个public static void premain(String args, Instrumentation inst)或 public static void premain(String args) 方法。</li>
+</ol>
+
+
+<p>当在命令行启动该代理jar时，VM会根据manifest中指定的代理类，使用于main类相同的系统类加载器（即ClassLoader.getSystemClassLoader()获得的加载器）加载代理类。在执行main方法前执行premain()方法。如果premain(String args, Instrumentation inst)和premain(String args)同时存在时，优先使用前者。其中方法参数args即命令中的options，类型为String（注意不是String[]），因此如果需要多个参数，需要在方法中自己处理（比如用&#8221;;&#8221;分割多个参数之类）；inst是运行时由VM自动传入的Instrumentation实例，可以用于获取VM信息。</p>
+
+<h2>premain实例-打印所有的方法调用</h2>
+
+<p>下面实现一个打印程序执行过程中所有方法调用的功能，这个功能可以通过AOP其他方式实现，这里只是尝试使用Instrumentation进行ClassFile的字节码转换实现：</p>
+
+<h3>构造agent类</h3>
+
+<p>premain方式的agent类必须提供premain方法，代码如下：</p>
+
+<pre><code>package test;
+
+import java.lang.instrument.Instrumentation;
+
+public class Agent {
+
+    public static void premain(String args, Instrumentation inst){
+        System.out.println("Hi, I'm agent!");
+        inst.addTransformer(new TestTransformer());
+    }
+}
+</code></pre>
+
+<p>premain有两个参数，args为自定义传入的代理类参数，inst为VM自动传入的Instrumentation实例。 premain方法的内容很简单，除了标准输出外，只有</p>
+
+<pre><code>inst.addTransformer(new TestTransformer());
+</code></pre>
+
+<p>这行代码的意思是向inst中添加一个类的转换器。用于转换类的行为。</p>
+
+<h3>构造Transformer</h3>
+
+<p>下面来实现上述过程中的TestTransformer来完成打印调用方法的类定义转换。</p>
+
+<pre><code>package test;
+
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
+import java.security.ProtectionDomain;
+
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.LdcInsnNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+
+public class TestTransformer implements ClassFileTransformer {
+
+    @Override
+    public byte[] transform(ClassLoader arg0, String arg1, Class&lt;?&gt; arg2,
+            ProtectionDomain arg3, byte[] arg4)
+            throws IllegalClassFormatException {
+        ClassReader cr = new ClassReader(arg4);
+        ClassNode cn = new ClassNode();
+        cr.accept(cn, 0);
+        for (Object obj : cn.methods) {
+            MethodNode md = (MethodNode) obj;
+            if ("&lt;init&gt;".endsWith(md.name) || "&lt;clinit&gt;".equals(md.name)) {
+                continue;
+            }
+            InsnList insns = md.instructions;
+            InsnList il = new InsnList();
+            il.add(new FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System",
+                    "out", "Ljava/io/PrintStream;"));
+            il.add(new LdcInsnNode("Enter method-&gt; " + cn.name+"."+md.name));
+            il.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
+                    "java/io/PrintStream", "println", "(Ljava/lang/String;)V"));
+            insns.insert(il);
+            md.maxStack += 3;
+
+        }
+        ClassWriter cw = new ClassWriter(0);
+        cn.accept(cw);
+        return cw.toByteArray();
+    }
+
+}
+</code></pre>
+
+<p>TestTransformer实现了ClassFileTransformer接口，该接口只有一个transform方法，参数传入包括该类的类加载器，类名，原字节码字节流等，返回被转换后的字节码字节流。
+TestTransformer主要使用ASM实现在所有的类定义的方法中，在方法开始出添加了一段打印该类名和方法名的字节码。在转换完成后返回新的字节码字节流。详细的ASM使用请参考ASM手册。</p>
+
+<h3>设置MANIFEST.MF</h3>
+
+<p>设置MANIFEST.MF文件中的属性，文件内容如下：</p>
+
+<pre><code>Manifest-Version: 1.0
+Premain-Class: test.Agent
+Created-By: 1.6.0_29
+</code></pre>
+
+<h3>测试</h3>
+
+<p>代码编写完成后将代码编译打成agent.jar。
+编写测试代码：</p>
+
+<pre><code>public class TestAgent {
+
+    public static void main(String[] args) {
+        TestAgent ta = new TestAgent();
+        ta.test();
+    }
+
+    public void test() {
+        System.out.println("I'm TestAgent");
+    }
+
+}
+</code></pre>
+
+<p>从命令行执行该类，并设置agent.jar</p>
+
+<pre><code>java -javaagent:agent.jar TestAgent
+</code></pre>
+
+<p>将打印出程序运行过程中实际执行过的所有方法名：</p>
+
+<pre><code>Hi, I'm agent!
+Enter method-&gt; test/TestAgent.main
+Enter method-&gt; test/TestAgent.test
+I'm TestAgent
+Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
+Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
+Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
+Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
+Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
+Enter method-&gt; com/apple/java/Usage$3.run
+。。。
+</code></pre>
+
+<p>从输出中可以看出，程序首先执行的是代理类中的premain方法（不过代理类自身不会被自己转换，所以不能打印出代理类的方法名），然后是应用程序中的main方法。</p>
+
+<h2>agentmain方式</h2>
+
+<p>premain时Java SE5开始就提供的代理方式，给了开发者诸多惊喜，不过也有些须不变，由于其必须在命令行指定代理jar，并且代理类必须在main方法前启动。因此，要求开发者在应用前就必须确认代理的处理逻辑和参数内容等等，在有些场合下，这是比较苦难的。比如正常的生产环境下，一般不会开启代理功能，但是在发生问题时，我们不希望停止应用就能够动态的去修改一些类的行为，以帮助排查问题，这在应用启动前是无法确定的。
+为解决运行时启动代理类的问题，Java SE6开始，提供了在应用程序的VM启动后在动态添加代理的方式，即agentmain方式。
+与Permain类似，agent方式同样需要提供一个agent jar，并且这个jar需要满足：</p>
+
+<ol>
+<li>在manifest中指定Agent-Class属性，值为代理类全路径</li>
+<li>代理类需要提供public static void agentmain(String args, Instrumentation inst)或public static void agentmain(String args)方法。并且再二者同时存在时以前者优先。args和inst和premain中的一致。</li>
+</ol>
+
+
+<p>不过如此设计的再运行时进行代理有个问题——如何在应用程序启动之后再开启代理程序呢？
+JDK6中提供了Java Tools API，其中Attach API可以满足这个需求。</p>
+
+<p>Attach API中的VirtualMachine代表一个运行中的VM。其提供了loadAgent()方法，可以在运行时动态加载一个代理jar。具体需要参考<a href="">《Attach API》</a></p>
+
+<h2>agentmain实例-打印当前已加载的类</h2>
+
+<h3>构造agent类</h3>
+
+<p>agentmain方式的代理类必须提供agentmain方法：</p>
+
+<pre><code>package loaded;
+
+import java.lang.instrument.Instrumentation;
+
+public class LoadedAgent {
+    @SuppressWarnings("rawtypes")
+    public static void agentmain(String args, Instrumentation inst){
+        Class[] classes = inst.getAllLoadedClasses();
+        for(Class cls :classes){
+            System.out.println(cls.getName());
+        }
+    }
+}
+</code></pre>
+
+<p>agentmain方法通过传入的Instrumentation实例获取当前系统中已加载的类。</p>
+
+<h3>设置MANNIFEST.MF</h3>
+
+<p>设置MANIFEST.MF文件，指定Agent-Class:</p>
+
+<pre><code>Manifest-Version: 1.0
+Agent-Class: loaded.LoadedAgent
+Created-By: 1.6.0_29
+</code></pre>
+
+<h3>绑定到目标VM</h3>
+
+<p>将agent类和MANIFEST.MF文件编译打成loadagent.jar后，由于agent main方式无法向pre main方式那样在命令行指定代理jar，因此需要借助Attach Tools API。</p>
+
+<pre><code>package attach;
+
+import java.io.IOException;
+
+import com.sun.tools.attach.AgentInitializationException;
+import com.sun.tools.attach.AgentLoadException;
+import com.sun.tools.attach.AttachNotSupportedException;
+import com.sun.tools.attach.VirtualMachine;
+
+public class Test {
+    public static void main(String[] args) throws AttachNotSupportedException,
+            IOException, AgentLoadException, AgentInitializationException {
+        VirtualMachine vm = VirtualMachine.attach(args[0]);
+        vm.loadAgent("/Users/jiangbo/Workspace/code/java/javaagent/loadagent.jar");
+
+    }
+
+}
+</code></pre>
+
+<p>该程序接受一个参数为目标应用程序的进程id，通过Attach Tools API的VirtualMachine.attach方法绑定到目标VM，并向其中加载代理jar。</p>
+
+<h3>构造目标测试程序</h3>
+
+<p>构造一个测试用的目标应用程序：</p>
+
+<pre><code>package attach;
+
+public class TargetVM {
+    public static void main(String[] args) throws InterruptedException{
+        while(true){
+            Thread.sleep(1000);
+        }
+    }
+}
+</code></pre>
+
+<p>这个测试程序什么都不做，只是不停的sleep。:)
+运行该程序，获得进程ID=33902。
+运行上面绑定到VM的Test程序，将进程id作为参数传入：</p>
+
+<pre><code>java attach.Test 33902
+</code></pre>
+
+<p>观察输出，会打印出系统当前所有已经加载类名</p>
+
+<pre><code>java.lang.NoClassDefFoundError
+java.lang.StrictMath
+java.security.SignatureSpi
+java.lang.Runtime
+java.util.Hashtable$EmptyEnumerator
+sun.security.pkcs.PKCS7
+java.lang.InterruptedException
+java.io.FileDescriptor$1
+java.nio.HeapByteBuffer
+java.lang.ThreadGroup
+[Ljava.lang.ThreadGroup;
+java.io.FileSystem
+。。。
+</code></pre>
+
+<h2>参考文档</h2>
+
+<ul>
+<li><a href="http://docs.oracle.com/javase/6/docs/api/java/lang/instrument/package-summary.html">java.lang.instrument API docs</a></li>
+<li><a href="https://blogs.oracle.com/CoreJavaTechTips/entry/the_attach_api">The Attach API</a></li>
+<li><a href="http://www.ibm.com/developerworks/cn/java/j-lo-jse61/index.html">Java SE6新特性：Instrumentation新功能</a></li>
+</ul>
+
+
+<h2>附：agent jar中manifest的属性</h2>
+
+<ul>
+<li>Premain-Class: 当在VM启动时，在命令行中指定代理jar时，必须在manifest中设置Premain-Class属性，值为代理类全类名，并且该代理类必须提供premain方法。否则JVM会异常终止。</li>
+<li>Agent-Class: 当在VM启动之后，动态添加代理jar包时，代理jar包中manifest必须设置Agent-Class属性，值为代理类全类名，并且该代理类必须提供agentmain方法，否则无法启动该代理。</li>
+<li>Boot-Class-Path: Bootstrap class loader加载类时的搜索路径，可选。</li>
+<li>Can-Redefine-Classes: true/false；标示代理类是否能够重定义类。可选。</li>
+<li>Can-Retransform-Classes: true/false；标示代理类是否能够转换类定义。可选。</li>
+<li>Can-Set-Native-Prefix::true/false；标示代理类是否需要本地方法前缀，可选。</li>
+</ul>
+
+
+<p><strong> 当一个代理jar包中的manifest文件中既有Premain-Class又有Agent-Class时，如果以命令行方式在VM启动前指定代理jar，则使用Premain-Class；反之如果在VM启动后，动态添加代理jar，则使用Agent-Class </strong></p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -454,361 +970,6 @@ gem install iconv
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-02-10T14:39:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/jvm/'>JVM</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>一.环境准备</h2>
-
-<h3>1.jdk</h3>
-
-<p>在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:)</p>
-
-<h3>2.alsa包</h3>
-
-<p>linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装，CentOS可以通过如下命令检查：</p>
-
-<pre><code> rpm -qa |grep alsa
-</code></pre>
-
-<p>alsa-lib和alsa-lib-devel均需要。CentOS缺少alsa-lib-devel，通过如下命令安装：</p>
-
-<pre><code> yum install alsa-lib-devel
-</code></pre>
-
-<h3>3.cups-devel</h3>
-
-<pre><code>yum install cups-devel
-</code></pre>
-
-<h3>4.libXi-devel</h3>
-
-<pre><code>yum install libXi-devel
-</code></pre>
-
-<h3>5.freetype2.3</h3>
-
-<pre><code>wget http://download.savannah.gnu.org/releases/freetype/freetype-2.3.12.tar.gz
-tar -xvf freetype-2.3.12.tar.gz
-cd freetype-2.3.12
-./configure &amp;&amp; make &amp;&amp; make install
-</code></pre>
-
-<h3>6. ant</h3>
-
-<pre><code>wget http://mirror.bit.edu.cn/apache//ant/binaries/apache-ant-1.8.2-bin.zip
-unzip apache-ant-1.8.2-bin.zip
-</code></pre>
-
-<h3>7.g++</h3>
-
-<pre><code>yum install gcc gcc-c++
-</code></pre>
-
-<h2>二、设置环境变量</h2>
-
-<p>jdk编译过程中有一些环境变量需要设置，详细的请参考README-builds.html，下面写的只是一些必须设置的环境变量：</p>
-
-<pre><code>export ALT_BOOTDIR=/usr/opt/jdk # 预装的jdk7目录
-export ANT_HOME=ant安装目录
-export ALT_FREETYPE_HEADERS_PATH=/usr/local/include/freetype2 #freetype2头文件安装目录
-export ALT_FREETYPE_LIB_PATH=/usr/local/lib #freetype2 lib目录
-</code></pre>
-
-<h2>三、编译</h2>
-
-<h3>1.健全检查</h3>
-
-<p>可以通过如下命令检查环境配置是否准备好：</p>
-
-<pre><code>make sanity ARCH_DATA_MODEL=64
-</code></pre>
-
-<p>如果最终输出：</p>
-
-<pre><code>Sanity check passed.
-</code></pre>
-
-<p>则表示环境检查通过，否则需要根据提示信息排查问题。</p>
-
-<h3>2.执行编译</h3>
-
-<p>通过如下命令开始编译：</p>
-
-<pre><code>make ARCH_DATA_MODEL=64
-</code></pre>
-
-<h3>3.问题排查：</h3>
-
-<p>编译过程中出现一些问题：</p>
-
-<h3>1)缺少jaxp和jaxws</h3>
-
-<p>错误信息</p>
-
-<pre><code>ERROR: Cannot find source for project jaxp
-</code></pre>
-
-<p>原因是现在jaxp源码分支和jdk源码分支分开了，但是jaxws是jdk中的一部分，所以完全编译需要jaxp源码，针对该问题的描述可以查看README-build.html中TroubleShooting部分。
-解决方式有两种：
-一种是先下载好源码包，以drops的方式安装，具体参考README-build.html
-另外一种是使用在线安装，在编译时加入允许下载源码的配置:</p>
-
-<pre><code>make ARCH_DATA_MODEL=64 ALLOW_DOWNLOADS=true
-</code></pre>
-
-<h3>2)缺少X＊库</h3>
-
-<p>编译过程中多次出现如下缺少X*, awt之类的错误，基本上都是因为缺乏图形相关的库</p>
-
-<pre><code>../../../src/solaris/native/sun/awt/img_util_md.h:32: ??:expected specifier-qualifier-list before 'XID'
-make[5]: *** [/home/jiangbo/Workspace/jdk/openjdk/build/linux-amd64/tmp/sun/sun.awt/awt/obj64/BufImgSurfaceData.o] Error 1
-make[5]: *** Waiting for unfinished jobs....
-make[5]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[4]: *** [library_parallel_compile] Error 2
-make[4]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
-make[3]: *** [all] Error 1
-make[3]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun'
-make[2]: *** [all] Error 1
-make[2]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make'
-make[1]: *** [jdk-build] Error 2
-make[1]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk'
-make: *** [build_product_image] Error 2
-</code></pre>
-
-<p>解决方式时安装X相关的库</p>
-
-<pre><code>yum install libX*
-</code></pre>
-
-<p>这个有些暴力，不过比较有效:)</p>
-
-<h2>四、测试编译结果</h2>
-
-<p>漫长的编译之后直至出现如下类似内容时，表示编译完成了：</p>
-
-<pre><code>-- Build times ----------
-Target all_product_build
-Start 2012-02-09 10:38:39
-End   2012-02-09 11:14:37
-00:01:41 corba
-00:06:19 hotspot
-00:15:49 jaxp
-00:01:30 jaxws
-00:10:03 jdk
-00:00:36 langtools
-00:35:58 TOTAL
-</code></pre>
-
-<p>编译完成后，编译结果维语build/linux-amd64目录下，可以写个简单的Java程序测试编译结果</p>
-
-<p>Test.java</p>
-
-<pre><code>public class Test{
-        public static void main(String[] args){
-                System.out.println("Hello");
-        }
-}
-</code></pre>
-
-<p>编译</p>
-
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test.java
-</code></pre>
-
-<p>执行</p>
-
-<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test
-Hello
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-01-04T17:35:00+08:00" pubdate data-updated="true">Jan 4<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h3>问题</h3>
-
-<p>有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。</p>
-
-<h3>解决</h3>
-
-<h4>如何获取本机IP</h4>
-
-<p>用ruby获取本机的动态ip，网上很多教程都用</p>
-
-<pre><code>require 'socket'
-
-IPSocket.getaddress(Socket.gethostname)
-puts TCPSocket.gethostbyname(Socket.gethostname)
-</code></pre>
-
-<p>这个在mac下是正常的，但是在linux下就只能拿到127.0.0.1
-在StackOverflow上有另一种解决方案</p>
-
-<pre><code>require 'socket'
-
-def local_ip
-  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
-
-  UDPSocket.open do |s|
-    s.connect '64.233.187.99', 1
-    s.addr.last
-  end
-ensure
-  Socket.do_not_reverse_lookup = rig
-end
-</code></pre>
-
-<p>这段主要是通过开启一个UDP链接来获取本地对外ip，因为UDP是无状态，所以不会实际建立网络链接，但是会获取本机对外ip。</p>
-
-<h4>如何发送消息</h4>
-
-<p>获取ip后需要通过gtalk发送，gtalk使用的是xmpp协议，ruby中协议有多种开源实现，比较简单通用的是xmpp4r，详细教程请看这里
-首先需要安装xmpp4r-simple</p>
-
-<pre><code>gem install xmpp4r-simple
-</code></pre>
-
-<p>注意，貌似这个gem不支持1.9.*，所以使用之前先将ruby切换到1.8.7版本
-然后编写代码，主要两步：</p>
-
-<ul>
-<li>建立链接</li>
-<li>发送消息</li>
-</ul>
-
-
-<p>代码如下：</p>
-
-<pre><code> require 'rubygems'
- require 'xmpp4r-simple'  
-
- username = gmailusername
- password = gmailpassword
- to_username = destination_gmailusername  
-
- puts "Connecting to jabber server.."
- jabber = Jabber::Simple.new(username+'@gmail.com',password)
- puts "Connected."
- jabber.deliver(to_username+"@gmail.com", "Hello..!")
- sleep(1)
-</code></pre>
-
-<p>注意，最后那个sleep不能少，尽管我还不知道为啥:(</p>
-
-<p>如此以来整个的获取ip，发送給gtalk的脚本为：</p>
-
-<pre><code>require 'rubygems'
-require 'socket'
-require 'xmpp4r-simple'
-
-def local_ip
-  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
-
-  UDPSocket.open do |s|
-    s.connect '64.233.187.99', 1
-    s.addr.last
-  end
-ensure
-  Socket.do_not_reverse_lookup = orig
-end
-
-jabber = Jabber::Simple.new('gmailuseanme@gmail.com','password')
-jabber.deliver('destusenam@gmail.com', local_ip)
-sleep 1
-</code></pre>
-
-<h4>设置自动运行</h4>
-
-<p>linux设置自动运行是老生常谈了，在/etc/rc.local加上一句运行脚本的命令即可：</p>
-
-<pre><code>ruby /home/jiangbo/ruby/getIP.rb
-</code></pre>
-
-<h3>结尾</h3>
-
-<p>这样每次机器重启时，就能够通过gtalk获取到ip了，不过还遗留一个问题，就是在机器重启时，必须保证接收消息的gtalk在线，因为这种方式的消息gtalk不会自动重法，目前不知怎么解决。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/6/">&larr; Older</a>
@@ -824,6 +985,14 @@ sleep 1
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/29/hadoop-distributedcache/">hadoop_distributedCache</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
@@ -855,14 +1024,6 @@ sleep 1
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
   </ul>

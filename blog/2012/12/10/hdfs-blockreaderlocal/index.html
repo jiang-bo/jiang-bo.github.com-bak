@@ -1,0 +1,395 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>HDFS-2246:使用BlockReaderLocal优化本地block读取 - 非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="一、背景 HDFS中对Block的读取使用DataXceiver通过Socket发送Packet数据进行，client端通过一个BlockReader来接收Socket中的Block数据。详见HDFS数据读取流程。大致流程如下： client端调用FileSystem.open() &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/2012/12/10/hdfs-blockreaderlocal">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!-- font-family: 'Knewave', cursive; -->
+<link href='http://fonts.googleapis.com/css?family=Knewave' rel='stylesheet' type='text/css'>
+<!-- font-family: 'Cantata One', serif; -->
+<link href='http://fonts.googleapis.com/css?family=Cantata+One' rel='stylesheet' type='text/css'>
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1>
+      <a href="/">非纯种程序猿</a>
+      
+  </h1>
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about-me">About Me</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">HDFS-2246:使用BlockReaderLocal优化本地block读取</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-10T16:09:00+08:00" pubdate data-updated="true">Dec 10<span>th</span>, 2012</time>
+        
+         | <a href="#disqus_thread">Comments</a>
+        
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><h2>一、背景</h2>
+
+<p>HDFS中对Block的读取使用DataXceiver通过Socket发送Packet数据进行，client端通过一个BlockReader来接收Socket中的Block数据。详见<a href="">HDFS数据读取流程</a>。大致流程如下：</p>
+
+<ol>
+<li>client端调用FileSystem.open()获取一个DFSInputStream</li>
+<li>client端调用DFSInputStream.read(byte[] buffer, int off, int len)读取数据</li>
+<li>client端通过DFSInputStream.blockSeekTo()向NameNode发起请求，定位到需要读取的block所在的Datanode，构建一个BlockReader用于读去对应DataNode上的block数据，返回该DataNodeInfo</li>
+<li>BlockReader主要负责同DataNode间建立一个Socket链接用于读取数据，BlockReader首先向DataNode发送请求头（包括操作类型，blockId，block时间戳，起始偏移量，读取数据的长度，client名）</li>
+<li>DataNode接收到DataXceiverServer接收到client端请求后，构建一个DataXceiver处理该请求。</li>
+<li>DataXceiver首先解析请求头，获取请求操作类型，当发现是READ_BLOCK操作后，调用相应的readBlock()方法处理</li>
+<li>readBlock方法解析请求中需要的blockId，构建一个BlockSender用于读取磁盘上的block文件数据并发送给client</li>
+<li>BlockSender读取磁盘上的block文件，将数据按照chunk通过socket发送给client的blockReader，同时，BlockSender在发送chunk后需要从meta文件中读取该chunk的checksum数据，同样发送给client，用于该chunk的checksum校验。</li>
+<li>client端通过BlockReader.readChunks()接收BlockSender发送的chunk数据，并进行checksum校验，校验成功后向DataNode发送checksumOk。</li>
+<li>循环6-10，直至当前block的数据全部被读取完成。</li>
+<li>循环执行3-11, 直至需要读取的文件数据都被读取完。</li>
+</ol>
+
+
+<p>这个过程是在集群环境想，client读取datanode上数据的一个正常流程，但事实上当client和datanode位于同一个物理节点上时（如Hadoop集群中，task运行在datanode上），这个过程显的有些多余，client可以直接通过本地文件系统api读取文件，而不需要走繁杂的socket流程。</p>
+
+<h2>二、设计实现</h2>
+
+<p>HDFS-2246中提供了一个BlockReaderLocal的实现，当client发现从NameNode返回的Block所属的datanode和client位于同一节点上时，构建一个BlockReaderLocal用于读取本地文件。
+上述3-10的流程将简化为：</p>
+
+<ol>
+<li>client端向NameNode发起请求获取block所属的datanode信息后，判断该datanode是否和client位于同一节点，是且开启了本地读取功能，则构建一个BlockReaderLocal读取本地文件，否则构建一个BlockReader按照原流程进行。</li>
+<li>BlockReaderLocal通过DataNode.getBlockLocaPathInfo()从DataNode获取block的本地文件路径信息。</li>
+<li>BlockReaderLocal构建InputStream读取block文件和meta文件信息</li>
+<li>对于需要checksum的场景（默认），通过blockReaderLocal.readChunks()按chunk读取本地文件，同时读取meta文件中该chunk的checksum数据，进行校验</li>
+<li>对于跳过checksum的场景，直接通过InputStream.read()读取block数据。</li>
+</ol>
+
+
+<h3>扩展DataNode协议接口</h3>
+
+<p>client端需要能够从DataNode获取block文件的本地文件路径信息。因此扩展ClientDataNodeProtocol，增加一个</p>
+
+<pre><code>BlockLocalPathInfo getBlockLocalPathInfo(Block block) throws IOException;
+</code></pre>
+
+<p>接口用于获取block的本地路径信息</p>
+
+<h3>本地文件读取</h3>
+
+<p>BlockReaderLocal共过BufferedInputStream直接读取本地文件，注意此处HDFS-2246的patch中使用的是FileInputStream，实际测试过程中发现，FileInputStream对本地文件的读取性能较差， 替换为使用BufferedInputStream</p>
+
+<h3>checksum较验</h3>
+
+<p>为了完成checksum校验，BlockReaderLocal同时需要读取block的meta文件，每当block文件读取一个chunk时需要从meta文件读取一个checksum数据，进行checksum校验，通过校验后进行下一个chunk的读取和校验。由于BlockReaderLocal读取的是本地文件，避免的网络传输对数据的影响，因此可以配置跳过checksum检查，以提高读取性能。默认是需要做checksum的。</p>
+
+<h3>本机判断</h3>
+
+<p>当前patch中的实现主要用IP来判断是否block所在的datanode与client是否位于同一节点上。</p>
+
+<h2>测试</h2>
+
+<p>通过TestDFSIO工具测试一个单节点的集群，2个文件，每个文件1000M
+./bin/hadoop jar hadoop-0.19.1-dc-test.jar TestDFSIO -read -nrFiles 2 -fileSize 1000
+测试结果对比:
+socket读取：</p>
+
+<pre><code>---
+12/12/07 13:52:57 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:52:57 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:52:57 CST 2012
+12/12/07 13:52:57 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:52:57 INFO mapred.FileInputFormat:      Throughput mb/sec: 283.5270768358378
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Average IO rate mb/sec: 283.5281982421875
+12/12/07 13:52:57 INFO mapred.FileInputFormat:  IO rate std deviation: 0.5685961122141402
+</code></pre>
+
+<p>本地读取</p>
+
+<pre><code>---
+12/12/07 13:48:59 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:48:59 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:48:59 CST 2012
+12/12/07 13:48:59 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:48:59 INFO mapred.FileInputFormat:      Throughput mb/sec: 369.61744594344856
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Average IO rate mb/sec: 369.6180725097656
+12/12/07 13:48:59 INFO mapred.FileInputFormat:  IO rate std deviation: 0.4800772
+</code></pre>
+
+<p>另外通过Patch中提供的TestShortCircuitLocalRead工具，测试结果如下：</p>
+
+<p>本地读取并进行checksum校验</p>
+
+<pre><code>true no 1 32000000
+---
+Iteration 20 took 115453
+Iteration 20 took 115803
+Iteration 20 took 115748
+</code></pre>
+
+<p>socket读取并进行checksum校验（默认）</p>
+
+<pre><code>no no 1 32000000
+---
+Iteration 20 took 128820
+Iteration 20 took 135305
+Iteration 20 took 129145
+</code></pre>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">jiang-bo</span></span>
+
+      
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-10T16:09:00+08:00" pubdate data-updated="true">Dec 10<span>th</span>, 2012</time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2012/10/29/hadoop-distributedcache/" title="Previous Post: hadoop_distributedCache">&laquo; hadoop_distributedCache</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section class="first odd">
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/29/hadoop-distributedcache/">hadoop_distributedCache</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating...</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a> and <a href="https://github.com/gluttony/object-octopress-theme">Object</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2012/12/10/hdfs-blockreaderlocal/';
+        var disqus_url = 'http://jiangbo.me/blog/2012/12/10/hdfs-blockreaderlocal/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

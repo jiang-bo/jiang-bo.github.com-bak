@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="LeaseManagement是HDFS中的一个同步机制，用于保证同一时刻只有一个client对一个文件进行写或创建操作。如当新建一个文件f时，client向NameNode发起一个create请求，那么leaseManager会想该client分配一个f文件的lease。 &hellip;">
+  <meta name="description" content="元数据的持久化 HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,433 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:51:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>元数据的持久化</h2>
+
+<p>HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。NameNode启动时会从本地磁盘加载FSImage和FSEditLog，并将EditLog中的日志信息合并到FSImage中进行之持久化（该合并过程称为一个检查点：checkpoint），并构建文件系统的元信息。</p>
+
+<p>但是持久化的数据中不包括block<->datanode的映射信息，该信息由每个datanode向NameNode发起blockReport()请求时报告其所拥有的block信息。</p>
+
+<h3>Editlog记录修改日志</h3>
+
+<p>EditLog的持久化文件是一个二进制文件，大体结构如下：</p>
+
+<p><img src="/images/hdfs/EditLogFile.png" alt="EditLogFile" /></p>
+
+<p>EditLog文件开始是一个日志版本号，0.19版本的hdfs中该version为-18。
+随后是每一条操作的事务日志，每条日志的起始为一个操作类型位，随后是该操作的详细信息，不同的操作类型所带的详细信息也不同。加载EditLog是根据layoutVersion和edit_op位采取不同的方式解析后面的详细信息。
+EditLog能够记录如下17中操作：</p>
+
+<p><img src="/images/hdfs/EditLogOp.png" alt="EditLogOp" /></p>
+
+<p>EditLog为每种操作都提供了相应的log方法，当系统中发生文件修改时，会调用相应的log方法记录日志</p>
+
+<h2>元数据加载与恢复</h2>
+
+<p>NameNode启动过程中最终会通过FSImage.loadFSImage()来从fsimage目录中加载最新的fsimage镜像和editslog，并合并构建命名空间。
+代码结构如下：</p>
+
+<pre><code>  boolean loadFSImage() throws IOException {
+    // 根据checkpointtime查找最新的fsimage
+    long latestNameCheckpointTime = Long.MIN_VALUE;
+    long latestEditsCheckpointTime = Long.MIN_VALUE;
+    StorageDirectory latestNameSD = null;
+    StorageDirectory latestEditsSD = null;
+    boolean needToSave = false;
+    isUpgradeFinalized = true;
+    Collection&lt;String&gt; imageDirs = new ArrayList&lt;String&gt;();
+    Collection&lt;String&gt; editsDirs = new ArrayList&lt;String&gt;();
+    for (Iterator&lt;StorageDirectory&gt; it = dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      if (!sd.getVersionFile().exists()) {
+        needToSave |= true;
+        continue; // some of them might have just been formatted
+      }
+      boolean imageExists = false, editsExists = false;
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        imageExists = getImageFile(sd, NameNodeFile.IMAGE).exists();
+        imageDirs.add(sd.getRoot().getCanonicalPath());
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        editsExists = getImageFile(sd, NameNodeFile.EDITS).exists();
+        editsDirs.add(sd.getRoot().getCanonicalPath());
+      }
+
+      checkpointTime = readCheckpointTime(sd);
+      if ((checkpointTime != Long.MIN_VALUE) &amp;&amp; 
+          ((checkpointTime != latestNameCheckpointTime) || 
+           (checkpointTime != latestEditsCheckpointTime))) {
+        // Force saving of new image if checkpoint time
+        // is not same in all of the storage directories.
+        needToSave |= true;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE) &amp;&amp; 
+         (latestNameCheckpointTime &lt; checkpointTime) &amp;&amp; imageExists) {
+        latestNameCheckpointTime = checkpointTime;
+        latestNameSD = sd;
+      }
+      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS) &amp;&amp; 
+           (latestEditsCheckpointTime &lt; checkpointTime) &amp;&amp; editsExists) {
+        latestEditsCheckpointTime = checkpointTime;
+        latestEditsSD = sd;
+      }
+      if (checkpointTime &lt;= 0L)
+        needToSave |= true;
+      // set finalized flag
+      isUpgradeFinalized = isUpgradeFinalized &amp;&amp; !sd.getPreviousDir().exists();
+    }
+
+    // 确保至少有一个fsimage和一个edits目录
+    if (latestNameSD == null)
+      throw new IOException("Image file is not found in " + imageDirs);
+    if (latestEditsSD == null)
+      throw new IOException("Edits file is not found in " + editsDirs);
+
+    // 确保获得的fsimage和edits是同一个检查点
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime
+        &amp;&amp; latestNameSD != latestEditsSD
+        &amp;&amp; latestNameSD.getStorageDirType() == NameNodeDirType.IMAGE
+        &amp;&amp; latestEditsSD.getStorageDirType() == NameNodeDirType.EDITS) {
+      // This is a rare failure when NN has image-only and edits-only
+      // storage directories, and fails right after saving images,
+      // in some of the storage directories, but before purging edits.
+      // See -NOTE- in saveNamespace().
+      LOG.error("This is a rare failure scenario!!!");
+      LOG.error("Image checkpoint time " + latestNameCheckpointTime +
+          " &gt; edits checkpoint time " + latestEditsCheckpointTime);
+      LOG.error("Name-node will treat the image as the latest state of " +
+          "the namespace. Old edits will be discarded.");
+    } else if (latestNameCheckpointTime != latestEditsCheckpointTime)
+      throw new IOException("Inconsitent storage detected, " +
+          "image and edits checkpoint times do not match. " +
+          "image checkpoint time = " + latestNameCheckpointTime +
+          "edits checkpoint time = " + latestEditsCheckpointTime);
+
+    // 如果上次检查点中断了，则恢复该检查点
+    needToSave |= recoverInterruptedCheckpoint(latestNameSD, latestEditsSD);
+
+    long startTime = FSNamesystem.now();
+    long imageSize = getImageFile(latestNameSD, NameNodeFile.IMAGE).length();
+
+    //
+    // 加载fsimage文件
+    //
+    latestNameSD.read();
+    needToSave |= loadFSImage(getImageFile(latestNameSD, NameNodeFile.IMAGE));
+    LOG.info("Image file of size " + imageSize + " loaded in " 
+        + (FSNamesystem.now() - startTime)/1000 + " seconds.");
+
+    // 加载最新的edits并作用于fsimage上
+    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime)
+      // the image is already current, discard edits
+      needToSave |= true;
+    else // latestNameCheckpointTime == latestEditsCheckpointTime
+      needToSave |= (loadFSEdits(latestEditsSD) &gt; 0);
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其中FSImage.loadFSImage(File curFile) 代码如下：</p>
+
+<pre><code>  boolean loadFSImage(File curFile) throws IOException {
+    assert this.getLayoutVersion() &lt; 0 : "Negative layout version is expected.";
+    assert curFile != null : "curFile is null";
+
+    FSNamesystem fsNamesys = FSNamesystem.getFSNamesystem();
+    FSDirectory fsDir = fsNamesys.dir;
+
+    //
+    // Load in bits
+    //
+    boolean needToSave = true;
+    DataInputStream in = new DataInputStream(new BufferedInputStream(
+                              new FileInputStream(curFile)));
+    try {
+      /*
+       * Note: Remove any checks for version earlier than 
+       * Storage.LAST_UPGRADABLE_LAYOUT_VERSION since we should never get 
+       * to here with older images.
+       */
+
+      /*
+       * TODO we need to change format of the image file
+       * it should not contain version and namespace fields
+       */
+      // 读取imageversion
+      int imgVersion = in.readInt();
+      // 读取namespaceid
+      this.namespaceID = in.readInt();
+
+      // 读取镜像中的文件数
+      long numFiles;
+      if (imgVersion &lt;= -16) {
+        numFiles = in.readLong();
+      } else {
+        numFiles = in.readInt();
+      }
+
+      this.layoutVersion = imgVersion;
+      // 读取镜像时间戳
+      if (imgVersion &lt;= -12) {
+        long genstamp = in.readLong();
+        fsNamesys.setGenerationStamp(genstamp); 
+      }
+
+      needToSave = (imgVersion != FSConstants.LAYOUT_VERSION);
+
+      // 读取每个文件的信息
+      short replication = FSNamesystem.getFSNamesystem().getDefaultReplication();
+
+      LOG.info("Number of files = " + numFiles);
+
+      byte[][] pathComponents;
+      byte[][] parentPath = ;
+      INodeDirectory parentINode = fsDir.rootDir;
+      for (long i = 0; i &lt; numFiles; i++) {
+        long modificationTime = 0;
+        long atime = 0;
+        long blockSize = 0;
+        //读取文件名(path)
+        pathComponents = readPathComponents(in);
+        //读取副本数
+        replication = in.readShort();
+        //调整副本数，使其不超过系统的最大和最小副本数限制
+        replication = FSEditLog.adjustReplication(replication);
+        //读取文件修改时间
+        modificationTime = in.readLong();
+        if (imgVersion &lt;= -17) {
+        //读取最近访问时间
+          atime = in.readLong();
+        }
+        if (imgVersion &lt;= -8) {
+        //读取block块大小
+          blockSize = in.readLong();
+        }
+        //读取block数
+        int numBlocks = in.readInt();
+        //构建blocks
+        Block blocks[] = null;
+
+        // 老版本hdfs中，numBlocks=0表示目录，新版本中numBlocks=-1表示目录
+        if ((-9 &lt;= imgVersion &amp;&amp; numBlocks &gt; 0) ||
+            (imgVersion &lt; -9 &amp;&amp; numBlocks &gt;= 0)) {
+           //构建文件block信息
+          blocks = new Block[numBlocks];
+          for (int j = 0; j &lt; numBlocks; j++) {
+            blocks[j] = new Block();
+            if (-14 &lt; imgVersion) {
+              blocks[j].set(in.readLong(), in.readLong(), 
+                            Block.GRANDFATHER_GENERATION_STAMP);
+            } else {
+              // 读取block信息
+              blocks[j].readFields(in);
+            }
+          }
+        }
+        // 老版本inode中不维护blocksize，如果存在多个block，blocksize选取第一个block的大小，如果只有一个block，则选该block大小和默认大小中较大的，如果没有block，则选用默认大小
+        if (-8 &lt;= imgVersion &amp;&amp; blockSize == 0) {
+          if (numBlocks &gt; 1) {
+            blockSize = blocks[0].getNumBytes();
+          } else {
+            long first = ((numBlocks == 1) ? blocks[0].getNumBytes(): 0);
+            blockSize = Math.max(fsNamesys.getDefaultBlockSize(), first);
+          }
+        }
+
+        // 如果是目录（blocks=null），读取该目录的配额
+        long nsQuota = -1L;
+        if (imgVersion &lt;= -16 &amp;&amp; blocks == null) {
+          nsQuota = in.readLong();
+        }
+        long dsQuota = -1L;
+        if (imgVersion &lt;= -18 &amp;&amp; blocks == null) {
+          dsQuota = in.readLong();
+        }
+
+        //获取权限信息
+        PermissionStatus permissions = fsNamesys.getUpgradePermission();
+        if (imgVersion &lt;= -11) {
+          permissions = PermissionStatus.read(in);
+        }
+
+        //如果该path为root，且设置了配额信息，则更新根目录的配额
+        if (isRoot(pathComponents)) { // it is the root
+          // update the root's attributes
+          if (nsQuota != -1 || dsQuota != -1) {
+            fsDir.rootDir.setQuota(nsQuota, dsQuota);
+          }
+          fsDir.rootDir.setModificationTime(modificationTime);
+          fsDir.rootDir.setPermissionStatus(permissions);
+          continue;
+        }
+        //如果该inode的parent与当前路径不一至，获取新的parentPaht
+        if(!isParent(pathComponents, parentPath)) {
+          parentINode = null;
+          parentPath = getParent(pathComponents);
+        }
+        // 将该inode添加到inode树中
+        parentINode = fsDir.addToParent(pathComponents, parentINode, permissions,
+                                        blocks, replication, modificationTime, 
+                                        atime, nsQuota, dsQuota, blockSize);
+      }
+
+      // 加载datanode信息，imgVersion&lt;-12的版本事实上啥都不做，datanode信息已经不保存在fsimage中
+      this.loadDatanodes(imgVersion, in);
+
+      // 加载正在构建中的文件
+      this.loadFilesUnderConstruction(imgVersion, in, fsNamesys);
+
+    } finally {
+      in.close();
+    }
+
+    return needToSave;
+  }
+</code></pre>
+
+<p>其核心就是加载并解析fsimage文件，构建命名空间，fsimage文件的结构参见《NameNode中主要数据结构》</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:46:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-block-management/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>HDFS通过一个BlockManager管理集群中所有的block信息</p>
+
+<h2>主要数据结构</h2>
+
+<h3>Block</h3>
+
+<p>Block是HDFS读写的基本单元，集群中每个block通过一个long id来唯一标示。</p>
+
+<h3>BlockInfo</h3>
+
+<p>维护一个block的元信息，主要通过</p>
+
+<h3>BlockMap</h3>
+
+<p>通过一个GSet&lt;Block, BlockInfo>维护一个block与其元数据信息的映射关系，元信息包括其所属的BlockCollection和存储该block的datanode节点，每个BlockMap有个初始容量capacity</p>
+
+<h3>BlockCollection</h3>
+
+<h2>Block和副本管理</h2>
+
+<h3>Block和副本状态</h3>
+
+<p>Block有如下状态：</p>
+
+<ol>
+<li>committed：所有的副本已经被创建且更新至最新</li>
+<li>Under construction: 需要创建一个或多个副本</li>
+<li>To be deleted: 所有副本需要被删除。发生在文件被删除或者block被重写</li>
+<li>Over-replicated: 过多的副本存在。此时副本中的一个需要设置为无效并删除。</li>
+</ol>
+
+
+<p>副本有如下状态：</p>
+
+<ol>
+<li>Current: 正常状态，该副本正确反应block内容</li>
+<li>Conrrupt: 某个副本损坏。副本损坏是由client报告给namenode的。client通过checksum检查副本是否损坏，如果损坏了，通过BlockManager.invalidateBlock()处理</li>
+<li>On a faild DataNode: DataNode Heartbeat发现有DataNode失效时，即将在改datanode上创建的副本将被删除</li>
+<li>Out of Date: 当Datanode失效，且副本所属的block发生更新后，Datanode恢复正常。过期的block将通过blockreport报告给namenode，并将其删除</li>
+<li>Under construction: 副本尚未被写入并在Datanode上被验证。在NameNode看来，只有当收到blockReport并且报告中timestamp正确时，猜人物副本写入正常。</li>
+</ol>
+
+
+<h2>Block分配</h2>
+
+<h2>Block查询</h2>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -1230,467 +1657,6 @@ private void renew() {
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-thread/">HDFS源码学习（3）——NameNode中的线程</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:37:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-thread/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>NameNode存在三种运行模式：</p>
-
-<ol>
-<li>Normal： NameNode正常服务的状态</li>
-<li>Safe mode：NameNode重启时进入Safe mode，该模式下整个系统是只读的，以便于NameNode手机DataNode信息</li>
-<li>Backup mode：备份NameNode处于Backup mode，被动的接收主NameNode的检查点信息</li>
-</ol>
-
-
-<p>在NameNode中存在如下几种线程：</p>
-
-<ol>
-<li>DataNode 健康检查管理线程</li>
-<li>副本管理线程</li>
-<li>租约管理（lease Management）</li>
-<li>IPC Handler 线程</li>
-</ol>
-
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:35:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-startup/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>main()</h2>
-
-<pre><code>  public static void main(String argv[]) throws Exception {
-    try {
-      StringUtils.startupShutdownMessage(NameNode.class, argv, LOG);
-      //创建nameNode
-      NameNode namenode = createNameNode(argv, null);
-      if (namenode != null)
-        namenode.join();
-    } catch (Throwable e) {
-      LOG.error(StringUtils.stringifyException(e));
-      System.exit(-1);
-    }
-  }
-</code></pre>
-
-<h3>createNameNode()</h3>
-
-<pre><code>  public static NameNode createNameNode(String argv[], 
-                                 Configuration conf) throws IOException {
-    if (conf == null)
-      conf = new Configuration();
-      //从命令行参数中提取启动配置项数据
-    StartupOption startOpt = parseArguments(argv);
-    if (startOpt == null) {
-      printUsage();
-      return null;
-    }
-    //设置启动参数
-    setStartupOption(conf, startOpt);
-
-    switch (startOpt) {
-      case FORMAT:
-        boolean aborted = format(conf, true);
-        System.exit(aborted ? 1 : 0);
-      case FINALIZE:
-        aborted = finalize(conf, true);
-        System.exit(aborted ? 1 : 0);
-      default:
-    }
-
-    //新建NameNode
-    NameNode namenode = new NameNode(conf);
-    return namenode;
-  }
-</code></pre>
-
-<h3>NameNode()</h3>
-
-<pre><code>  public NameNode(Configuration conf) throws IOException {
-    super(conf);
-    try {
-    //初始化
-      initialize(getConf());
-    } catch (IOException e) {
-      this.stop();
-      throw e;
-    }
-  }
-</code></pre>
-
-<h3>initialize()</h3>
-
-<pre><code>  private void initialize(Configuration conf) throws IOException {
-    InetSocketAddress socAddr = NameNode.getAddress(conf);
-    int handlerCount = conf.getInt("dfs.namenode.handler.count", 10);
-    // 关键-&gt;创建一个RPC Server
-    this.server = RPC.getServer(this, socAddr.getHostName(), socAddr.getPort(),
-                                handlerCount, false, conf);
-
-    // The rpc-server port can be ephemeral... ensure we have the correct info
-    this.serverAddress = this.server.getListenerAddress(); 
-    FileSystem.setDefaultUri(conf, getUri(serverAddress));
-    LOG.info("Namenode up at: " + this.serverAddress);
-
-    myMetrics = new NameNodeMetrics(conf, this);
-
-    //关键-&gt;创建一个FSNameSystem
-    this.namesystem = new FSNamesystem(this, conf);
-    //启动HTTP Server
-    startHttpServer(conf);
-    //启动RPC Server
-    this.server.start();  //start RPC server   
-
-    startTrashEmptier(conf);
-  }
-</code></pre>
-
-<h2>FSNameSystem()</h2>
-
-<pre><code>  FSNamesystem(NameNode nn, Configuration conf) throws IOException {
-    try {
-      //初始化FSNameSystem
-      initialize(nn, conf);
-      userPasswordInformation = new UserPasswordInformation(conf);
-      extendAccessControlList = new ExtendAccessControlList(conf);
-    } catch(IOException e) {
-      LOG.error(getClass().getSimpleName() + " initialization failed.", e);
-      close();
-      throw e;
-    }
-  }
-</code></pre>
-
-<h3>FSNameSystem.initialize()</h3>
-
-<pre><code>  private void initialize(NameNode nn, Configuration conf) throws IOException {
-    this.systemStart = now();
-    this.fsLock = new ReentrantReadWriteLock(); // non-fair locking
-    setConfigurationParameters(conf);
-
-    this.nameNodeAddress = nn.getNameNodeAddress();
-    this.registerMBean(conf); // register the MBean for the FSNamesystemStutus
-
-    //创建FSDirectory
-    this.dir = new FSDirectory(this, conf);
-    StartupOption startOpt = NameNode.getStartupOption(conf);
-
-    //加载FSImage
-    this.dir.loadFSImage(getNamespaceDirs(conf),
-                         getNamespaceEditsDirs(conf), startOpt);
-    long timeTakenToLoadFSImage = now() - systemStart;
-    LOG.info("Finished loading FSImage in " + timeTakenToLoadFSImage + " msecs");
-    NameNode.getNameNodeMetrics().fsImageLoadTime.set(
-                              (int) timeTakenToLoadFSImage);
-    this.safeMode = new SafeModeInfo(conf);
-    setBlockTotal();
-    //创建PendingReplicationBlocks
-    pendingReplications = new PendingReplicationBlocks(
-                            conf.getInt("dfs.replication.pending.timeout.sec", 
-                                        -1) * 1000L);
-    //创建心跳检查线程                                          
-    this.hbthread = new Daemon(new HeartbeatMonitor());
-    //创建租约管理线程
-    this.lmthread = new Daemon(leaseManager.new Monitor());
-    //创建副本管理线程
-    this.replthread = new Daemon(new ReplicationMonitor());
-    hbthread.start();
-    lmthread.start();
-    replthread.start();
-
-    // 副本超额block管理线程
-    this.overreplthread = new Daemon(new OverReplicationMonitor());
-    overreplthread.start();
-
-    this.hostsReader = new HostsFileReader(conf.get("dfs.hosts",""),
-                                           conf.get("dfs.hosts.exclude",""));
-    //创建退役节点管理线程
-    this.dnthread = new Daemon(new DecommissionManager(this).new Monitor(
-        conf.getInt("dfs.namenode.decommission.interval", 30),
-        conf.getInt("dfs.namenode.decommission.nodes.per.interval", 5)));
-    dnthread.start();
-
-    this.dnsToSwitchMapping = ReflectionUtils.newInstance(
-        conf.getClass("topology.node.switch.mapping.impl", ScriptBasedMapping.class,
-            DNSToSwitchMapping.class), conf);
-
-    /* If the dns to swith mapping supports cache, resolve network 
-     * locations of those hosts in the include list, 
-     * and store the mapping in the cache; so future calls to resolve
-     * will be fast.
-     */
-    if (dnsToSwitchMapping instanceof CachedDNSToSwitchMapping) {
-      dnsToSwitchMapping.resolve(new ArrayList&lt;String&gt;(hostsReader.getHosts()));
-    }
-    //创建副本定位器用于定位副本存放位置
-    this.replicator = BlockPlacementPolicy.getInstance(
-        conf,
-        this,
-        this.clusterMap,
-        this.hostsReader,
-        this.dnsToSwitchMapping,
-        this);
-  }
-</code></pre>
-
-<h2>FSDirectory(this, conf)</h2>
-
-<p>新建FSDirecotry</p>
-
-<pre><code> FSDirectory(FSNamesystem ns, Configuration conf) {
-    //创建一个FSImage，并实例化构建FSDirectory
-    this(new FSImage(), ns, conf);
-    fsImage.setCheckpointDirectories(FSImage.getCheckpointDirs(conf, null),
-                                FSImage.getCheckpointEditsDirs(conf, null));
-  }
-</code></pre>
-
-<h3>this(new FSImage(), ns, conf);</h3>
-
-<pre><code>FSDirectory(FSImage fsImage, FSNamesystem ns, Configuration conf) {
-    this.bLock = new ReentrantReadWriteLock(); // non-fair
-    this.cond = bLock.writeLock().newCondition();
-    //创建根目录
-    rootDir = new INodeDirectoryWithQuota(INodeDirectory.ROOT_NAME,
-        ns.createFsOwnerPermissions(new FsPermission((short)0755)),
-        Integer.MAX_VALUE, -1);
-    this.fsImage = fsImage;
-    namesystem = ns;
-    initialize(conf);
-  }
-</code></pre>
-
-<h3>FSDirectory.initialize()</h3>
-
-<pre><code>  private void initialize(Configuration conf) {
-    MetricsContext metricsContext = MetricsUtil.getContext("dfs");
-    directoryMetrics = MetricsUtil.createRecord(metricsContext, "FSDirectory");
-    directoryMetrics.setTag("sessionId", conf.get("session.id"));
-  }
-</code></pre>
-
-<h3>FSDirectory.loadFSImage()</h3>
-
-<pre><code>  void loadFSImage(Collection&lt;File&gt; dataDirs,
-                   Collection&lt;File&gt; editsDirs,
-                   StartupOption startOpt) throws IOException {
-    // format before starting up if requested
-    if (startOpt == StartupOption.FORMAT) {
-      fsImage.setStorageDirectories(dataDirs, editsDirs);
-      fsImage.format();
-      startOpt = StartupOption.REGULAR;
-    }
-    try {
-      //从datadir和editdirs加载FSImage
-      if (fsImage.recoverTransitionRead(dataDirs, editsDirs, startOpt)) {
-        fsImage.saveNamespace(true);
-      }
-      //初始化Editlog
-      FSEditLog editLog = fsImage.getEditLog();
-      assert editLog != null : "editLog must be initialized";
-      if (!editLog.isOpen())
-        editLog.open();
-      fsImage.setCheckpointDirectories(null, null);
-    } catch(IOException e) {
-      fsImage.close();
-      throw e;
-    }
-    writeLock();
-    try {
-      this.ready = true;
-      cond.signalAll();
-    } finally {
-      writeUnlock();
-    }
-  }
-</code></pre>
-
-<h3>FSImage.recoverTransitionRead（）</h3>
-
-<pre><code>  boolean recoverTransitionRead(Collection&lt;File&gt; dataDirs,
-                             Collection&lt;File&gt; editsDirs,
-                                StartupOption startOpt
-                                ) throws IOException {
-    assert startOpt != StartupOption.FORMAT : 
-      "NameNode formatting should be performed before reading the image";
-
-    // none of the data dirs exist
-    if (dataDirs.size() == 0 || editsDirs.size() == 0)  
-      throw new IOException(
-        "All specified directories are not accessible or do not exist.");
-
-    if(startOpt == StartupOption.IMPORT 
-        &amp;&amp; (checkpointDirs == null || checkpointDirs.isEmpty()))
-      throw new IOException("Cannot import image from a checkpoint. "
-                          + "\"fs.checkpoint.dir\" is not set." );
-
-    if(startOpt == StartupOption.IMPORT 
-        &amp;&amp; (checkpointEditsDirs == null || checkpointEditsDirs.isEmpty()))
-      throw new IOException("Cannot import image from a checkpoint. "
-                          + "\"fs.checkpoint.edits.dir\" is not set." );
-
-    setStorageDirectories(dataDirs, editsDirs);
-    // 1.检查所有目录的状态和一致性
-    Map&lt;StorageDirectory, StorageState&gt; dataDirStates = 
-             new HashMap&lt;StorageDirectory, StorageState&gt;();
-    boolean isFormatted = false;
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                      dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      StorageState curState;
-      try {
-        curState = sd.analyzeStorage(startOpt);
-        // sd is locked but not opened
-        switch(curState) {
-        case NON_EXISTENT:
-          // name-node fails if any of the configured storage dirs are missing
-          throw new InconsistentFSStateException(sd.getRoot(),
-                                                 "storage directory does not exist or is not accessible.");
-        case NOT_FORMATTED:
-          break;
-        case NORMAL:
-          break;
-        default:  // recovery is possible
-          sd.doRecover(curState);      
-        }
-        if (curState != StorageState.NOT_FORMATTED 
-            &amp;&amp; startOpt != StartupOption.ROLLBACK) {
-          sd.read(); // read and verify consistency with other directories
-          isFormatted = true;
-        }
-        if (startOpt == StartupOption.IMPORT &amp;&amp; isFormatted)
-          // import of a checkpoint is allowed only into empty image directories
-          throw new IOException("Cannot import image from a checkpoint. " 
-              + " NameNode already contains an image in " + sd.getRoot());
-      } catch (IOException ioe) {
-        sd.unlock();
-        throw ioe;
-      }
-      dataDirStates.put(sd,curState);
-    }
-
-    if (!isFormatted &amp;&amp; startOpt != StartupOption.ROLLBACK 
-                     &amp;&amp; startOpt != StartupOption.IMPORT)
-      throw new IOException("NameNode is not formatted.");
-    if (layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION) {
-      checkVersionUpgradable(layoutVersion);
-    }
-    if (startOpt != StartupOption.UPGRADE
-          &amp;&amp; layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION
-          &amp;&amp; layoutVersion != FSConstants.LAYOUT_VERSION)
-        throw new IOException(
-                          "\nFile system image contains an old layout version " + layoutVersion
-                          + ".\nAn upgrade to version " + FSConstants.LAYOUT_VERSION
-                          + " is required.\nPlease restart NameNode with -upgrade option.");
-    // check whether distributed upgrade is reguired and/or should be continued
-    verifyDistributedUpgradeProgress(startOpt);
-
-    // 2. Format unformatted dirs.
-    this.checkpointTime = 0L;
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                     dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      StorageState curState = dataDirStates.get(sd);
-      switch(curState) {
-      case NON_EXISTENT:
-        assert false : StorageState.NON_EXISTENT + " state cannot be here";
-      case NOT_FORMATTED:
-        LOG.info("Storage directory " + sd.getRoot() + " is not formatted.");
-        LOG.info("Formatting ...");
-        sd.clearDirectory(); // create empty currrent dir
-        break;
-      default:
-        break;
-      }
-    }
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/4/">&larr; Older</a>
@@ -1706,6 +1672,14 @@ private void renew() {
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/29/hadoop-distributedcache/">hadoop_distributedCache</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
@@ -1737,14 +1711,6 @@ private void renew() {
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
   </ul>

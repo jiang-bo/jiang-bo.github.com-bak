@@ -4,7 +4,7 @@
   <title><![CDATA[非纯种程序猿]]></title>
   <link href="http://jiangbo.me/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-10-23T13:32:23+08:00</updated>
+  <updated>2012-12-10T16:15:22+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -12,6 +12,127 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[HDFS-2246:使用BlockReaderLocal优化本地block读取]]></title>
+    <link href="http://jiangbo.me/blog/2012/12/10/hdfs-blockreaderlocal/"/>
+    <updated>2012-12-10T16:09:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/12/10/hdfs-blockreaderlocal</id>
+    <content type="html"><![CDATA[<h2>一、背景</h2>
+
+<p>HDFS中对Block的读取使用DataXceiver通过Socket发送Packet数据进行，client端通过一个BlockReader来接收Socket中的Block数据。详见<a href="">HDFS数据读取流程</a>。大致流程如下：</p>
+
+<ol>
+<li>client端调用FileSystem.open()获取一个DFSInputStream</li>
+<li>client端调用DFSInputStream.read(byte[] buffer, int off, int len)读取数据</li>
+<li>client端通过DFSInputStream.blockSeekTo()向NameNode发起请求，定位到需要读取的block所在的Datanode，构建一个BlockReader用于读去对应DataNode上的block数据，返回该DataNodeInfo</li>
+<li>BlockReader主要负责同DataNode间建立一个Socket链接用于读取数据，BlockReader首先向DataNode发送请求头（包括操作类型，blockId，block时间戳，起始偏移量，读取数据的长度，client名）</li>
+<li>DataNode接收到DataXceiverServer接收到client端请求后，构建一个DataXceiver处理该请求。</li>
+<li>DataXceiver首先解析请求头，获取请求操作类型，当发现是READ_BLOCK操作后，调用相应的readBlock()方法处理</li>
+<li>readBlock方法解析请求中需要的blockId，构建一个BlockSender用于读取磁盘上的block文件数据并发送给client</li>
+<li>BlockSender读取磁盘上的block文件，将数据按照chunk通过socket发送给client的blockReader，同时，BlockSender在发送chunk后需要从meta文件中读取该chunk的checksum数据，同样发送给client，用于该chunk的checksum校验。</li>
+<li>client端通过BlockReader.readChunks()接收BlockSender发送的chunk数据，并进行checksum校验，校验成功后向DataNode发送checksumOk。</li>
+<li>循环6-10，直至当前block的数据全部被读取完成。</li>
+<li>循环执行3-11, 直至需要读取的文件数据都被读取完。</li>
+</ol>
+
+
+<p>这个过程是在集群环境想，client读取datanode上数据的一个正常流程，但事实上当client和datanode位于同一个物理节点上时（如Hadoop集群中，task运行在datanode上），这个过程显的有些多余，client可以直接通过本地文件系统api读取文件，而不需要走繁杂的socket流程。</p>
+
+<h2>二、设计实现</h2>
+
+<p>HDFS-2246中提供了一个BlockReaderLocal的实现，当client发现从NameNode返回的Block所属的datanode和client位于同一节点上时，构建一个BlockReaderLocal用于读取本地文件。
+上述3-10的流程将简化为：</p>
+
+<ol>
+<li>client端向NameNode发起请求获取block所属的datanode信息后，判断该datanode是否和client位于同一节点，是且开启了本地读取功能，则构建一个BlockReaderLocal读取本地文件，否则构建一个BlockReader按照原流程进行。</li>
+<li>BlockReaderLocal通过DataNode.getBlockLocaPathInfo()从DataNode获取block的本地文件路径信息。</li>
+<li>BlockReaderLocal构建InputStream读取block文件和meta文件信息</li>
+<li>对于需要checksum的场景（默认），通过blockReaderLocal.readChunks()按chunk读取本地文件，同时读取meta文件中该chunk的checksum数据，进行校验</li>
+<li>对于跳过checksum的场景，直接通过InputStream.read()读取block数据。</li>
+</ol>
+
+
+<h3>扩展DataNode协议接口</h3>
+
+<p>client端需要能够从DataNode获取block文件的本地文件路径信息。因此扩展ClientDataNodeProtocol，增加一个</p>
+
+<pre><code>BlockLocalPathInfo getBlockLocalPathInfo(Block block) throws IOException;
+</code></pre>
+
+<p>接口用于获取block的本地路径信息</p>
+
+<h3>本地文件读取</h3>
+
+<p>BlockReaderLocal共过BufferedInputStream直接读取本地文件，注意此处HDFS-2246的patch中使用的是FileInputStream，实际测试过程中发现，FileInputStream对本地文件的读取性能较差， 替换为使用BufferedInputStream</p>
+
+<h3>checksum较验</h3>
+
+<p>为了完成checksum校验，BlockReaderLocal同时需要读取block的meta文件，每当block文件读取一个chunk时需要从meta文件读取一个checksum数据，进行checksum校验，通过校验后进行下一个chunk的读取和校验。由于BlockReaderLocal读取的是本地文件，避免的网络传输对数据的影响，因此可以配置跳过checksum检查，以提高读取性能。默认是需要做checksum的。</p>
+
+<h3>本机判断</h3>
+
+<p>当前patch中的实现主要用IP来判断是否block所在的datanode与client是否位于同一节点上。</p>
+
+<h2>测试</h2>
+
+<p>通过TestDFSIO工具测试一个单节点的集群，2个文件，每个文件1000M
+./bin/hadoop jar hadoop-0.19.1-dc-test.jar TestDFSIO -read -nrFiles 2 -fileSize 1000
+测试结果对比:
+socket读取：</p>
+
+<pre><code>---
+12/12/07 13:52:57 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:52:57 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:52:57 CST 2012
+12/12/07 13:52:57 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:52:57 INFO mapred.FileInputFormat:      Throughput mb/sec: 283.5270768358378
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Average IO rate mb/sec: 283.5281982421875
+12/12/07 13:52:57 INFO mapred.FileInputFormat:  IO rate std deviation: 0.5685961122141402
+</code></pre>
+
+<p>本地读取</p>
+
+<pre><code>---
+12/12/07 13:48:59 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:48:59 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:48:59 CST 2012
+12/12/07 13:48:59 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:48:59 INFO mapred.FileInputFormat:      Throughput mb/sec: 369.61744594344856
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Average IO rate mb/sec: 369.6180725097656
+12/12/07 13:48:59 INFO mapred.FileInputFormat:  IO rate std deviation: 0.4800772
+</code></pre>
+
+<p>另外通过Patch中提供的TestShortCircuitLocalRead工具，测试结果如下：</p>
+
+<p>本地读取并进行checksum校验</p>
+
+<pre><code>true no 1 32000000
+---
+Iteration 20 took 115453
+Iteration 20 took 115803
+Iteration 20 took 115748
+</code></pre>
+
+<p>socket读取并进行checksum校验（默认）</p>
+
+<pre><code>no no 1 32000000
+---
+Iteration 20 took 128820
+Iteration 20 took 135305
+Iteration 20 took 129145
+</code></pre>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[hadoop_distributedCache]]></title>
+    <link href="http://jiangbo.me/blog/2012/10/29/hadoop-distributedcache/"/>
+    <updated>2012-10-29T19:36:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2012/10/29/hadoop-distributedcache</id>
+    <content type="html"><![CDATA[
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[使用FUSE-DFS mount HDFS]]></title>
@@ -3588,442 +3709,6 @@ make install
 <h2>案例分析：定长问题导致逐出</h2>
 
 <p>memcache的chunk分布是均匀的，这是为了通用性考虑，但是现实中一些场景chunk的分布是不均运的，例如为了减小对数据库的压力，对数据进行了全量缓存，为标识数据库中不存在的记录，向缓存中放置了一个stupidObject。这个对象大小是固定的，且该数据的量很大，导致该数据类型所在的slab占用了大量缓存空间。再一次调整对象结构时，修改了这个StupidObject大小，使其分布在另一个slab中，但是这个原分配的slab空间不会回收，空闲空间不足，导致大量逐出。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[使用方法链和静态工厂构造流畅接口]]></title>
-    <link href="http://jiangbo.me/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/"/>
-    <updated>2012-04-08T11:23:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory</id>
-    <content type="html"><![CDATA[<h3>问题现象</h3>
-
-<p>现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例：</p>
-
-<pre><code>public class VasViewVO {
-
-    private String description;
-
-    private Date gmtOpen;
-
-    private Date gmtClose;
-
-    private CreditVasType serviceType;
-
-    private CreditVasMemberStatus creditVasMemberStatus;
-    ...//此处省略getter和setter方法
-}
-</code></pre>
-
-<p>通常按照如下方式构造一个VasViewVO实例：</p>
-
-<pre><code>    VasViewVO vasViewVO = new VasViewVO();
-    vasViewVO.setCreditVasMemberStatus(CreditVasMemberStatus.OPEN);
-    vasViewVO.setGmtOpen(new Date());
-    vasViewVO.setServiceType(CreditVasType.fastpay);
-    vasViewVO.setDescription("open fastpay");
-    //do something with vasViewVO
-</code></pre>
-
-<p>如此构造VasViewVO的实例并非有严重的逻辑错误或者其他的问题，只是不够简洁易懂（贴近自然语言）。
-最近学习过jQuery的都知道，jQuery中可以按如下方式连续调用api</p>
-
-<pre><code>    $("p").hide().fadeIn("slow").slideUp("slow").slideDown("slow");
-</code></pre>
-
-<p>如果Java程序中也可以使用类似的方式将会简洁许多。</p>
-
-<h3>解决方法</h3>
-
-<h4>使用方法链</h4>
-
-<p>jQuery中之所以能够连续调用api，主要是因为每个方法返回的都是一个jQuery对象。Java本身也可这样做，即返回一个this(自身引用)，也就是常说的<a href="http://en.wikipedia.org/wiki/Method_chaining">方法链</a>。
-方法链的实现非常简单，通常的setter方法返回void，方法链返回的是this引用，如下：</p>
-
-<pre><code>    public VasViewVO description(String description) {
-        this.description = description;
-        return this;
-    }
-
-    public VasViewVO gmtOpen(Date gmtOpen) {
-        this.gmtOpen = gmtOpen;
-        return this;
-    }
-
-    public VasViewVO gmtClose(Date gmtClose) {
-        this.gmtClose = gmtClose;
-        return this;
-    }
-
-    public VasViewVO serviceType(CreditVasType serviceType) {
-        this.serviceType = serviceType;
-        return this;
-    }
-</code></pre>
-
-<p>如此一来在调用时只需要新建一个对象，连续调用赋值方法即可：</p>
-
-<pre><code>    VasViewVO vasView = new VasViewVO();
-    vasView.creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
-            .description("Commoent cxxx").gmtClose(new Date())
-            .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
-</code></pre>
-
-<p>如此相比连续调用5次setter方法简洁的多。</p>
-
-<h4>使用静态工厂和static import优化</h4>
-
-<p>使用方法链之后简化了setter调用，但是每次还必须要先new一个实例，略显繁琐。这个问题可以通过Effectvie Java的第一条静态工厂来解决，即在VasViewVO内部实现一个静态工厂方法。</p>
-
-<pre><code>    public static VasViewVO with() {
-        return new VasViewVO();
-    }
-</code></pre>
-
-<p>这个with的方法名与一般的静态工厂所用的getInstance，newInstance不同，主要时为了更加贴近自然语言。
-如此，构造一个VasViewVO实例就可简化为</p>
-
-<pre><code>    VasViewVO vasViewVO = VasViewVO.with()
-                .creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
-                .description("Commoent cxxx").gmtClose(new Date())
-                .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
-</code></pre>
-
-<p>代码已经很简洁，不过每次都是用枚举类长长的类名，感觉很是不雅，可以通过static import解决，最终的到的简化后构造一个VasViewVO实例的代码如下：</p>
-
-<pre><code>import static  com.alibaba.china.credit.common.constants.CreditVasType.*;
-import static com.alibaba.china.credit.vas.dal.constant.CreditVasMemberStatus.*;
-public class Test{
-    public static void main(String[] args) {
-        . . .
-
-        VasViewVO vasViewVO = VasViewVO.with()
-            .creditVasMemberStatus(CLOSE)
-            .description("Commoent cxxx").gmtClose(new Date())
-            .gmtOpen(new Date()).serviceType(fastpay);
-        . . .
-    }
-}
-</code></pre>
-
-<h3>进阶总结</h3>
-
-<p>程序设计要解决的是讲现实世界中的问题描述转化为计算机可识别的计算机语言（二进制码），因此编程语言必须为这一转化过程提供有效的抽像机制。现有编程语言提供的抽象机制侧重各有不同，在C，C++，JAVA等通用语言中更关注语言的基本语义，离实际的问题域描述较远；SQL，CSS等特定领域语言更关注特定问题域问题的抽象，更贴近实际的问题描述。</p>
-
-<p>站在人的角度，语言越是贴近实际问题的描述越是容易理解，对问题的描述也更加准确。但现有的特定领域语言又不具备通用变成语言解决问题的的通用性，因此我们更希望能够在通用语言上进行更高层次的抽象，使其更加贴近具体的问题域。某种程度上讲语言提供的API或者方法库就是对基本问题的更高层次抽象，但离具体的问题域还是太远，有时我们更渴望更加贴近具体问题的语言来解决问题并兼具通用语言的通用性，因此诞生了通用语言的内部DSL。
-<a href="http://www.martinfowler.com/bliki/FluentInterface.html">流畅接口（Fluent Interface）</a>是实现内部DSL的重要手段，<a href="http://en.wikipedia.org/wiki/Fluent_interface">wikipedia上如此描述</a>Fluent Interface：</p>
-
-<pre><code>A fluent interface (as first coined by Eric Evans and Martin Fowler) is an implementation of an object oriented API that aims to provide for more readable code. A fluent interface is normally implemented by using method chaining to relay the instruction context of a subsequent call (but a fluent interface entails more than just method chaining)。
-</code></pre>
-
-<p>方法链（method chain）是实现Fluent Interface的重要手段（注意，method chain!= Fluent Interface!=DSL）。但仅仅有方法链是不足够构建有效的DSL的，除此之外还需要一些且他编程技巧，比如static factory和static import等，具体请参见<a href="http://www.infoq.com/articles/internal-dsls-java">《An Approach to Internal Domain－Specific Languages in Java》</a></p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[java.lang.instrument笔记]]></title>
-    <link href="http://jiangbo.me/blog/2012/02/21/java-lang-instrument/"/>
-    <updated>2012-02-21T17:13:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/02/21/java-lang-instrument</id>
-    <content type="html"><![CDATA[<h2>什么是Instrumentation？</h2>
-
-<p>java Instrumentation指的是可以用独立于应用程序之外的代理（agent）程序来监测和协助运行在JVM上的应用程序。这种监测和协助包括但不限于获取JVM运行时状态，替换和修改类定义等。
-Java SE5中使用JVM TI替代了JVM PI和JVM DI。提供一套代理机制，支持独立于JVM应用程序之外的程序以代理的方式连接和访问JVM。java.lang.instrument是在JVM TI的基础上提供的Java版本的实现。
-Instrumentation提供的主要功能是修改jvm中类的行为。
-Java SE6中由两种应用Instrumentation的方式，premain（命令行）和agentmain（运行时）</p>
-
-<h2>premain方式</h2>
-
-<p>在Java SE5时代，Instrument只提供了premain一种方式，即在真正的应用程序（包含main方法的程序）main方法启动前启动一个代理程序。例如使用如下命令：</p>
-
-<pre><code>java -javaagent:agent_jar_path[=options] java_app_name
-</code></pre>
-
-<p>可以在启动名为java_app_name的应用之前启动一个agent_jar_path指定位置的agent jar。
-实现这样一个agent jar包，必须满足两个条件：</p>
-
-<ol>
-<li>在这个jar包的manifest文件中包含Premain-Class属性，并且改属性的值为代理类全路径名。</li>
-<li>代理类必须提供一个public static void premain(String args, Instrumentation inst)或 public static void premain(String args) 方法。</li>
-</ol>
-
-
-<p>当在命令行启动该代理jar时，VM会根据manifest中指定的代理类，使用于main类相同的系统类加载器（即ClassLoader.getSystemClassLoader()获得的加载器）加载代理类。在执行main方法前执行premain()方法。如果premain(String args, Instrumentation inst)和premain(String args)同时存在时，优先使用前者。其中方法参数args即命令中的options，类型为String（注意不是String[]），因此如果需要多个参数，需要在方法中自己处理（比如用&#8221;;&#8221;分割多个参数之类）；inst是运行时由VM自动传入的Instrumentation实例，可以用于获取VM信息。</p>
-
-<h2>premain实例-打印所有的方法调用</h2>
-
-<p>下面实现一个打印程序执行过程中所有方法调用的功能，这个功能可以通过AOP其他方式实现，这里只是尝试使用Instrumentation进行ClassFile的字节码转换实现：</p>
-
-<h3>构造agent类</h3>
-
-<p>premain方式的agent类必须提供premain方法，代码如下：</p>
-
-<pre><code>package test;
-
-import java.lang.instrument.Instrumentation;
-
-public class Agent {
-
-    public static void premain(String args, Instrumentation inst){
-        System.out.println("Hi, I'm agent!");
-        inst.addTransformer(new TestTransformer());
-    }
-}
-</code></pre>
-
-<p>premain有两个参数，args为自定义传入的代理类参数，inst为VM自动传入的Instrumentation实例。 premain方法的内容很简单，除了标准输出外，只有</p>
-
-<pre><code>inst.addTransformer(new TestTransformer());
-</code></pre>
-
-<p>这行代码的意思是向inst中添加一个类的转换器。用于转换类的行为。</p>
-
-<h3>构造Transformer</h3>
-
-<p>下面来实现上述过程中的TestTransformer来完成打印调用方法的类定义转换。</p>
-
-<pre><code>package test;
-
-import java.lang.instrument.ClassFileTransformer;
-import java.lang.instrument.IllegalClassFormatException;
-import java.security.ProtectionDomain;
-
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.LdcInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-
-public class TestTransformer implements ClassFileTransformer {
-
-    @Override
-    public byte[] transform(ClassLoader arg0, String arg1, Class&lt;?&gt; arg2,
-            ProtectionDomain arg3, byte[] arg4)
-            throws IllegalClassFormatException {
-        ClassReader cr = new ClassReader(arg4);
-        ClassNode cn = new ClassNode();
-        cr.accept(cn, 0);
-        for (Object obj : cn.methods) {
-            MethodNode md = (MethodNode) obj;
-            if ("&lt;init&gt;".endsWith(md.name) || "&lt;clinit&gt;".equals(md.name)) {
-                continue;
-            }
-            InsnList insns = md.instructions;
-            InsnList il = new InsnList();
-            il.add(new FieldInsnNode(Opcodes.GETSTATIC, "java/lang/System",
-                    "out", "Ljava/io/PrintStream;"));
-            il.add(new LdcInsnNode("Enter method-&gt; " + cn.name+"."+md.name));
-            il.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                    "java/io/PrintStream", "println", "(Ljava/lang/String;)V"));
-            insns.insert(il);
-            md.maxStack += 3;
-
-        }
-        ClassWriter cw = new ClassWriter(0);
-        cn.accept(cw);
-        return cw.toByteArray();
-    }
-
-}
-</code></pre>
-
-<p>TestTransformer实现了ClassFileTransformer接口，该接口只有一个transform方法，参数传入包括该类的类加载器，类名，原字节码字节流等，返回被转换后的字节码字节流。
-TestTransformer主要使用ASM实现在所有的类定义的方法中，在方法开始出添加了一段打印该类名和方法名的字节码。在转换完成后返回新的字节码字节流。详细的ASM使用请参考ASM手册。</p>
-
-<h3>设置MANIFEST.MF</h3>
-
-<p>设置MANIFEST.MF文件中的属性，文件内容如下：</p>
-
-<pre><code>Manifest-Version: 1.0
-Premain-Class: test.Agent
-Created-By: 1.6.0_29
-</code></pre>
-
-<h3>测试</h3>
-
-<p>代码编写完成后将代码编译打成agent.jar。
-编写测试代码：</p>
-
-<pre><code>public class TestAgent {
-
-    public static void main(String[] args) {
-        TestAgent ta = new TestAgent();
-        ta.test();
-    }
-
-    public void test() {
-        System.out.println("I'm TestAgent");
-    }
-
-}
-</code></pre>
-
-<p>从命令行执行该类，并设置agent.jar</p>
-
-<pre><code>java -javaagent:agent.jar TestAgent
-</code></pre>
-
-<p>将打印出程序运行过程中实际执行过的所有方法名：</p>
-
-<pre><code>Hi, I'm agent!
-Enter method-&gt; test/TestAgent.main
-Enter method-&gt; test/TestAgent.test
-I'm TestAgent
-Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
-Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
-Enter method-&gt; java/util/IdentityHashMap$KeySet.iterator
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.hasNext
-Enter method-&gt; java/util/IdentityHashMap$KeyIterator.next
-Enter method-&gt; java/util/IdentityHashMap$IdentityHashMapIterator.nextIndex
-Enter method-&gt; com/apple/java/Usage$3.run
-。。。
-</code></pre>
-
-<p>从输出中可以看出，程序首先执行的是代理类中的premain方法（不过代理类自身不会被自己转换，所以不能打印出代理类的方法名），然后是应用程序中的main方法。</p>
-
-<h2>agentmain方式</h2>
-
-<p>premain时Java SE5开始就提供的代理方式，给了开发者诸多惊喜，不过也有些须不变，由于其必须在命令行指定代理jar，并且代理类必须在main方法前启动。因此，要求开发者在应用前就必须确认代理的处理逻辑和参数内容等等，在有些场合下，这是比较苦难的。比如正常的生产环境下，一般不会开启代理功能，但是在发生问题时，我们不希望停止应用就能够动态的去修改一些类的行为，以帮助排查问题，这在应用启动前是无法确定的。
-为解决运行时启动代理类的问题，Java SE6开始，提供了在应用程序的VM启动后在动态添加代理的方式，即agentmain方式。
-与Permain类似，agent方式同样需要提供一个agent jar，并且这个jar需要满足：</p>
-
-<ol>
-<li>在manifest中指定Agent-Class属性，值为代理类全路径</li>
-<li>代理类需要提供public static void agentmain(String args, Instrumentation inst)或public static void agentmain(String args)方法。并且再二者同时存在时以前者优先。args和inst和premain中的一致。</li>
-</ol>
-
-
-<p>不过如此设计的再运行时进行代理有个问题——如何在应用程序启动之后再开启代理程序呢？
-JDK6中提供了Java Tools API，其中Attach API可以满足这个需求。</p>
-
-<p>Attach API中的VirtualMachine代表一个运行中的VM。其提供了loadAgent()方法，可以在运行时动态加载一个代理jar。具体需要参考<a href="">《Attach API》</a></p>
-
-<h2>agentmain实例-打印当前已加载的类</h2>
-
-<h3>构造agent类</h3>
-
-<p>agentmain方式的代理类必须提供agentmain方法：</p>
-
-<pre><code>package loaded;
-
-import java.lang.instrument.Instrumentation;
-
-public class LoadedAgent {
-    @SuppressWarnings("rawtypes")
-    public static void agentmain(String args, Instrumentation inst){
-        Class[] classes = inst.getAllLoadedClasses();
-        for(Class cls :classes){
-            System.out.println(cls.getName());
-        }
-    }
-}
-</code></pre>
-
-<p>agentmain方法通过传入的Instrumentation实例获取当前系统中已加载的类。</p>
-
-<h3>设置MANNIFEST.MF</h3>
-
-<p>设置MANIFEST.MF文件，指定Agent-Class:</p>
-
-<pre><code>Manifest-Version: 1.0
-Agent-Class: loaded.LoadedAgent
-Created-By: 1.6.0_29
-</code></pre>
-
-<h3>绑定到目标VM</h3>
-
-<p>将agent类和MANIFEST.MF文件编译打成loadagent.jar后，由于agent main方式无法向pre main方式那样在命令行指定代理jar，因此需要借助Attach Tools API。</p>
-
-<pre><code>package attach;
-
-import java.io.IOException;
-
-import com.sun.tools.attach.AgentInitializationException;
-import com.sun.tools.attach.AgentLoadException;
-import com.sun.tools.attach.AttachNotSupportedException;
-import com.sun.tools.attach.VirtualMachine;
-
-public class Test {
-    public static void main(String[] args) throws AttachNotSupportedException,
-            IOException, AgentLoadException, AgentInitializationException {
-        VirtualMachine vm = VirtualMachine.attach(args[0]);
-        vm.loadAgent("/Users/jiangbo/Workspace/code/java/javaagent/loadagent.jar");
-
-    }
-
-}
-</code></pre>
-
-<p>该程序接受一个参数为目标应用程序的进程id，通过Attach Tools API的VirtualMachine.attach方法绑定到目标VM，并向其中加载代理jar。</p>
-
-<h3>构造目标测试程序</h3>
-
-<p>构造一个测试用的目标应用程序：</p>
-
-<pre><code>package attach;
-
-public class TargetVM {
-    public static void main(String[] args) throws InterruptedException{
-        while(true){
-            Thread.sleep(1000);
-        }
-    }
-}
-</code></pre>
-
-<p>这个测试程序什么都不做，只是不停的sleep。:)
-运行该程序，获得进程ID=33902。
-运行上面绑定到VM的Test程序，将进程id作为参数传入：</p>
-
-<pre><code>java attach.Test 33902
-</code></pre>
-
-<p>观察输出，会打印出系统当前所有已经加载类名</p>
-
-<pre><code>java.lang.NoClassDefFoundError
-java.lang.StrictMath
-java.security.SignatureSpi
-java.lang.Runtime
-java.util.Hashtable$EmptyEnumerator
-sun.security.pkcs.PKCS7
-java.lang.InterruptedException
-java.io.FileDescriptor$1
-java.nio.HeapByteBuffer
-java.lang.ThreadGroup
-[Ljava.lang.ThreadGroup;
-java.io.FileSystem
-。。。
-</code></pre>
-
-<h2>参考文档</h2>
-
-<ul>
-<li><a href="http://docs.oracle.com/javase/6/docs/api/java/lang/instrument/package-summary.html">java.lang.instrument API docs</a></li>
-<li><a href="https://blogs.oracle.com/CoreJavaTechTips/entry/the_attach_api">The Attach API</a></li>
-<li><a href="http://www.ibm.com/developerworks/cn/java/j-lo-jse61/index.html">Java SE6新特性：Instrumentation新功能</a></li>
-</ul>
-
-
-<h2>附：agent jar中manifest的属性</h2>
-
-<ul>
-<li>Premain-Class: 当在VM启动时，在命令行中指定代理jar时，必须在manifest中设置Premain-Class属性，值为代理类全类名，并且该代理类必须提供premain方法。否则JVM会异常终止。</li>
-<li>Agent-Class: 当在VM启动之后，动态添加代理jar包时，代理jar包中manifest必须设置Agent-Class属性，值为代理类全类名，并且该代理类必须提供agentmain方法，否则无法启动该代理。</li>
-<li>Boot-Class-Path: Bootstrap class loader加载类时的搜索路径，可选。</li>
-<li>Can-Redefine-Classes: true/false；标示代理类是否能够重定义类。可选。</li>
-<li>Can-Retransform-Classes: true/false；标示代理类是否能够转换类定义。可选。</li>
-<li>Can-Set-Native-Prefix::true/false；标示代理类是否需要本地方法前缀，可选。</li>
-</ul>
-
-
-<p><strong> 当一个代理jar包中的manifest文件中既有Premain-Class又有Agent-Class时，如果以命令行方式在VM启动前指定代理jar，则使用Premain-Class；反之如果在VM启动后，动态添加代理jar，则使用Agent-Class </strong></p>
 ]]></content>
   </entry>
   

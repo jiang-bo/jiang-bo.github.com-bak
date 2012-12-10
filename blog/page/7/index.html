@@ -9,8 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、让ubuntu支持GBK编码
-Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。 首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件， &hellip;">
+  <meta name="description" content="web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：
+1、用chrome打开：chrome://net-internals/#dns
+2、点击上面的“clean host cache” &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +80,159 @@ Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/12/07/clean-dns-cache-on-chrome/">Chrome中清除dns缓存</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-12-07T00:00:00+08:00" pubdate data-updated="true">Dec 7<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/12/07/clean-dns-cache-on-chrome/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/未分类/'>未分类</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：<br />
+1、用chrome打开：chrome://net-internals/#dns<br />
+2、点击上面的“clean host cache”<br />
+为了方便使用，可以加个bookmark:)</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/">Mac上制作Ubuntu USB启动盘</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-11-09T00:00:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/技术生活/'>技术生活</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
+
+<p><strong>一、下载ubuntu iso镜像</strong></p>
+
+<p><strong>二、将iso转换为img文件</strong></p>
+
+<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
+
+<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
+
+<p><strong>三、查看USB的盘符</strong></p>
+
+<p>$ diskutil list</p>
+
+<p>/dev/disk0</p>
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
+
+<p>1:                        EFI                         209.7 MB   disk0s1</p>
+
+<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
+
+<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
+
+<p>/dev/disk1</p>
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
+
+<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
+
+<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
+
+<p><strong>四、卸载USB磁盘</strong></p>
+
+<p>$ diskutil unmountDisk /dev/disk1</p>
+
+<p>Unmount of all volumes on disk1 was successful</p>
+
+<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
+
+<p><strong>五、将镜像写入USB</strong></p>
+
+<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
+
+<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
+
+<p><strong>六、弹出USB</strong></p>
+
+<p>$ diskutil eject /dev/disk1</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -717,196 +871,6 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/17/webx3-container-structure/">Webx3源码分析－容器结构</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-08-17T19:32:00+08:00" pubdate data-updated="true">Aug 17<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/08/17/webx3-container-structure/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/webx/'>webx</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h3>一、Webx 框架概述</h3>
-
-<p>Webx是一套基于Java Servlet API构建的通用Web框架。整个Webx框框架层次分为三层：</p>
-
-<p><img src="/images/webx/webx-framework-layer.png" alt="image" /></p>
-
-<ol>
-<li>SpringExt：提供了基于Spring的通用扩展机制</li>
-<li>WebxFramework：基于Servlet API，提供Web基础服务，如Spring初始化，日志初始化，接受请求，错误处理，开发模式等。Webx Framework只是对Servlet和spring的基础封装，并不关心Web框架中具体服务的处理，如Action处理，表单处理等。因此，可以在Webx Framework上扩展多种风格的Web框架。</li>
-<li>Webx Turbine：基于Webx Framework，提供具体的网页功能，如表单处理，Action相应处理等</li>
-</ol>
-
-
-<h3>二、Webx Framework容器结构</h3>
-
-<h4>1.1组件化应用结构</h4>
-
-<p>Webx Framework是基于组件化风格构建的，它将一个应用划分一个Webx应用包含至少一个组件组 (WebxComponents)，一个组件组由多个组件(WebxComponent)构成。</p>
-
-<p><img src="/images/webx/webx-component.png" alt="image" /></p>
-
-<p>Webx Framework中定义了WebxComponents接口和WebxComponent接口，分别表示一组组件的信息和一个组件的描述。
-组件化的应用结构反应在容器上即应用中级联的父子容器的结构关系，如下图所示：</p>
-
-<p><img src="/images/webx/webx-context-structure.png" alt="image" /></p>
-
-<p>Webx Framework将一个Web应用分解成多个小应用模块：app1, app2，等。每个应用模块独享一个子容器（Sub Context），共享根容器（Root Context）。子容器之间的beans无法相互注入，但是所有小应用都共享一个Root Context。根容器的bean可以被注入到子容器的bean中；反之不可以。</p>
-
-<h4>1.2 基于Spring的容器类扩展</h4>
-
-<p>为实现上述应用组件化结构，Webx Framework在在Spring容器基础上按照组件化风格进行扩展：</p>
-
-<p><img src="/images/webx/webx-container.png" alt="image" /></p>
-
-<p>com.alibaba.citrus.webx.context.XmlWebApplicationContext是Webx框架的从XML文件中装配的，用于Web应用环境的Application Context，扩展自Spring的org.springframework.web.context.support.XmlWebApplicationContext，主要扩展点如下：</p>
-
-<ol>
-<li>支持SpringExt的捐献(ConfigurationPoint)机制（SpringExt在后面文章中讲解）</li>
-<li>实现了ResourceLoadingExtendable接口，扩展的resource loading机制。假如ResourceLoadingExtender 被设置，则使用它来装载资源，否则使用默认的装载器。</li>
-<li>默认开启annotation config，相当于&lt;context:annotation-config/>。</li>
-<li>假如parentResolvableDependenciesAccessible==true，则支持从parent context中取得预先置入resolvableDependencies中的对象。默认为true。</li>
-</ol>
-
-
-<p>ResourceLoadingXmlWebApplicationContext继承自XmlWebApplicationContext，扩展了从resource loading service中装载的功能。WebxApplicationContext是用于Webx框架的application context。直接继承自ResourceLoadingXmlWebApplicationContext，扩展了取得默认Spring配置的实现，默认Root容器的配置文件位于WEB-INF/webx.xml，子容器的配置文件位于WEB-INF/webx-<em>.xml（</em>代表component名）。由于继承关系，WebxApplicationContext继承了负累所有的特性，在原来Spring容器XmlWebApplicationContext基础之上扩展如下功能：</p>
-
-<ol>
-<li>支持SpringExt，包括configuration point和resource loading支持</li>
-<li>定义默认容器配置文件位置</li>
-</ol>
-
-
-<p>WebxComponentsContext和WebxComponentContext直接扩展自WebxApplicationContext，分别对应为WebxComponents和WebxComponent的容器。</p>
-
-<p>WebxComponentsContext中内置了一个WebxComponentsLoader用于装载Webx components，并且覆写了postProcessBeanFactory()处理定制BeanFactory，以及finishRefresh()处理子容器的刷新。</p>
-
-<p>WebxComponentContext包含了对应的WebxComponent实例，并将其注入到容器中，即在一个WebxComponentContext中，引用的WebxComponent均是其对应的component实例。</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/10/eclipse-debug-maven-jetty/">Eclipse中debug Maven Jetty应用</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-08-10T00:00:00+08:00" pubdate data-updated="true">Aug 10<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/08/10/eclipse-debug-maven-jetty/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/技术生活/'>技术生活</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Maven和Jetty有很好的集成，可以方便的使用mvn jetty:run 启动一个web应用，但是默认的maven-jetty插件并没有开启debug模式，而日常开发中难免需要用IDE debug引用。下面描述下如何配置eclipse，使其可以进行maven-jetty项目的debug。
-<h2> <span class="Apple-style-span" style="font-size: 26px; font-weight: bold;"><strong>1.首先设置启动方式。</strong></span></h2>
-在Ecipse -&gt;Run-&gt;External Tools -&gt;External Tool Configuration&#8230;中打开配置窗口，选中Program节点，双击新建一个新的配置。</p>
-
-<p>Name自定义，Main Tab下，Location设置为mvn命令的路径，Working Directory设置为需要进行debug的项目目录，Arguments设置为jetty:run</p>
-
-<p><a href="/images/uploads/2011/08/Run.png"><img class="aligncenter size-full wp-image-45" title="Run" src="/images/uploads/2011/08/Run.png" alt="" width="702" height="664" /></a></p>
-
-<p>在Envriroment Tab中新建一个环境变量MAVEN_OPTS，值为</p>
-
-<p>-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=8089,server=y,suspend=y</p>
-
-<p><a href="/images/uploads/2011/08/MAVEN_OPTS.png"><img class="aligncenter size-full wp-image-46" title="MAVEN_OPTS" src="/images/uploads/2011/08/MAVEN_OPTS.png" alt="" width="702" height="664" /></a></p>
-
-<p>点击Apply，保存配置；close，关闭窗口。
-<h2>2.设置Debug信息</h2>
-打开Eclipse-&gt;Run-&gt;Debug Configurations窗口，在左侧列表中选择新建一个 Remote Java Application配置。在Connect Tab下，Project设置为当前需要debug的项目，Host设置为localhost，端口为8089（上面MAVEN_OPTS里的address=8089）</p>
-
-<p><a href="/images/uploads/2011/08/debug.png"><img class="aligncenter size-full wp-image-47" title="debug" src="/images/uploads/2011/08/debug.png" alt="" width="719" height="720" /></a></p>
-
-<p>点击Apply，保存配置，close，关闭窗口</p>
-
-<p>&nbsp;
-<h2><strong>3.运行应用。</strong></h2>
-Eclipse-&gt;Run-&gt;External Tools-&gt;Extrernal Tools Configurations，选择第一步设置的启动配置，执行Run，启动应用。Eclipse终端中会输出</p>
-
-<p>Listening for transport dt_socket at address: 8089</p>
-
-<p>表示应用启动监听debug端口8089</p>
-
-<p>&nbsp;
-<h2><strong>4.开启debug</strong></h2>
-Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，启动debug</p>
-
-<p>&nbsp;</p>
-
-<p>&nbsp;</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/8/">&larr; Older</a>
@@ -922,6 +886,14 @@ Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，�
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/29/hadoop-distributedcache/">hadoop_distributedCache</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
@@ -953,14 +925,6 @@ Eclipse-&gt;Run-&gt;Debug Configurations选择第二步设置的debug配置，�
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
   </ul>

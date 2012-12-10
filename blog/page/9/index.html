@@ -9,11 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="引子 一个使用缓存进行并发控制的讨论，让我学习到成本与收益间的平衡，以及何为真正的可用性&#8230;&#8230;
-防止并发有多种方式，本文只涉及使用缓存memcached控制。
-并发场景：
-&nbsp;&nbsp; &nbsp; 用例：SNS系统中具有高级会员资格的人发起活动。
-&nbsp;& &hellip;">
+  <meta name="description" content="一、安装Git
+由于mac git的地址http://code.google.com/p/git-osx-installer/被墙，被迫使用源码安装，源码可以从http://kernel.org/pub/software/scm/git/下载，编译源码需要先安装xcode，参考http:// &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -82,6 +79,337 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/03/15/post/">Mac OSX安装Git</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-15T00:00:00+08:00" pubdate data-updated="true">Mar 15<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/03/15/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/mac/'>Mac</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><strong>一、安装Git</strong></p>
+<p class="p2"><span class="s1">由于mac git的地址<a href="http://code.google.com/p/git-osx-installer/"><span class="s2">http://code.google.com/p/git-osx-installer/</span></a>被墙，被迫使用源码安装，源码可以从<a href="http://kernel.org/pub/software/scm/git/"><span class="s2">http://kernel.org/pub/software/scm/git/</span></a></span><span class="s3">下载，编译源码需要先安装xcode，参考<a href="http://developer.apple.com/"><span class="s4">http://developer.apple.com</span></a>。</span></p>
+<p class="p3">编译安装</p>
+<p class="p3">1.解压</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;tar xjvf git-1.7.4.1.tar.tar.bz2</p>
+<p class="p3">2. 编译</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;cd git-1.7.4.1</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;./configure &#8211;prefix=/usr/local</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;make</p>
+<p class="p3">3.安装</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;sudo make install</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">Ok 了，which git试一下～</p>
+<p class="p5"><strong>二、设置SSH</strong></p>
+<p class="p3">github使用SSH链接，需要设置SSH</p>
+<p class="p3">1.检查SSH key</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; cd ~/.ssh</p>
+<p class="p3">2.备份已有的key，（如果有的话）</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mkdir key_backup</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mv id_rsa* key_backup</p>
+<p class="p3">3.生成SSH key</p>
+<p class="p3">$ ssh-keygen -t rsa -C <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">Generating public/private rsa key pair.</p>
+<p class="p3">Enter file in which to save the key (/Users/jiangbo/.ssh/id_rsa):&nbsp;</p>
+<p class="p3">Enter passphrase (empty for no passphrase):</p>
+<p class="p3">Enter same passphrase again:</p>
+<p class="p3">Your identification has been saved in yes.</p>
+<p class="p3">Your public key has been saved in id_rsa.pub.</p>
+<p class="p3">The key fingerprint is:</p>
+<p class="p3">fb:c4:b0:e0:47:fd:be:e0:fb:ea:73:ef:a8:29:d5:22 <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">The key&#8217;s randomart image is:</p>
+<p class="p3">+&#8211;[ RSA 2048]&#8212;-+</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . S ..&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp; . oE=o..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . +o+..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ..+.+..&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; oOB=+o&nbsp; |</p>
+<p class="p3">+&#8212;&#8212;&#8212;&#8212;&#8212;&#8211;+</p>
+<p class="p3">4.将SSH key添加到GitHub</p>
+<p class="p3">登录到GitHub页面，Account Settings-&gt;SSH Public Keys-&gt;Add another key</p>
+<p class="p3">将生成的key(id_rsa.pub文件）内容copy到输入框中，save。</p>
+<p class="p4"><img src="http://hi.csdn.net/attachment/201103/15/0_1300170843sWhI.gif" alt="" /></p>
+<p class="p3">5.测试链接</p>
+<p class="p6"><span class="s3">$ ssh <a href="mailto:git@github.com"><span class="s5">git@github.com</span></a></span></p>
+<p class="p3">The authenticity of host &#8217;<a href="http://github.com/"><span class="s5">github.com</span></a> (207.97.227.239)&#8217; can&#8217;t be established.</p>
+<p class="p3">RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.</p>
+<p class="p3">Are you sure you want to continue connecting (yes/no)? yes</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">PTY allocation request failed on channel 0</p>
+<p class="p3">Hi jiang-bo! You&#8217;ve successfully authenticated, but GitHub does not provide shell access.</p>
+<p class="p3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connection to <a href="http://github.com/"><span class="s5">github.com</span></a> closed.</p>
+<p class="p3">别担心，这是正常情况。</p>
+<p class="p5"><strong>三、设置个人信息</strong></p>
+<p class="p3">$ git config &#8211;global <a href="http://user.name/"><span class="s5">user.name</span></a> &#8220;Bo Jiang&#8221;</p>
+<p class="p3">$ git config &#8211;global user.email &#8220;jiang.bo.hit@gmail.com&#8221;</p>
+<p class="p3">&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/03/10/post/">Java基础（1）－泛型</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-10T00:00:00+08:00" pubdate data-updated="true">Mar 10<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/03/10/post/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/基础巩固/'>基础巩固</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>&nbsp;</p>
+<h2>一、Basic FAQ：</h2>
+<p><strong>1. What are Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics ara language feature that allows for definition and use of generic types and methods.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型指的是一种允许定义通用类型和方法的语言特性。</em></p>
+<p><strong>2. What is the primary purpose of Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初的目的是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics are invented primarily for implementation of generic collection.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初是为了实现通用集合类设计的。</em></p>
+<p><strong>3.What is the benefit of using Java generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>使用Java泛型的好处？？？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Early error detection at compile time.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>能够在编译期检查类型错误。</em></p>
+<p><strong>4.What does type-safe mean?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>什么叫做类型安全</em>？</p>
+<p>&nbsp;&nbsp; &nbsp; In Java, a program is considered type-safe if it compiles without errors and warnings and does not raise any unexpected ClassCastException at runtime.</p>
+<p><em>&nbsp;&nbsp; &nbsp; 在Java里，类型安全指的是：如果一个程序编译期未发现Error或Warning，那么在运行时就不会报ClassCastException。</em></p>
+<p>&nbsp;</p>
+<h2>奇怪的特性</h2>
+<p>&nbsp;&nbsp; &nbsp; 泛型有些特性，令人困扰，如下：</p>
+<p>&nbsp;</p>
+<ol>
+<li>&nbsp;&nbsp; 子类型的泛型不能赋值给父类型的泛型，即泛型不可协变。</li>
+<li>&nbsp;&nbsp; 泛型类并没有自己独有的Class类对象。比如并不存在List&lt;String&gt;.class或是List&lt;Integer&gt;.class，而只有List.class。</li>
+<li>&nbsp;&nbsp; 静态变量是被泛型类的所有实例所共享的。对于声明为MyClass&lt;T&gt;的类，访问其中的静态变量的方法仍然是 MyClass.myStaticVar。不管是通过new MyClass&lt;String&gt;还是new MyClass&lt;Integer&gt;创建的对象，都是共享一个静态变量。</li>
+<li>&nbsp;&nbsp; 泛型的类型参数不能用在Java异常处理的catch语句中。因为异常处理是由JVM在运行时刻来进行的。由于类型信息被擦除，JVM是无法区分两个异常类型MyException&lt;String&gt;和MyException&lt;Integer&gt;的。对于JVM来说，它们都是 MyException类型的。也就无法执行与异常对应的catch语句。</li>
+</ol>
+<p>&nbsp;</p>
+<h2>协变（convariant）</h2>
+<p>&nbsp;&nbsp; &nbsp; Within the type system of a programming language, covariance and contravariance refers to the ordering of types from narrower to wider and their interchangeability or equivalence in certain situations (such as parameters, generics, and return types). &nbsp; &nbsp; &mdash;&mdash;Wikipedia（偶不会翻译*A*）</p>
+<p>&nbsp;&nbsp; &nbsp; 简单来说，可协变表示子类型的引用可以赋值给父类性，不可协变则表示子类型引用不能赋值给父类型。以数组和泛型为例：</p>
+<p>&nbsp;&nbsp; &nbsp; 数组是可协变的，因为Number[] a = new Integer[]()；是成立的。</p>
+<p>&nbsp;&nbsp; &nbsp; 泛型是不可协变的，因为List&lt;Number&gt; ln = new ArrayList&lt;Integer&gt;()；编译会出错。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp; 由于数组是可协变的，而泛型不可协变，导致数组能够协变而泛型不能协变的另一个后果是，不能实例化泛型类型的数组（new List&lt;String&gt;[3]是不合法的），除非类型参数是一个未绑定的通配符（new List&lt;?&gt;[3]是合法的）。</p>
+<p>&nbsp;&nbsp; &nbsp;可是，为什么泛型不能协变呢？&mdash;&mdash;因为这样会破坏类型安全</p>
+<p>&nbsp;&nbsp; &nbsp; 假设可以协变，那么</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Integer&gt; li = new ArrayList&lt;Integer&gt;();</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Number&gt; ln = li;</p>
+<p>&nbsp;&nbsp; &nbsp; ln.add(new Float(3.14));</p>
+<p>&nbsp;&nbsp; &nbsp; 发生了什么？本来是放Integer的List里面加入了Float！。</p>
+<p>&nbsp;</p>
+<h2>类型擦除</h2>
+<p>&nbsp;&nbsp; &nbsp; &nbsp;Java中的泛型基本上都是在编译器这个层次来实现的。在生成的Java字节代码中是不包含泛型中的类型信息的。使用泛型的时候加上的类型参数，会被编译器在编译的时候去掉。这个过程就称为类型擦除。如在代码中定义的List&lt;Object&gt;和List&lt;String&gt;等类型，在编译之后都会变成List。JVM看到的只是List，而由泛型附加的类型信息对JVM来说是不可见的。Java编译器会在编译时尽可能的发现可能出错的地方，但是仍然无法避免在运行时刻出现类型转换异常的情况。</p>
+<h3>编译器如何处理泛型？</h3>
+<p>&nbsp;&nbsp; &nbsp; 通常情况下，一个编译器处理泛型有两种方式：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.Code specialization。在实例化一个泛型类或泛型方法时都产生一份新的目标代码（字节码or二进制代码）。例如，针对一个泛型list，可能需要针对string，integer，float产生三份目标代码。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.Code sharing。对每个泛型类只生成唯一的一份目标代码；该泛型类的所有实例都映射到这份目标代码上，在需要的时候执行类型检查和类型转换。</p>
+<p>&nbsp;&nbsp; &nbsp; C++中的模板（template）是典型的Code specialization实现。C++编译器会为每一个泛型类实例生成一份执行代码。执行代码中integer list和string list是两种不同的类型。这样会导致代码膨胀（code bloat），不过有经验的C＋＋程序员可以有技巧的避免代码膨胀。</p>
+<p>&nbsp;&nbsp; &nbsp; Code specialization另外一个弊端是在引用类型系统中，浪费空间，因为引用类型集合中元素本质上都是一个指针。没必要为每个类型都产生一份执行代码。而这也是Java编译器中采用Code sharing方式处理泛型的主要原因。</p>
+<p>&nbsp;&nbsp; &nbsp; Java编译器通过Code sharing方式为每个泛型类型创建唯一的字节码表示，并且将该泛型类型的实例都映射到这个唯一的字节码表示上。将多种泛型类形实例映射到唯一的字节码表示是通过类型擦除（type erasue）实现的。</p>
+<h3>什么是类型擦除？</h3>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除指的是通过类型参数合并，将泛型类型实例关联到同一份字节码上。编译器只为泛型类型生成一份字节码，并将其实例关联到这份字节码上。类型擦除的关键在于从泛型类型中清除类型参数的相关信息，并且再必要的时候添加类型检查和类型转换的方法。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除可以简单的理解为将泛型java代码转换为普通java代码，只不过编译器更直接点，将泛型java代码直接转换成普通java字节码。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除的主要过程如下：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.将所有的泛型参数用其最左边界（最顶级的父类型）类型替换。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.移除所有的类型参数。</p>
+<p>&nbsp;&nbsp; &nbsp; 如</p>
+<p><pre class="brush: java">interface Comparable &lt;A&gt; { 
+  public int compareTo( A that); 
+} 
+final class NumericValue implements Comparable &lt;NumericValue&gt; { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }    
+  public  byte getValue() { return value; }    
+  public  int compareTo( NumericValue t hat) { return this.value - that.value; } 
+} 
+－－－－－－－－－－－－－－－－－
+class Collections {  
+  public static &lt;A extends Comparable&lt;A&gt;&gt;A max(Collection &lt;A&gt; xs) { 
+    Iterator &lt;A&gt; xi = xs.iterator(); 
+    A w = xi.next(); 
+    while (xi.hasNext()) { 
+      A x = xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList &lt;NumericValue&gt; numberList = new LinkedList &lt;NumericValue&gt; (); 
+    numberList .add(new NumericValue((byte)0));  
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>经过类型擦除后的类型为</p>
+<p><pre class="brush: java">     interface Comparable { 
+  public int compareTo( Object that); 
+} 
+final class NumericValue implements Comparable { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }  
+  public  byte getValue() { return value; }  
+  public  int compareTo( NumericValue t hat)   { return this.value - that.value; } 
+  public  int compareTo(Object that) { return this.compareTo((NumericValue)that);  } } 
+－－－－－－－－－－－－－
+class Collections {  
+  public static Comparable max(Collection xs) { 
+    Iterator xi = xs.iterator(); 
+    Comparable w = (Comparable) xi.next(); 
+    while (xi.hasNext()) { 
+      Comparable x = (Comparable) xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList numberList = new LinkedList(); 
+    numberList .add(new NumericValue((byte)0));  ，
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = (NumericValue) Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>&nbsp;</p>
+<p>第一个泛型类Comparable &lt;A&gt;擦除后 A被替换为最左边界Object。Comparable&lt;NumericValue&gt;的类型参数NumericValue被擦除掉，但是这直接导致NumericValue没有实现接口Comparable的compareTo(Object that)方法，于是编译器充当好人，添加了一个桥接方法。</p>
+<p>第二个示例中限定了类型参数的边界&lt;A extends Comparable&lt;A&gt;&gt;A，A必须为Comparable&lt;A&gt;的子类，按照类型擦除的过程，先讲所有的类型参数ti换为最左边界Comparable&lt;A&gt;，然后去掉参数类型A，得到最终的擦除后结果。</p>
+<h3>类型擦除带来的问题</h3>
+<p>&nbsp;&nbsp; &nbsp; 正是由于类型擦除的隐蔽存在，直接导致了众多的泛型灵异问题。</p>
+<p><strong>Q1.用同一泛型类的实例区分方法签名？&mdash;&mdash;NO！</strong></p>
+<p>{code}</p>
+<p>import java.util.*;</p>
+<p>&nbsp;</p>
+<p>public class Erasure{</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;String&gt; ls){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Sting&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;Integer&gt; li){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Integer&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>}</p>
+<p>{code}</p>
+<p>编译该类，</p>
+<p><img src="http://hi.csdn.net/attachment/201103/10/0_12997506095504.gif" alt="" /></p>
+<p>what the f**k! 参数类型明明不一样啊，一个List&lt;String&gt;，一个是List&lt;Integer&gt;，但是，偷偷的说，type erasure之后，它就都是List了⋯⋯</p>
+<p><strong>Q2. 同时catch同一个泛型异常类的多个实例？&mdash;&mdash;NO！</strong></p>
+<p>同理，如果定义了一个泛型一场类GenericException&lt;T&gt;，千万别同时catch GenericException&lt;Integer&gt; 和GenericException&lt;String&gt;，因为他们是一样一样滴⋯⋯</p>
+<p><strong>Q3.泛型类的静态变量是共享的？&mdash;&mdash;Yes！</strong></p>
+<p>猜猜这段代码的输出是什么？</p>
+<p><pre class="brush: java">import java.util.*;
+public class StaticTest{
+    public static void main(String[] args){
+        GT&lt;Integer&gt; gti = new GT&lt;Integer&gt;();
+        gti.var=1;
+        GT&lt;String&gt; gts = new GT&lt;String&gt;();
+        gts.var=2;
+        System.out.println(gti.var);
+    }
+}
+class GT&lt;T&gt;{
+    public static int var=0;
+    public void nothing(T x){}
+}</pre>&nbsp;</p>
+<p>答案是&mdash;&mdash;2！</p>
+<p>&nbsp;</p>
+<h3>Just remember：</h3>
+<p>1.虚拟机中没有泛型，只有普通类和普通方法</p>
+<p>2.所有泛型类的类型参数在编译时都会被擦除</p>
+<p>3.创建泛型对象时请指明类型，让编译器尽早的做参数检查（Effective Java，第23条：请不要在新代码中使用原生态类型）</p>
+<p>4.不要忽略编译器的警告信息，那意味着潜在的ClassCastException等着你。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<h2>参考文档</h2>
+<p>《Java深度历险－泛型》http://www.infoq.com/cn/articles/cf-java-generics</p>
+<p>《Java Generics FAQ》http://www.angelikalanger.com/GenericsFAQ/JavaGenericsFAQ.html</p>
+<p>《Java Gotchas》http://www.ibm.com/developerworks/java/library/j-jtp01255.html</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -293,420 +621,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/10/26/post/">Linux启动过程分析</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-10-26T00:00:00+08:00" pubdate data-updated="true">Oct 26<span>th</span>, 2010</time>
-        
-         | <a href="/blog/2010/10/26/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/linux/'>Linux</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h3>史前时代：BIOS-计算机的启动过程</h3>
-<ol>
-<li><strong>加电</strong>
- 
-电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
-这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令，跳到真正BIOS启动代码除。</li>
-<li><strong>自检</strong>
- BIOS启动代码首先进行POST（Power-On Self 
-Test，上电自检），POST的主要任务是检测系统中一些关键设备是否存在和能否正常工作， 
-例如内存和显卡等。如果系统BIOS在POST过程中发现致命错误，如未找到内存或内存有问题（640K内的常规内存），系统会直接控制喇叭报告错误，声
-音的长短和次数代表错误的类型。</li>
-<li><strong>设备初始化</strong>
- 
-POST完成后BIOS会查找显卡的BIOS，存放显卡BIOS的ROM芯片的起始地址通常设在0xC0000处，找到显卡BIOS后，调用其初始代码，
-由显卡BIOS来初始化显卡， 
-此时多数显卡会在屏幕上显示出一些初始化信息，介绍生产厂商，图形芯片等内容。类似地，BIOS会查找其它设备的BIOS程序，调用这些BIOS内部的初
-始化代码来初始化相关设备。</li>
-<li><strong>测试设备</strong>
- 
-查找完所遇其它设备的BIOS之后，系统BIOS将显示自己的启动画面，其中包括系统BIOS类型，序列号和版本号等内容。接着BIOS将检测和显示
-CPU的类型和工作频率，然后开始测试所有的RAM，并同时在屏幕上显示内存测试的进度。 
-内存测试通过后，系统BIOS将开始检测系统中安装的一些标准硬件设备，包括硬盘，光驱，串口，并口，软驱等，另外绝大多数较新版本的BIOS在这一过程
-中回自动检测和设置内存的定时参数，硬盘参数和配置系统中安装的即插即用设备，没找到一个设备之后，BIOS会在屏幕上显示出设备的名称和型号等信息，同
-时为该设备分配中断，DMA通道和I/O端口。</li>
-<li><strong>更新ESCD</strong>
- 
-所有硬件检测配置完毕后，多数BIOS会重新清屏，并在屏幕上方显示出一个表格，其中概略的列出系统中安装的各种标准硬件设备，以及他们使用的资源和一些
-相关工作参数。接下来系统BIOS将更新ESCE（Extended System Configration Data， 
-扩展系统配置数据）。ESCD是系统BIOS用来与操作系统交换硬件配置信息的一种手段，这些数据被存放在CMOS（Complementary 
-metal oxide Semiconductor,互补金属氧化物半导体）之中。</li>
-<li><strong>启动操作系统</strong>
- 
-ESCD更新完毕后，系统BIOS的启动代码将进行他的最后一项工作，即根据用户指定的启动顺序从软盘，硬盘或光驱启动操作系统。系统BIOS将启动盘的
-第一个扇区读入到内存的0x7C00除，并检查0x7dfe地址的内存，如果其内容是0xaa55，跳转到0x7c00处执行MBR（Master 
-Boot 
-Record，主引导记录），MBR从分区表中找到第一个活动分区，按照类似方式读取并执行这个活动分区的引导扇区，该引导扇区负责读取并执行
-bootloader（windows下C盘中的NTLDR），由bootloader加载系统内核</li>
-</ol>
-<h3><a name="Linux启动过程-远古时代：Bootloader"></a>
-远古时代：Bootloader</h3>
-<p>	引导装入程序（Bootloader）是BIOS将操作系统内核映像装载到RAM中执行的第一个程序。<br />
-	软盘启动与磁盘启动过程稍有不同，软盘启动时，BIOS将启动软盘的第一扇区指令装载到RAM中，由于通常现代内核都大于一个扇区大小(512B)，因此第一扇区的指令通常是将包含内核映像的扇区加载到RAM中。<br />
-	从硬盘启动时，硬盘的第一个扇区MBR中包含分区表和一小段程序，这段小程序用来装载被启动的操作系统所在分区的第一个扇区。Win98采用MBR中的小程序加载操作系统内核，而Linux在用一种更灵活的加载方式，bootloader。<br />
-	Linux2.4及以前的版本，在第一个512字节有一个最小的引导程序，因此在第一扇区拷贝一个内核镜像就可以使软盘启动，但在2.6内核中不再有该引导程序，要想在软盘中启动，必须采用与磁盘类似的方式，在第一个扇区中装入一个引导程序。<br />
-	
-Bootloader通常被安装在MBR上代替上面负责引导的小程序。Bootloader通常由于大于一个扇区，会被分为两部分，在BIOS将
-Bootloader的第一部分加载到RAM的0x00007c00处开始执行，bootloader自己加载到0x00096a00，建立实模式站
-(0x00098000~0x000969ff),并将bootloader的第二部分装入到0x00096c00开始的RAM中。<br />
-	第二部分一次从此版读取操作系统映射表，提示给用户，用户可以选择要启动的系统，引动程序将相应分区的引导扇区拷贝到RAM中并执行，或直接将内核拷贝到RAM中。<br />
-	Bootloader的主要执行过程：</p>
-<ol>
-<li>调用BIOS输出&quot;Loading&#8230;&quot;</li>
-<li>调用BIOS从磁盘装入内核映像的第一个扇区(512B)，从0x00090000装入RAM，并将setup()函数的代码从0x00090200开始装入RAM。</li>
-<li>调用一个BIOS从磁盘装入其余内核映像，并把内核映像放入从0x00010000(低装载，适用于make zImage的小内核映像）或0x00100000(高装载，make bzImage的大内核映像）</li>
-<li>跳转执行setup()</li>
-</ol>
-<h3><a name="Linux启动过程-奴隶社会：setup()"></a>
-奴隶社会：setup()</h3>
-<p>	setup()函数有汇编实现放在内核映像文件的偏移量0x200处，bootloader将其装载到0x00090200开始的RAM中。<br />
-	setup()函数的主要工作是初始化计算机中的硬件设备，并为内核程序的执行建立环境。尽管BIOS已经完成大部分设备的初始化，但是Linux并不依赖与BIOS，而已自己的方式重新初始化设备，以增强可移植性和健壮性。<br />
-	@TO-DO setup()过程</p>
-<h3><a name="Linux启动过程-封建社会：startup32()"></a>
-封建社会：startup_32()</h3>
-<p>	
-存在两个startup_32函数，setup()的最后是跳转执行的是arch/i386/boot/compressed/head.S中的
-startup_32()，此时startup_32已经被移动到0x00100000或0x00001000，对应于高装载或低装载。该函数的主要工作
-是解压内核。<br />
-	解压完的内核映像从arch/i386/kernel/head.S开始执行。该文件中包含另一个startup_32函数。改startup_32为Linux的第一个进程(pid=0)建立执行环境。<br />
-	@TO-DO startup_32()过程</p>
-<h3><a name="Linux启动过程-民国时代：startkernel()"></a>
-民国时代：start_kernel()</h3>
-<p>	startup_32函数最后回跳转执行start_kernel()，start_kernel完成内核初始化工作。start_kernel开始执行后会显示&quot;Linux version 2.6.11&#8230;&quot;<br />
-	该函数中最主要的一个步骤是调用kernel_thread()为进程1创建内核线程。这个线程回创建其它线程并执行/sbin/init程序。该程序会在控制台输出初始化信息，直至最后出现登录提示符，或X登录窗口。通知用户内核已启动，正在运行。</p>
-<h3><a name="Linux启动过程-新中国：启动脚本"></a>
-新中国：启动脚本</h3>
-<p>(该部分只适用Redhat系，如RHEL，CentOS，Fedora等，Debian/Ubuntu启动过程与此不同，后期会有分析)</p>
-<h5><a name="Linux启动过程-inittab"></a>
-inittab</h5>
-<p>	/sbin/init（进程1）会利用/etc/inittab获取运行级，并根据不同运行级的配置启动不同的服务项目。<br />
-	inittab配置文件格式</p>
-<div class="code panel" style="border-width: 1px;">
-<div class="codeContent panelContent">
-<pre class="code-java">[设置项目]:[run level]:[init的操作行为]:[命令项目]<br />
-设置项目:最多4个字符，表示init的主要目的，就是一个名字<br />
-run level:该条目的运行级别<br />
-init操作行为:<br />
-	主要可选值如下：<br />
-		initdefault:表示默认的运行级别值<br />
-		sysinit:系统初始化操作项目<br />
-		ctrlaltdel:表示[ctrl+alt+del<br />
-		wait:表示必须等待后面的命令执行完才可以执行后续操作<br />
-		respawn:表示后面的操作会重新启动<br />
-命令项目:执行该项目的命令，通常为一个脚本命令</pre>
-</div>
-</div>
-<h5><a name="Linux启动过程-系统初始化(rc.sysinit)"></a>
-系统初始化(rc.sysinit)</h5>
-<p>	inittab中的有个条目是</p>
-<div class="code panel" style="border-width: 1px;">
-<div class="codeContent panelContent">
-<pre class="code-java">si::sysinit:/etc/rc.d/rc.sysinit</pre>
-</div>
-</div>
-<p>按上述条目解释，系统初始化时会执行/etc/rc.d/rc.sysinit脚本，该脚本的主要功能如下:<br />
-1.获取网络环境与主机名<br />
-2.测试与载入内存设备/proc以及USB设备/sys<br />
-3.决定是否启动SELinux<br />
-4.检测接口设备与即插即用设备参数<br />
-5.用户自定义模块加载<br />
-6.加载核心的相关设置<br />
-7.设置系统时间<br />
-8.设置终端控制台字体<br />
-9.设置RAID与LVM等硬盘功能<br />
-10.fsck检查磁盘文件系统<br />
-11.进行磁盘配额quota的转换<br />
-12.重新怡可读取模式载入系统磁盘<br />
-13.启动quota功能<br />
-14.启动系统随机设备（产生随机数）<br />
-15.清除启动过程的临时文件<br />
-16.将启动相关信息加载到/var/log/dmesg文件中</p>
-<h5><a name="Linux启动过程-启动相关运行级服务"></a>
-启动相关运行级服务</h5>
-<p>	inittab中包含</p>
-<div class="code panel" style="border-width: 1px;">
-<div class="codeContent panelContent">
-<pre class="code-java">id:3:initdefault:<br />
-<br />
-l3:3:wait:/etc/rc.d/rc 3</pre>
-</div>
-</div>
-<p>	第一行表示默认运行级为3，第二行表示第3级运行时以wait方式执行/etc/rc.d/rc 参数为3。<br />
-	rc脚本的主要功能是调用相应运行级X的配置脚本目录/etc/rcX.d/下的脚本。例如3级时对应的脚本目录是/etc/rc3.d/目录。<br />
-	脚本目录下的脚本名分为两类：一类是以K开头的，用于kill相应服务；另一类是以S开头的，用于开启相应服务。文件中还包含一个两位数字和服务名。rc脚本负责按照数字有小到大先kill所有服务然后开启所有服务的顺序执行。<br />
-	每个rcX.d的目录下的脚本都是链接到init.d目录下的脚本的软连接。并且均包含一个S99local-&gt;../rc.local，该脚本表示最后执行../rc.local脚本。<br />
-	rc.local即用户自定义的启动项配置脚本。可以在其中添加想开机启动的命令。比如想自动挂载一个windows下的分区，可以在rc.local中添加</p>
-<div class="code panel" style="border-width: 1px;">
-<div class="codeContent panelContent">
-<pre class="code-java">mount -ntfs /dev/sda5 /media/disk5</pre>
-</div>
-</div>
-<h5><a name="Linux启动过程-启动终端"></a>
-启动终端</h5>
-<p>	根据inittab中的配置，需要等待/etc/rc 3 运行完成。rc.local时期最后一个脚本。在rc.local执行完之后，继续按照inittab执行</p>
-<div class="code panel" style="border-width: 1px;">
-<div class="codeContent panelContent">
-<pre class="code-java"># Run gettys in standard runlevels<br />
-1:2345:respawn:/sbin/mingetty tty1<br />
-2:2345:respawn:/sbin/mingetty tty2<br />
-3:2345:respawn:/sbin/mingetty tty3<br />
-4:2345:respawn:/sbin/mingetty tty4<br />
-5:2345:respawn:/sbin/mingetty tty5<br />
-6:2345:respawn:/sbin/mingetty tty6<br />
-<br />
-# Run xdm in runlevel 5<br />
-x:5:respawn:/etc/X11/prefdm -nodaemon</pre>
-</div>
-</div>
-<p>该段配置表示在2,3,4,5运行级下执行/sbin/mingetty开启终端，并且执行六次，由此可知为何会有6个纯文本终端。最后的x:5:respawn:/etc/X11/prefdm -nodaemon表示在运行级5时开启X Window。</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/10/18/post/">在Spring中使用Quartz</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-10-18T00:00:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2010</time>
-        
-         | <a href="/blog/2010/10/18/post/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/spring/'>Spring</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>	Spring 提供了几个帮助类用于在应用中做调度，包括JDK Timer类和OpenSymphony Quartz Scheduler两种.</p>
-<h3><a name="在Spring中使用Quartz-Quartz基础"></a>
-
-Quartz基础	</h3>
-<p>	Quartz包括五种主要结构用于实现调度：</p>
-<ul>
-<li>Job接口</li>
-<li>JobDetail类</li>
-<li>Trigger 抽象类</li>
-<li>Scheduler接口</li>
-<li>SchedulerFactory 接口</li>
-</ul>
-<p>	Job接口表示一个作业(job)。一个作业专注做一件事。它的API非常简洁。只有一个execute方法，该方法在作业被执行时有Quartz调度。该方法有一个JobExecuteContext参数，可以通过该参数给execute()方法传递有用信息。</p>
-<p><pre class="brush: java">public interface Job{
-    void execute(JobExecuteContext ctx);
-}</pre>
-</p>
-<p>一些数据可以通过JobDataMap传递给作业。如果一个JobDataMap被注册到JobDetail中，就能够在作业中通过
-JobExecuteContext来访问。JobDetail用来描述一个特定Job的信息。Job通过触发器（Trigger）触发。Quartz提
-供了集中Trigger的实现，如SimpleTrigger和CronTrigger。SimpleTrigger类似一个简单时钟，你可以定义开始是
-建，结束时间，重复次数，重复周期。CronTrigger类似Linux系统中的cron。CronTrigger的设置可以非常详细，如在每个月最后
-一个周五的上午10:15执行作业。需要注意的是Trigger和Job是具名的，可以被赋值给一个组，在同一组内不能出现同名。你可以对一个组创建一个
-触发器，在该组内的所有Job都将会执行。<br />
-
-	SchedulerFactory 用于获得Scheduler实例，可以用于注册作业和触发器。<br />
-
-	实现一个简单的实例：每十秒钟打印一次欢迎。<br />
-
-	首先实现一个作业：</p>
-<p><pre class="brush: java">public class SimpleJob implements Job {
-	@Override
-	public void execute(JobExecutionContext arg0)
-	throws JobExecutionException {
-		System.out.println(&quot;[JOB] Welcome to Quartz!&quot;);
-	}
-}</pre>
-</p>
-<p>定义一个Scheduler，注册触发器和作业:</p>
-<p><pre class="brush: java">public class SimpleSchedule {
-	public static void main(String[] args) {
-		SchedulerFactory factory=new StdSchedulerFactory();
-		try {
-			Scheduler scheduler = factory.getScheduler();
-			scheduler.start();
-										            
-			JobDetail jobDetail = new JobDetail(&quot;SimpleJob&quot;,null, SimpleJob.class);
-			Trigger simplerTrigger = TriggerUtils.makeSecondlyTrigger(10);
-			simplerTrigger.setName(&quot;SimpleTrigger&quot;);
-										            
-			scheduler.scheduleJob(jobDetail, simplerTrigger);
-		}catch (SchedulerException e) {
-		    // TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-}</pre>
-</p>
-<p>执行过后，每十秒输出<span class="nobr">[JOB]</span>
-
-Welcome to Quartz!</p>
-<h3>Spring中的Quartz</h3>
-<p>	Spring中的Quartz API位于org.springframework.scheduling.quartz包中。主要类结构包括：</p>
-<ul>
-<li>QuartzJobBean 抽象类</li>
-<li>JobDetailBean</li>
-<li>SimpleTriggerBean</li>
-<li>CronTriggerBean</li>
-<li>SchedulerFactoryBean</li>
-<li>MethodInvokingDetailFactoryBean
-</li>
-</ul>
-<p>
-很明显对应实现Quartz中相应的接口。QuartzJob实现Job，JobDetailBean继承JobDetail。
-SimpleTriggerBean和CronTriggerBean继承自相应的Trigger。
-MethodInvokingJobDetailFactoryBean用于在类中调用任何对象的方法。<br />
-<strong>声明Job
-</strong>
-</p>
-<p>JobDetailBean用于声明作业。可以为其设置作业名，以及需要的数据。</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleJob&quot; class=&quot;org.springframework.scheduling.quartz.JobDetailBean&quot;&gt;
-	&lt;property name=&quot;jobClass&quot; value=&quot;com.alibaba.jiang.learn.quartz.SimpleJob&quot; /&gt;
-	&lt;property name=&quot;jobDataAsMap&quot;&gt;
-		&lt;map&gt;
-			&lt;entry key=&quot;message&quot; value=&quot;Welcome to Quartz&quot; /&gt;
-		&lt;/map&gt;
-	&lt;/property&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>实现Job类：</p>
-<p><pre class="brush: java">public class SimpleJob extends QuartzJobBean {
-	@Override
-	protected void executeInternal(JobExecutionContext ctx) throws JobExecutionException {
-		String message = ctx.getJobDetail().getJobDataMap().getString(&quot;message&quot;);
-		System.out.println(message);
-	}
-}</pre>
-</p>
-<p>还可以通过setter注入的方式注入message。<br />
-声明触发器：</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
-	&lt;property name=&quot;jobDetail&quot; ref=&quot;simpleJob&quot;/&gt;
-	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
-	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>声明调度器,设置Job和Trigger：</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;schedulerFactory&quot; class=&quot;org.springframework.scheduling.quartz.SchedulerFactoryBean&quot;&gt;
-	&lt;property name=&quot;triggers&quot;&gt;
-		&lt;list&gt;
-			&lt;ref bean=&quot;simpleTrigger&quot;/&gt;
-		&lt;/list&gt;
-	&lt;/property&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>所有都设置好后，可以通过加载Context，调度器将自动执行：</p>
-<p><pre class="brush: java">public class SimpleSpringQuartz {
-	public static void main(String[] args) {
-		ApplicationContext ctx = new ClassPathXmlApplicationContext(&quot;beans.xml&quot;);
-	}
-}</pre>
-</p>
-<h4>使用MethodInvokingJobFactoryBean</h4>
-<p>上面的范例使用的是Quartz Job，事实上在Spring中可以使用自定义Pojo Bean，无须继承自QuartzJobBean。<br />
-首先声明一个PojoBean</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;welcomeBean&quot; class=&quot;com.alibaba.jiang.learn.quartz.WelcomeBean&quot;&gt;
-	&lt;property name=&quot;message&quot; value=&quot;Welcome to Quartz Method&quot;/&gt;
-&lt;/bean&gt;</pre>
-</p>
-<p>对应的Pojo Bean：</p>
-<p><pre class="brush: java">public class WelcomeBean {
-    private String message;
-	public void setMessage(String message) {
-		this.message = message;
-	}
-	public void welcome(){
-		System.out.println(message);
-	}
-}</pre>
-</p>
-<p>声明MethodInvokingJobDetailFactoryBean:</p>
-<p><pre class="brush: xhtml">&lt;bean name=&quot;methodInvokingJob&quot; class=&quot;org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean&quot;&gt;
-	&lt;property name=&quot;targetObject&quot; ref=&quot;welcomeBean&quot;/&gt;
-	&lt;property name=&quot;targetMethod&quot; value=&quot;welcome&quot;/&gt;
-&lt;/bean&gt;
-&lt;bean name=&quot;methodTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
-	&lt;property name=&quot;jobDetail&quot; ref=&quot;methodInvokingJob&quot; /&gt;
-	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
-	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
-&lt;/bean&gt;</pre>
-</p>
-<h4>注意</h4>
-<p>一个触发器只能触发一个Job，不过一个Job可以有多个Trigger触发，这回带来并发问题。在Quartz中，如果你不想并发执行一个同一个
-Job，你可以实现StatefulJob，而不是Job。在Spring中如果使用
-MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&quot;属性来实现。</p>
-<h3><a name="在Spring中使用Quartz-尾注"></a>
-尾注</h3>
-<p>在Spring中使用Quartz而不是单独的一个应用的好处包括：</p>
-<ul>
-<li>将所有的任务调度设置放在同一个地方，是任务易于维护。</li>
-<li>只对Job编码，Trigger和Scheduler可以通过配置设置</li>
-<li>可以使用Pojo Java Bean执行job，而无需实现Job接口</li>
-</ul></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/10/">&larr; Older</a>
@@ -722,6 +636,14 @@ MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&qu
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/29/hadoop-distributedcache/">hadoop_distributedCache</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
@@ -753,14 +675,6 @@ MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&qu
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
   </ul>

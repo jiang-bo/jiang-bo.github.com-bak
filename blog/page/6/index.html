@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一眨眼，一年又过去了，奔三的步伐又向前迈进了一步… 2011流水账 1月～3月，入职来第一次正是参加了大项目，中间夹杂个春节，据说每年年底做大项目是部门的传统，今年也不例外啊:(，项目苦了写，不过学了不少 4月～6月，公司进行服务化改造，作为主力开发参与了部门的服务化建设，期间送走了两个同事好友， &hellip;">
+  <meta name="description" content="一.环境准备 1.jdk 在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:) 2.alsa包 linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +78,361 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/02/10/compile-openjdk7-on-centos6/">CentOS6编译OpenJDK7</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-02-10T14:39:00+08:00" pubdate data-updated="true">Feb 10<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/02/10/compile-openjdk7-on-centos6/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/jvm/'>JVM</a>
+  
+</span>
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>一.环境准备</h2>
+
+<h3>1.jdk</h3>
+
+<p>在编译JDK7之前，需要有个JDK6版本，这个貌似有个鸡生蛋，还是蛋生鸡的问题，不过，这个确实需要:)</p>
+
+<h3>2.alsa包</h3>
+
+<p>linux版本的jdk编译需要ALSA（Advanced Linux Sound Architecture）包，大部分linux发行版都没有预装，CentOS可以通过如下命令检查：</p>
+
+<pre><code> rpm -qa |grep alsa
+</code></pre>
+
+<p>alsa-lib和alsa-lib-devel均需要。CentOS缺少alsa-lib-devel，通过如下命令安装：</p>
+
+<pre><code> yum install alsa-lib-devel
+</code></pre>
+
+<h3>3.cups-devel</h3>
+
+<pre><code>yum install cups-devel
+</code></pre>
+
+<h3>4.libXi-devel</h3>
+
+<pre><code>yum install libXi-devel
+</code></pre>
+
+<h3>5.freetype2.3</h3>
+
+<pre><code>wget http://download.savannah.gnu.org/releases/freetype/freetype-2.3.12.tar.gz
+tar -xvf freetype-2.3.12.tar.gz
+cd freetype-2.3.12
+./configure &amp;&amp; make &amp;&amp; make install
+</code></pre>
+
+<h3>6. ant</h3>
+
+<pre><code>wget http://mirror.bit.edu.cn/apache//ant/binaries/apache-ant-1.8.2-bin.zip
+unzip apache-ant-1.8.2-bin.zip
+</code></pre>
+
+<h3>7.g++</h3>
+
+<pre><code>yum install gcc gcc-c++
+</code></pre>
+
+<h2>二、设置环境变量</h2>
+
+<p>jdk编译过程中有一些环境变量需要设置，详细的请参考README-builds.html，下面写的只是一些必须设置的环境变量：</p>
+
+<pre><code>export ALT_BOOTDIR=/usr/opt/jdk # 预装的jdk7目录
+export ANT_HOME=ant安装目录
+export ALT_FREETYPE_HEADERS_PATH=/usr/local/include/freetype2 #freetype2头文件安装目录
+export ALT_FREETYPE_LIB_PATH=/usr/local/lib #freetype2 lib目录
+</code></pre>
+
+<h2>三、编译</h2>
+
+<h3>1.健全检查</h3>
+
+<p>可以通过如下命令检查环境配置是否准备好：</p>
+
+<pre><code>make sanity ARCH_DATA_MODEL=64
+</code></pre>
+
+<p>如果最终输出：</p>
+
+<pre><code>Sanity check passed.
+</code></pre>
+
+<p>则表示环境检查通过，否则需要根据提示信息排查问题。</p>
+
+<h3>2.执行编译</h3>
+
+<p>通过如下命令开始编译：</p>
+
+<pre><code>make ARCH_DATA_MODEL=64
+</code></pre>
+
+<h3>3.问题排查：</h3>
+
+<p>编译过程中出现一些问题：</p>
+
+<h3>1)缺少jaxp和jaxws</h3>
+
+<p>错误信息</p>
+
+<pre><code>ERROR: Cannot find source for project jaxp
+</code></pre>
+
+<p>原因是现在jaxp源码分支和jdk源码分支分开了，但是jaxws是jdk中的一部分，所以完全编译需要jaxp源码，针对该问题的描述可以查看README-build.html中TroubleShooting部分。
+解决方式有两种：
+一种是先下载好源码包，以drops的方式安装，具体参考README-build.html
+另外一种是使用在线安装，在编译时加入允许下载源码的配置:</p>
+
+<pre><code>make ARCH_DATA_MODEL=64 ALLOW_DOWNLOADS=true
+</code></pre>
+
+<h3>2)缺少X＊库</h3>
+
+<p>编译过程中多次出现如下缺少X*, awt之类的错误，基本上都是因为缺乏图形相关的库</p>
+
+<pre><code>../../../src/solaris/native/sun/awt/img_util_md.h:32: ??:expected specifier-qualifier-list before 'XID'
+make[5]: *** [/home/jiangbo/Workspace/jdk/openjdk/build/linux-amd64/tmp/sun/sun.awt/awt/obj64/BufImgSurfaceData.o] Error 1
+make[5]: *** Waiting for unfinished jobs....
+make[5]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
+make[4]: *** [library_parallel_compile] Error 2
+make[4]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun/awt'
+make[3]: *** [all] Error 1
+make[3]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make/sun'
+make[2]: *** [all] Error 1
+make[2]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk/jdk/make'
+make[1]: *** [jdk-build] Error 2
+make[1]: Leaving directory `/home/jiangbo/Workspace/jdk/openjdk'
+make: *** [build_product_image] Error 2
+</code></pre>
+
+<p>解决方式时安装X相关的库</p>
+
+<pre><code>yum install libX*
+</code></pre>
+
+<p>这个有些暴力，不过比较有效:)</p>
+
+<h2>四、测试编译结果</h2>
+
+<p>漫长的编译之后直至出现如下类似内容时，表示编译完成了：</p>
+
+<pre><code>-- Build times ----------
+Target all_product_build
+Start 2012-02-09 10:38:39
+End   2012-02-09 11:14:37
+00:01:41 corba
+00:06:19 hotspot
+00:15:49 jaxp
+00:01:30 jaxws
+00:10:03 jdk
+00:00:36 langtools
+00:35:58 TOTAL
+</code></pre>
+
+<p>编译完成后，编译结果维语build/linux-amd64目录下，可以写个简单的Java程序测试编译结果</p>
+
+<p>Test.java</p>
+
+<pre><code>public class Test{
+        public static void main(String[] args){
+                System.out.println("Hello");
+        }
+}
+</code></pre>
+
+<p>编译</p>
+
+<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test.java
+</code></pre>
+
+<p>执行</p>
+
+<pre><code>[root@localhost openjdk]# ./build/linux-amd64/bin/java Test
+Hello
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-01-04T17:35:00+08:00" pubdate data-updated="true">Jan 4<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/#disqus_thread">Comments</a>
+        
+        
+          | 
+
+
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h3>问题</h3>
+
+<p>有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。</p>
+
+<h3>解决</h3>
+
+<h4>如何获取本机IP</h4>
+
+<p>用ruby获取本机的动态ip，网上很多教程都用</p>
+
+<pre><code>require 'socket'
+
+IPSocket.getaddress(Socket.gethostname)
+puts TCPSocket.gethostbyname(Socket.gethostname)
+</code></pre>
+
+<p>这个在mac下是正常的，但是在linux下就只能拿到127.0.0.1
+在StackOverflow上有另一种解决方案</p>
+
+<pre><code>require 'socket'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = rig
+end
+</code></pre>
+
+<p>这段主要是通过开启一个UDP链接来获取本地对外ip，因为UDP是无状态，所以不会实际建立网络链接，但是会获取本机对外ip。</p>
+
+<h4>如何发送消息</h4>
+
+<p>获取ip后需要通过gtalk发送，gtalk使用的是xmpp协议，ruby中协议有多种开源实现，比较简单通用的是xmpp4r，详细教程请看这里
+首先需要安装xmpp4r-simple</p>
+
+<pre><code>gem install xmpp4r-simple
+</code></pre>
+
+<p>注意，貌似这个gem不支持1.9.*，所以使用之前先将ruby切换到1.8.7版本
+然后编写代码，主要两步：</p>
+
+<ul>
+<li>建立链接</li>
+<li>发送消息</li>
+</ul>
+
+
+<p>代码如下：</p>
+
+<pre><code> require 'rubygems'
+ require 'xmpp4r-simple'  
+
+ username = gmailusername
+ password = gmailpassword
+ to_username = destination_gmailusername  
+
+ puts "Connecting to jabber server.."
+ jabber = Jabber::Simple.new(username+'@gmail.com',password)
+ puts "Connected."
+ jabber.deliver(to_username+"@gmail.com", "Hello..!")
+ sleep(1)
+</code></pre>
+
+<p>注意，最后那个sleep不能少，尽管我还不知道为啥:(</p>
+
+<p>如此以来整个的获取ip，发送給gtalk的脚本为：</p>
+
+<pre><code>require 'rubygems'
+require 'socket'
+require 'xmpp4r-simple'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = orig
+end
+
+jabber = Jabber::Simple.new('gmailuseanme@gmail.com','password')
+jabber.deliver('destusenam@gmail.com', local_ip)
+sleep 1
+</code></pre>
+
+<h4>设置自动运行</h4>
+
+<p>linux设置自动运行是老生常谈了，在/etc/rc.local加上一句运行脚本的命令即可：</p>
+
+<pre><code>ruby /home/jiangbo/ruby/getIP.rb
+</code></pre>
+
+<h3>结尾</h3>
+
+<p>这样每次机器重启时，就能够通过gtalk获取到ip了，不过还遗留一个问题，就是在机器重启时，必须保证接收消息的gtalk在线，因为这种方式的消息gtalk不会自动重法，目前不知怎么解决。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -290,159 +645,6 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/12/07/clean-dns-cache-on-chrome/">Chrome中清除dns缓存</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-12-07T00:00:00+08:00" pubdate data-updated="true">Dec 7<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/12/07/clean-dns-cache-on-chrome/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/未分类/'>未分类</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：<br />
-1、用chrome打开：chrome://net-internals/#dns<br />
-2、点击上面的“clean host cache”<br />
-为了方便使用，可以加个bookmark:)</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/">Mac上制作Ubuntu USB启动盘</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-11-09T00:00:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/#disqus_thread">Comments</a>
-        
-        
-          | 
-
-<span class="categories">
-  
-    <a class='category' href='/blog/categories/mac/'>Mac</a>, <a class='category' href='/blog/categories/技术生活/'>技术生活</a>
-  
-</span>
-
-
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
-
-<p><strong>一、下载ubuntu iso镜像</strong></p>
-
-<p><strong>二、将iso转换为img文件</strong></p>
-
-<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
-
-<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
-
-<p><strong>三、查看USB的盘符</strong></p>
-
-<p>$ diskutil list</p>
-
-<p>/dev/disk0</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
-
-<p>1:                        EFI                         209.7 MB   disk0s1</p>
-
-<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
-
-<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
-
-<p>/dev/disk1</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
-
-<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
-
-<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
-
-<p><strong>四、卸载USB磁盘</strong></p>
-
-<p>$ diskutil unmountDisk /dev/disk1</p>
-
-<p>Unmount of all volumes on disk1 was successful</p>
-
-<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
-
-<p><strong>五、将镜像写入USB</strong></p>
-
-<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
-
-<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
-
-<p><strong>六、弹出USB</strong></p>
-
-<p>$ diskutil eject /dev/disk1</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/7/">&larr; Older</a>
@@ -458,6 +660,14 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
     <section class="first odd">
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/29/hadoop-distributedcache/">hadoop_distributedCache</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
@@ -489,14 +699,6 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a>
       </li>
     
   </ul>
