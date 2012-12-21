@@ -4,7 +4,7 @@
   <title><![CDATA[Category: HDFS | 非纯种程序猿]]></title>
   <link href="http://jiangbo.me/blog/categories/hdfs/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2012-12-21T14:04:11+08:00</updated>
+  <updated>2012-12-21T14:14:22+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -22,6 +22,9 @@
 
 <p>HDFS是构建在普通机器上的分布式文件系统，而这类系统需要解决的一个首要问题就是容错，允许部分节点失效。而为了解决数据的可靠性，HDFS采用了副本策略。默认会为所有的block存放三个副本（具体参见HDFS设计文档）。
 副本机制能够有效解决部分节点失效导致数据丢失的问题，但对于大规模的HDFS集群，副本机制会带来大量的存储资源消耗。例如为了存储1PB的数据，默认需要保留3个副本，这意味着实际存储所有副本需要至少3PB的空间。存储空间浪费达到200%。减小浪费的方式主要是减少副本数，而当副本数降低到小于3时，数据丢失的风险会非常高。而HDFS RAID的出现主要是解决降低副本数之后，通过RAID机制中的Erasured Code来确保数据的可用性。</p>
+
+<script async class="speakerdeck-embed" data-id="3f1abed02d630130814722000a9d03e5" data-ratio="1.2994923857868" src="http://jiangbo.me//speakerdeck.com/assets/embed.js"></script>
+
 
 <h2>二、整体结构</h2>
 
