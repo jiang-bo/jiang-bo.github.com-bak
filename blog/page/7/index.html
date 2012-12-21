@@ -9,9 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：
-1、用chrome打开：chrome://net-internals/#dns
-2、点击上面的“clean host cache” &hellip;">
+  <meta name="description" content="Git源码 git clone git://git.apache.org/hadoop-common.git 视网速不通，略慢 编译 cd hadoop-common
+mvn install -DskipTests 抛异常： [ERROR] Failed to execute goal org. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -83,7 +82,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/12/07/clean-dns-cache-on-chrome/">Chrome中清除dns缓存</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/09/24/compile-hadoop/">本地编译Hadoop小记</a></h1>
     
     
       <p class="meta">
@@ -99,19 +98,58 @@
   
 
 
-<time datetime="2011-12-07T00:00:00+08:00" pubdate data-updated="true">Dec 7<span>th</span>, 2011</time>
+<time datetime="2012-09-24T15:28:00+08:00" pubdate data-updated="true">Sep 24<span>th</span>, 2012</time>
         
-         | <a href="/blog/2011/12/07/clean-dns-cache-on-chrome/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/09/24/compile-hadoop/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：<br />
-1、用chrome打开：chrome://net-internals/#dns<br />
-2、点击上面的“clean host cache”<br />
-为了方便使用，可以加个bookmark:)</p>
+  <div class="entry-content"><h2>Git源码</h2>
+
+<pre><code>git clone git://git.apache.org/hadoop-common.git
+</code></pre>
+
+<p>视网速不通，略慢</p>
+
+<h2>编译</h2>
+
+<pre><code>cd hadoop-common
+mvn install -DskipTests
+</code></pre>
+
+<p>抛异常：</p>
+
+<pre><code>[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127 -&gt; [Help 1]
+org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:217)
+    at... 
+    Caused by: /Users/Shared/Workspace/hadoop/hadoop-common/hadoop-common-project/hadoop-common/target/antrun/build-main.xml:23: exec returned: 127
+    at org.apache.tools.ant.taskdefs.ExecTask.runExecute(ExecTask.java:650)
+    at org.apache.tools.ant.taskdefs.ExecTask.runExec(ExecTask.java:676)
+    at org.apache.tools.ant.taskdefs.ExecTask.execute(ExecTask.java:502)
+    at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
+    at sun.reflect.GeneratedMethodAccessor16.invoke(Unknown Source)
+    ... 21 more
+</code></pre>
+
+<p>原因是缺少protocol buffer， 找不到protoc命令。</p>
+
+<h3>安装protocol buffer</h3>
+
+<pre><code>wget https://protobuf.googlecode.com/files/protobuf-2.4.1.tar.bz2
+tar -xvf protobuf-2.4.1.tar.bz2
+cd protobuf-2.4.1
+./configure &amp;&amp; make
+make install
+</code></pre>
+
+<h3>导入Eclipse</h3>
+
+<pre><code>mvn eclipse:eclipse -DdownloadSources=true -DdownloadJavadocs=true
+</code></pre>
 </div>
   
   
@@ -124,7 +162,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/">Mac上制作Ubuntu USB启动盘</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a></h1>
     
     
       <p class="meta">
@@ -140,549 +178,246 @@
   
 
 
-<time datetime="2011-11-09T00:00:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2011</time>
+<time datetime="2012-08-31T07:52:00+08:00" pubdate data-updated="true">Aug 31<span>st</span>, 2012</time>
         
-         | <a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
-
-<p><strong>一、下载ubuntu iso镜像</strong></p>
-
-<p><strong>二、将iso转换为img文件</strong></p>
-
-<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
-
-<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
-
-<p><strong>三、查看USB的盘符</strong></p>
-
-<p>$ diskutil list</p>
-
-<p>/dev/disk0</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
-
-<p>1:                        EFI                         209.7 MB   disk0s1</p>
-
-<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
-
-<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
-
-<p>/dev/disk1</p>
-
-<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
-
-<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
-
-<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
-
-<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
-
-<p><strong>四、卸载USB磁盘</strong></p>
-
-<p>$ diskutil unmountDisk /dev/disk1</p>
-
-<p>Unmount of all volumes on disk1 was successful</p>
-
-<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
-
-<p><strong>五、将镜像写入USB</strong></p>
-
-<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
-
-<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
-
-<p><strong>六、弹出USB</strong></p>
-
-<p>$ diskutil eject /dev/disk1</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/09/08/vim_gbk/">vim支持GBK编码</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-09-08T00:00:00+08:00" pubdate data-updated="true">Sep 8<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/09/08/vim_gbk/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/08/31/something-about-memcache-internal/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p><h2><strong>一、让ubuntu支持GBK编码</strong></h2>
-Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。</p>
-
-<p>首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件，在文件中添加如下内容：<br />
-zh_CN.UTF- 8 UTF- 8<br />
-en_US.UTF- 8 UTF- 8<br />
-zh_CN.GBK GBK<br />
-zh_CN.GB2312 GB2312<br />
-接着用sudo dpkg-reconfigure &#8211;force locales强制更新设置
-<h2><strong>二、设置Vimrc支持GBK</strong></h2>
-set fileencodings=utf-8,gbk,gb2312</p>
-</div>
-  
-  
+  <div class="entry-content"><script async class="speakerdeck-embed" data-id="504049be5ec53c000202daa6" data-ratio="1.299492385786802" src="//speakerdeck.com/assets/embed.js"></script>
 
 
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/26/velocity_introspection/">Velocity源码分析（二）——渲染执行之Introspection</a></h1>
-    
-    
-      <p class="meta">
-        
+<h2>说在前面</h2>
 
+<p>本文不包含为什么使用memcache，以及如何使用memcache等基础知识。相关知识请查阅各类手册。
+另，为便于理解，最好手头准备一份memcache的源码，本文使用的是目前最新的1.4.4版本源码，可自行到github上clone。</p>
 
+<h2>Item、Chunk、Page、Slab</h2>
 
+<h3>Data Item</h3>
 
+<pre><code>+---------------------------------------+
+|  key-value | cas | suffix | item head |  
++---------------------------------------+
+</code></pre>
 
+<p>Item指实际存放到memcache中的数据对象结构，除key-value数据外，还包括memcache自身对数据对象的描述信息（Item=key+value+后缀长+32byte结构体）</p>
 
+<h3>Chunk</h3>
 
+<p>Chunk指Memcache用来存放Data Item的最小单元，同一个Slab中的chunk大小是固定的。</p>
 
-  
+<pre><code>+------------------------------+
+|   data item    | empty space |
++------------------------------+
+</code></pre>
 
+<h2>Page</h2>
 
-<time datetime="2011-08-26T00:00:00+08:00" pubdate data-updated="true">Aug 26<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/08/26/velocity_introspection/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
+<pre><code>+-------------------------------------+
+|  chunk1 | chunk2 | chunk3 | chunk4  |
++-------------------------------------+
+</code></pre>
 
+<p>每个Slab中按照Page来申请内存，Page的大小默认为1M，可以通过-l参数调整，最小1k，最大128m.</p>
 
-  <div class="entry-content"><p><div><span style="font-size: large;"><strong>一、何为Introspection</strong></span></div>
-<div><span style="font-size: large;"><strong>
-</strong></span></div>
-<div>Instrospection（自省，xing，“吾日三省吾身”的“省”）源自哲学术语，指的是一种自我检视的精神行为。</div>
-<div><em>Introspection is the self-observation and reporting of conscious inner thoughts, desires and sensations. It is a conscious and purposive process relying on thinking, reasoning, and examining one&#8217;s own thoughts, feelings, and, in more spiritual cases, one&#8217;s soul. </em></div>
-<div style="text-align: right;">——Wikipedia</div>
-<div>在计算机科学中，借用了哲学中的Introspeciton术语，表示一种能够识别一个事物它是什么，知道什么，能做什么的能力。典型的应用场景是面向对象语言中的类型自省（type introspeciton）。</div>
-<div><em>In computing, type introspection is a capability of some object-oriented programming languages to determine the type of an object at runtime.</em></div>
-<div style="text-align: right;">——Wikipedia</div>
-<div>以Java为例，Java提供了可以在运行时获取和检查JavaBean的接口API，实例如下：</div>
-<pre class="brush:java">import java.beans.BeanInfo;
-import java.beans.Introspector;
-import java.beans.IntrospectionException;
-import java.beans.PropertyDescriptor;
-public class SimpleBean{
-    private final String name = "SimpleBean";
-    private int size;
-    public String getName(){
-        return this.name;
-    }
-    public int getSize(){
-            return this.size;
-    }
-    public void setSize( int size ) {
-        this.size = size;
-    }
-    public static void main( String[] args )            throws IntrospectionException   {
-        BeanInfo info = Introspector.getBeanInfo( SimpleBean.class );
-for ( PropertyDescriptor pd : info.getPropertyDescriptors() )             System.out.println( pd.getName() );
-}
-}</pre>
-<div>Introspector.getBeanInfo(SimpleBean.class)是Java提供的一个自省工具类，可以在运行时获取SimpleBean类的类型信息BeanInfo，包括属性名、方法名、Bean描述等等信息。</div>
-<div>查阅资料过程中发现有些人认为自省即反射（Reflection），反射即自省，因为Java中自省是通过反射实现的。我认为这两个概念还是有区别的，自省是一个目的或者说机制，是一个上层的接口封装，而反射是达到这个目的或者实现这个机制的方法，是底层的具体实现。</div>
-<div><span style="font-size: large;"><strong>二、Velocity中的渲染执行</strong></span></div>
-<div><span style="font-size: large;"><strong>
-</strong></span></div>
-<div><span style="font-size: medium;"><strong>2.1 velocity中Introspection概述</strong></span></div>
-<div><span style="font-size: medium;"><strong>
-</strong></span></div>
-<div>Velocity作为一种模板语言允许我们向Context中放置一些JavaBean实例，并在模板中通过变量方式引用。如下所示：</div>
-<div>Welcome! ${person.name} !</div>
-<div>该模板中有一个引用变量${person.name}，在执行渲染时必须要知道person是个什么东东，person.name又是个什么东东，这里就需要自省机制发挥作用。</div>
-<div>Veloctiy的的自省机制实现位于源码包org.apache.velocity.util.introspection中，其主要类图结构如下：</div>
-<div><a href="/images/uploads/2011/08/class-structure.png"><img class="aligncenter size-full wp-image-63" title="class-structure.png" src="/images/uploads/2011/08/class-structure.png" alt="" width="863" height="351" /></a></div>
-<div>Uberspect中定义了渲染执行时所需的主要接口。该接口主要提供四个方法：</div>
-<div>
+<h3>Slab</h3>
+
+<pre><code>+--------------------------------+
+|  Page1 | Page2 | Page3 | Page4 |
++--------------------------------+
+</code></pre>
+
+<p>Memcache将分配给它的内存（-m 参数指定，默认64m）按照Chunk大小不同，划分为多个slab。</p>
+
+<p>他们三者的关系如下图所示:</p>
+
+<pre><code>                 Chunk
+                   ^                                                         
++------------------|------------------------------------------------------------+
+|   Memory         |                                                            | 
+|  +---------------|---------------------------------------------------------+  |
+|  |      +--------|---------------------+  +------------------------------+ |  |
+|  |      |Page1 +-|---+ +-----+ +-----+ |  |Page2 +-----+ +-----+ +-----+ | |  |
+|  | Slab |(1M)  | 96B | | 68B | | 72B | |  |(1M)  | 92B | | 76B | | 84B | | |  | 
+|  |  1   |      +-----+ +-----+ +-----+ |  |      +-----+ +-----+ +-----+ | |  |
+|  |      +------------------------------+  +------------------------------+ |  |
+|  +-------------------------------------------------------------------------+  |
+|                                                                               |
+|  +-------------------------------------------------------------------------+  |
+|  |      +------------------------------+  +------------------------------+ |  |
+|  |      |Page1 +------+    +------+    |  |Page2 +------+    +-------+   | |  |
+|  | Slab | (1M) | 128B |    | 120B |    |  |(1M)  | 128B |    | 97B   |   | |  |
+|  |   2  |      +------+    +------+    |  |      +------+    +-------+   | |  |
+|  |      +------------------------------+  +------------------------------+ |  |
+|  +-------------------------------------------------------------------------+  |
++-------------------------------------------------------------------------------+
+</code></pre>
+
+<h2>Slab内存分配</h2>
+
+<h3>slab初始化</h3>
+
+<p>Memcache启动时会进行slab初始化（参见slabs.c中slabs_init()函数），默认最小的chunksize为80（查看源码会发现settings中chunk_size默认为48，但是实际还需要加上一个32bytes的item结构体），可以通过-n参数调整，按照然后按照factor（默认为1.25，可以通过-f参数调整）(<em>关于参数更多的memcache默认参数可以参考memcache.c中settings的设置</em>)比例递增，划分出多个不同chunk大小的slab空间，即slab1的chunk大小=80，slab2的chunk大小为80*1.25=100，slab3的chunk大小为80*1.25*1.25=125，但最大一个一个chunk不会大于一个Page的大小（默认1M）。</p>
+
+<pre><code>一下代码节选自 slabs.c
+ 95 void slabs_init(const size_t limit, const double factor, const bool prealloc) {
+ 96     int i = POWER_SMALLEST - 1;
+ 97     unsigned int size = sizeof(item) + settings.chunk_size;
+ 98  
+ 99     mem_limit = limit;
+100  
+101     if (prealloc) {
+102         /* Allocate everything in a big chunk with malloc */
+103         mem_base = malloc(mem_limit);
+104         if (mem_base != NULL) {
+105             mem_current = mem_base;
+106             mem_avail = mem_limit;
+107         } else {
+108             fprintf(stderr, "Warning: Failed to allocate requested memory in"
+109                     " one large chunk.\nWill allocate in smaller chunks\n");
+110         }
+111     }
+112  
+113     memset(slabclass, 0, sizeof(slabclass));
+114  
+115     while (++i &lt; POWER_LARGEST &amp;&amp; size &lt;= settings.item_size_max / factor) {
+116         /* Make sure items are always n-byte aligned */
+117         if (size % CHUNK_ALIGN_BYTES)
+118             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
+119  
+120         slabclass[i].size = size;
+121         slabclass[i].perslab = settings.item_size_max / slabclass[i].size;
+122         size *= factor;
+123         if (settings.verbose &gt; 1) {
+124             fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
+125                     i, slabclass[i].size, slabclass[i].perslab);
+126         }
+127     }
+128  
+129     power_largest = i;
+130     slabclass[power_largest].size = settings.item_size_max;
+131     slabclass[power_largest].perslab = 1;
+132     if (settings.verbose &gt; 1) {
+133         fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
+134                 i, slabclass[i].size, slabclass[i].perslab);
+135     }
+136  
+137     /* for the test suite:  faking of how much we've already malloc'd */
+138     {
+139         char *t_initial_malloc = getenv("T_MEMD_INITIAL_MALLOC");
+140         if (t_initial_malloc) {
+141             mem_malloced = (size_t)atol(t_initial_malloc);
+142         }
+143  
+144     }
+145  
+146     if (prealloc) {
+147         slabs_preallocate(power_largest);
+148     }
+149 }                             
+</code></pre>
+
+<p>PS：prealloc指的是直接申请一个大的chunk存放所有数据，默认是不采用这种方式的。</p>
+
+<h3>数据存储过程</h3>
+
+<p>一个数据项的大致存储量过程可以理解为（完整代码较长，不在粘贴，具体可参见items.c中do_item_alloc()方法）：</p>
+
 <ol>
-	<li>getIterator()：支持迭代#foreache</li>
-	<li>getMethod()：支持方法调用</li>
-	<li>getPropertyGet()：支持获取属性值</li>
-	<li>getPropertySet()：支持设置属性值</li>
+<li>构造一个数据项结构体，计算数据项的大小，（假设默认配置下，数据项大小为102B）</li>
+<li>根据数据项的大小，找到最合适的slab，（100&lt;102&lt;125，所以存储在slab3中）</li>
+<li>检查该slab中是否有过期的数据，如有清理掉</li>
+<li>如果没有过期的数据项，则从当前slab中申请空间，参见slabs.c中slab_alloc()方法。</li>
+<li>如果当前slab中申请失败，则尝试根据LRU算法逐出一个数据项，默认memcache是允许逐出的，如果被设置为禁止逐出，那么这是会反生悲剧的oom了</li>
+<li>获取到item空间后将数据存储到改空间中，并追加到该slab的item列表中</li>
 </ol>
-Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspector完成基本的自省功能。Introspector扩展自基类IntrospectorBase，增添异常日志功能。</div></p>
 
-<p>
-<div>IntrospectorBase内部维护了一个introspectCache，用于缓存已经完成自省的类和方法信息。</div>
-<div>IntrospectorCacheImpl内通过一个HashMap维护一个class与其对应的类型信息，类型信息用一个ClassMap表示。</div>
-<div>一个ClassMap内部维护了一个MethodCache，用于缓存该类已经解析出得方法信息。</div>
-<div>MethodMap表示一个方法信息。</div>
-<div><span style="font-size: medium;"><strong>2.2 渲染执行详细流程</strong></span></div>
-<div><span style="font-size: medium;"><strong>
-</strong></span></div>
-<div>下面一如下模板为例，解释velocity中introspection的实际执行：</div>
-<div>template.vm</div>
-<div>${person.sayHi()}! I&#8217;m ${person.name}</div>
-<div>该模板的作用表示分别调用context中名为person的对象的sayHi()方法和name属性。该模板经过语法解析生成的AST如下（关于AST解析请参考上一篇velocity源码分析）：</div>
-<div><a href="/images/uploads/2011/08/syntax-tree.png"><img class="aligncenter size-full wp-image-64" title="syntax-tree.png" src="/images/uploads/2011/08/syntax-tree.png" alt="" width="483" height="185" /></a></div>
-<div>图1.语法解析后的AST</div>
-<div>${person.say()}被解析为一个拥有AST子节点的ASTReference节点，”! I’m”为一个ASTText节点，$person.name被解析为一个拥有ASTIdentifier子节点的ASTReference节点，”。”被解析为一个ASTText节点。</div>
-<div>引擎从根节点开始执行渲染ASTprocess的render方法主要是遍历子节点，依次执行子节点的渲染方法。</div>
-<div>ASTReference.render()方法主要调用其内部的execute（）方法获取实际的引用值，execute代码如下：</div>
-<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
-        throws MethodInvocationException
-    {</pre></p>
 
-<p>        if (referenceType == RUNT)<br />
-            return null;<br />
-        Object result = getVariableValue(context, rootString);</p>
+<p>一个slab的申请一个chunk空间的过程大致如下（以下代码节选自slabs.c）：</p>
 
-<p>        if (result == null &amp;&amp; !strictRef)<br />
-        {<br />
-            return EventHandlerUtil.invalidGetMethod(rsvc, context,<br />
-                    &#8220;$&#8221; + rootString, null, null, uberInfo);<br />
-        }</p>
+<pre><code>195 static int do_slabs_newslab(const unsigned int id) { 
+196     slabclass_t *p = &amp;slabclass[id];
+197     int len = settings.slab_reassign ? settings.item_size_max
+198         : p-&gt;size * p-&gt;perslab;
+199     char *ptr;             
+200            
+201     if ((mem_limit &amp;&amp; mem_malloced + len &gt; mem_limit &amp;&amp; p-&gt;slabs &gt; 0) ||
+202         (grow_slab_list(id) == 0) ||    
+203         ((ptr = memory_allocate((size_t)len)) == 0)) {
+204            
+205         MEMCACHED_SLABS_SLABCLASS_ALLOCATE_FAILED(id);
+206         return 0;          
+207     }      
+208            
+209     memset(ptr, 0, (size_t)len);    
+210     split_slab_page_into_freelist(ptr, id);
+211            
+212     p-&gt;slab_list[p-&gt;slabs++] = ptr; 
+213     mem_malloced += len;   
+214     MEMCACHED_SLABS_SLABCLASS_ALLOCATE(id);
+215            
+216     return 1;              
+217 }
+218  
+219 /*@null@*/ 
+220 static void *do_slabs_alloc(const size_t size, unsigned int id) {
+221     slabclass_t *p;        
+222     void *ret = NULL;      
+223     item *it = NULL;       
+224  
+225     if (id &lt; POWER_SMALLEST || id &gt; power_largest) {
+226         MEMCACHED_SLABS_ALLOCATE_FAILED(size, 0);
+227         return NULL;
+228     }
+229  
+230     p = &amp;slabclass[id];
+231     assert(p-&gt;sl_curr == 0 || ((item *)p-&gt;slots)-&gt;slabs_clsid == 0);
+232  
+233     /* fail unless we have space at the end of a recently allocated page,
+234        we have something on our freelist, or we could allocate a new page */
+235     if (! (p-&gt;sl_curr != 0 || do_slabs_newslab(id) != 0)) {
+236         /* We don't have more memory available */
+237         ret = NULL;
+238     } else if (p-&gt;sl_curr != 0) {
+239         /* return off our freelist */
+240         it = (item *)p-&gt;slots;
+241         p-&gt;slots = it-&gt;next;
+242         if (it-&gt;next) it-&gt;next-&gt;prev = 0;
+243         p-&gt;sl_curr--;
+244         ret = (void *)it;
+245     }
+246  
+247     if (ret) {
+248         p-&gt;requested += size;
+249         MEMCACHED_SLABS_ALLOCATE(size, id, p-&gt;size, ret);
+250     } else {
+251         MEMCACHED_SLABS_ALLOCATE_FAILED(size, id);
+252     }
+253  
+254     return ret;
+255 }
+</code></pre>
 
-<p>        try<br />
-        {<br />
-            Object previousResult = result;<br />
-            int failedChild = -1;<br />
-            for (int i = 0; i &lt; numChildren; i++)<br />
-            {<br />
-                if (strictRef &amp;&amp; result == null)<br />
-                {<br />
-                    String name = jjtGetChild(i).getFirstToken().image;<br />
-                    throw new VelocityException(&#8220;Attempted to access &#8216;&#8221;<br />
-                        + name + &#8220;&#8217; on a null value at &#8221;<br />
-                        + Log.formatFileString(uberInfo.getTemplateName(),<br />
-                        + jjtGetChild(i).getLine(), jjtGetChild(i).getColumn()));<br />
-                }<br />
-                previousResult = result;<br />
-                //遍历执行子节点的execute方法<br />
-                result = jjtGetChild(i).execute(result,context);<br />
-                if (result == null &amp;&amp; !strictRef)  // If strict and null then well catch this<br />
-                                                   // next time through the loop<br />
-                {<br />
-                    failedChild = i;<br />
-                    break;<br />
-                }<br />
-            }</p>
+<p>slab优先从slots（空闲chunk空间列表）中申请空间，如果没有则尝试申请一个Page的新空间（do_slab_newslab()），申请新slab是会先判断是否进行slab_reasgin（重新分配slab空间，默认不开启）。</p>
 
-<p>            /**<br />
-            &#8230;&#8230;<br />
-            */<br />
-    }
-<div>1.execute方法先根据对象的名字从context中获取对象实例。</div>
-<div>2.遍历所有子节点，执行子节点的execute方法。</div>
-<div><strong><span style="font-size: small;">2.2.1 ASTMethod节点渲染</span></strong></div>
-<div>ASTMethod的execute方法中关键代码如下：</div>
-<div>
-<pre class="brush:java">    public Object execute(Object o, InternalContextAdapter context)
-        throws MethodInvocationException
-    {
-        if (o instanceof NullInstance &amp;&amp; ((NullInstance) o).isNotNull()) {
-            return o;
-        }</pre></div></p>
+<h2>内存浪费</h2>
 
-<p>        /*<br />
-         *  获取方法信息<br />
-         */</p>
+<p>根据上述描述，Memcache使用Slab预分配的方式进行内存管理提升了性能（减少分配内存的消耗），但是带来了内存浪费，主要体现在：</p>
 
-<p>        VelMethod method = null;</p>
+<ol>
+<li><p>Data Item Size &lt;= Chunk Size，Chunk是存储数据项的最小单元，数据项的大小必须不大于其所在的Chunk大小。也就是说76B的数据对象存入96B的Chunk中，将带来96B-76B=20B的空间浪费。</p></li>
+<li><p>Memcache是按照Page申请和使用内存的，当Page大小不是Chunk的整数倍时，余下的空间将被浪费。即如果PageSize=1M，ChunkSize=1000B,那么将有1024*1024%1000=576B的空间浪费。</p></li>
+<li><p>Memcache默认是不开启slab reasign的，也就是说分配已经分配给一个slab的内存空间，即使该slab不用，默认也不会分配给其他slab的</p></li>
+</ol>
 
-<p>        Object [] params = new Object[paramCount];</p>
 
-<p>        try<br />
-        {<br />
-            // 计算参数类型<br />
-            final Class[] paramClasses = paramCount &gt; 0 ? new Class[paramCount] : ArrayUtils.EMPTY_CLASS_ARRAY;</p>
+<h2>案例分析：定长问题导致逐出</h2>
 
-<p>            for (int j = 0; j &lt; paramCount; j++)<br />
-            {<br />
-                params[j] = jjtGetChild(j + 1).value(context);</p>
-
-<p>                if (params[j] != null)<br />
-                {<br />
-                    paramClasses[j] = params[j].getClass();<br />
-                }<br />
-            }</p>
-
-<p>             //从cache中获取Method信息<br />
-            MethodCacheKey mck = new MethodCacheKey(methodName, paramClasses);<br />
-            IntrospectionCacheData icd =  context.icacheGet( mck );</p>
-
-<p>            if ( icd != null &amp;&amp; (o != null &amp;&amp; icd.contextData == o.getClass()) )<br />
-            {<br />
-                method = (VelMethod) icd.thingy;<br />
-            }<br />
-            else<br />
-            {<br />
-                //缓存未命中，调用UberIntrospectImpl.getMethod()执行自省<br />
-                method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</p>
-
-<p>                if ((method != null) &amp;&amp; (o != null))<br />
-                {<br />
-                    icd = new IntrospectionCacheData();<br />
-                    icd.contextData = o.getClass();<br />
-                    icd.thingy = method;<br />
-                    //更新缓存<br />
-                    context.icachePut( mck, icd );<br />
-                }<br />
-            }</p>
-
-<p>            if (typeOptimum &amp;&amp; method instanceof VelMethodImpl) {<br />
-                this.recordedData = icd;<br />
-            }</p>
-
-<p>            /*<br />
-             *  &#8230;.<br />
-             */<br />
-    }
-
-<div>1.首先从IntrospectionCache中查找已经缓存的自省结果信息</div>
-<div>2.如果未找到，则使用uberspector进行自省，获取方法信息，并缓存自省结果。</div>
-<div>3.调用自省返回的VelMethod的invoke方法，获取执行结果。</div>
-<div>其中，获取方法信息的过程</div>
-<div>method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));</div>
-<div>实际调用就是UberspectImpl.getMethod()方法，该方法执行流程如下：</div>
-<div>
-<pre class="brush:java">    public VelMethod getMethod(Object obj, String methodName, Object[] args, Info i)
-            throws Exception
-    {
-        if (obj == null)
-        {
-            return null;
-        }
-        //调用Inspector.getMethod()
-        Method m = introspector.getMethod(obj.getClass(), methodName, args);
-        if (m != null)
-        {</pre>
-<pre class="brush:java">            //封装VelMethodImpl
-            return new VelMethodImpl(m);
-        }</pre></div></p>
-
-<p>        Class cls = obj.getClass();<br />
-        // if it&#8217;s an array<br />
-        if (cls.isArray())<br />
-        {<br />
-            // check for support via our array-&gt;list wrapper<br />
-            m = introspector.getMethod(ArrayListWrapper.class, methodName, args);<br />
-            if (m != null)<br />
-            {<br />
-                // and create a method that knows to wrap the value<br />
-                // before invoking the method<br />
-                return new VelMethodImpl(m, true);<br />
-            }<br />
-        }<br />
-        // watch for classes, to allow calling their static methods (VELOCITY-102)<br />
-        else if (cls == Class.class)<br />
-        {<br />
-            m = introspector.getMethod((Class)obj, methodName, args);<br />
-            if (m != null)<br />
-            {<br />
-                return new VelMethodImpl(m);<br />
-            }<br />
-        }<br />
-        return null;<br />
-    }
-
-<div>该方式实际调用Introspector.getMethod()方法。</div>
-<div>
-<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
-        throws IllegalArgumentException
-    {
-        try
-        {
-            //调用父类IntrospectorBase.getMethod()方法
-            return super.getMethod(c, name, params);
-        }
-        catch(MethodMap.AmbiguousException ae)
-        {
-           /*异常处理*/
-        }</pre></div></p>
-
-<p>        return null;<br />
-    }
-
-<div>Introspector.getMethod()实际只是扩展了其父类的getMethod方法，增加了异常日志功能。</div>
-<div>IntrospectorBase.getMethod()代码如下：</div>
-<div>
-<pre class="brush:java">    public Method getMethod(final Class c, final String name, final Object[] params)
-            throws IllegalArgumentException,MethodMap.AmbiguousException
-    {
-        if (c == null)
-        {
-            throw new IllegalArgumentException ("class object is null!");
-        }
-        
-        if (params == null)
-        {
-            throw new IllegalArgumentException("params object is null!");
-        }</pre></div></p>
-
-<p>        IntrospectorCache ic = getIntrospectorCache();</p>
-
-<p>        ClassMap classMap = ic.get(c);<br />
-        if (classMap == null)<br />
-        {<br />
-            classMap = ic.put(c);<br />
-        }</p>
-
-<p>        return classMap.findMethod(name, params);<br />
-    }
-
-<div>该方法首先获取从IntrospectorCache中获取表示类信息的classMap，如果没找到则在cache中put该类型信息。有意思的是这里没有常见的缓存未命中直接查询的过程，而是直接更新缓存，也就意味着put方法里有构造类型信息的过程。</div>
-<div>IntrospectorCache.put()代码如下</div>
-<div>
-<pre class="brush:java">    public ClassMap put(final Class c)
-    {
-        //构造ClassMap
-        final ClassMap classMap = new ClassMap(c, log);
-        synchronized (classMapCache)
-        {
-            classMapCache.put(c, classMap);
-            classNameCache.add(c.getName());
-        }
-        return classMap;
-    }</pre>
-</div>
-<div>put方法首先构造一个ClassMap，然后更新classMapCache。</div>
-<div>构造ClassMap的过程如下：</div>
-<div>
-<pre class="brush:java">    public ClassMap(final Class clazz, final Log log)
-    {
-        this.clazz = clazz;
-        this.log = log;</pre></div></p>
-
-<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
-        {<br />
-            log.debug(&#8220;=================================================================&#8221;);<br />
-            log.debug(&#8220;== Class: &#8221; + clazz);<br />
-        }</p>
-
-<p>        methodCache = createMethodCache();</p>
-
-<p>        if (debugReflection &amp;&amp; log.isDebugEnabled())<br />
-        {<br />
-            log.debug(&#8220;=================================================================&#8221;);<br />
-        }<br />
-    }
-
-<div>关键是构造一个MethodCache，createMethodCache过程如下：</div>
-<div>
-<pre class="brush:java">    private MethodCache createMethodCache()
-    {
-        MethodCache methodCache = new MethodCache(log);
-        for (Class classToReflect = getCachedClass(); classToReflect != null ; classToReflect = classToReflect.getSuperclass())
-        {
-            if (Modifier.isPublic(classToReflect.getModifiers()))
-            {
-                populateMethodCacheWith(methodCache, classToReflect);
-            }
-            Class [] interfaces = classToReflect.getInterfaces();
-            for (int i = 0; i &lt; interfaces.length; i++)
-            {
-                populateMethodCacheWithInterface(methodCache, interfaces[i]);
-            }
-        }
-        // return the already initialized cache
-        return methodCache;
-    }</pre>
-</div>
-<div>createMethodCache()首先构造一个MethodCache实例，然后通过反射获得类型的public方法信息，并递归的获取其实现的接口方法信息。</div>
-<div>IntrospectorBase.getMethod()方法获取到该ClassMap后，通过classMap.getMethod()返回一个需要的method，由于多态的存在，一个类会有多个同名方法，所以getMethod()过程中有一个根据参数类型寻找最佳匹配的方法getBestMatch（）这里有个循环遍历所有方法，并且比较所有参数类型的过程，而且这个过程在每次模板渲染执行时都会进行，代价很高，因此尽量少在放入模板的类中写多态方法有助提高渲染执行性能。</div>
-<div>至此一个ClassMap构造完毕，即一个类的自省过程完成。UberinspectorImpl成功的拿到了需要的方法信息，然后将Method封装VelMethodImpl返回。</div>
-<div>ASTMethod节点执行渲染时调用invoke方法实际调用的就是Method.invoke()，获得方法执行结果写入输出流中，完成渲染。</div>
-<div><strong><span style="font-size: small;">2.2.2 ASTIdentifier节点渲染</span></strong></div>
-<div>ASTIdentifier的execute方法中关键代码如下</div>
-<div>（TODO：ASTIndentifier.execute()代码）</div>
-<div>1.从IntrospectionCache中查找已经缓存的信息。</div>
-<div>2.如果缓存未命中，使用uberspector进行自省，并缓存自省结果</div>
-<div>3.调用自省的返回的VelPropertyGet的invoke方法，反射执行起get方法。</div>
-<div>
-<div>UberspectImpl.getPropertyGet()方法关键代码如下：</div>
-<div>
-<pre class="brush:java">    public VelPropertyGet getPropertyGet(Object obj, String identifier, Info i)
-            throws Exception
-    {
-        if (obj == null)
-        {
-            return null;
-        }</pre></div></div></p>
-
-<p>        Class claz = obj.getClass();</p>
-
-<p>         // 构造get&#8221;属性名&#8221;()形式的Executor<br />
-        AbstractExecutor executor = new PropertyExecutor(log, introspector, claz, identifier);</p>
-
-<p>        //构造一个Map形式的Executor<br />
-        if (!executor.isAlive())<br />
-        {<br />
-            executor = new MapGetExecutor(log, claz, identifier);<br />
-        }</p>
-
-<p>        // 构造get(&#8220;属性名&#8221;)形式的Executor</p>
-
-<p>        if (!executor.isAlive())<br />
-        {<br />
-            executor = new GetExecutor(log, introspector, claz, identifier);<br />
-        }<br />
-        //构建is&#8221;属性名&#8221;形式的executor<br />
-        if (!executor.isAlive())<br />
-        {<br />
-            executor = new BooleanPropertyExecutor(log, introspector, claz,<br />
-                                                   identifier);<br />
-        }</p>
-
-<p>        return (executor.isAlive()) ? new VelGetterImpl(executor) : null;<br />
-    }
-
-<div>1.首先根据对象的class类型和属性名构造一个get”属性名”的方法的PropertyExecutor。</div>
-<div>2.如果未找到get”属性名”的方法，则尝试构造一个Map.key形式的MapGetExecutor。</div>
-<div>3.如果也不是Map.key形式，尝试构造一个get(“属性名”)的GetExecutor。</div>
-<div>4.如果还没找到，则尝试构造一is”属性名”形式的BooleanPropertyExecutor。</div>
-<div>5.最终返回一个封装了Executor的VelGetImpl，如果未找到则返回null。</div>
-<div>所有的Executor均扩展自AbstractExecutor，VelGetImpl通过内置一个executor执行方法调用。Executor类图关系如下</div>
-<div><a href="/images/uploads/2011/08/Excuter-class-structure.png"><img class="aligncenter size-full wp-image-76" title="Executor类图结构" src="/images/uploads/2011/08/Excuter-class-structure.png" alt="" width="682" height="380" /></a></div>
-<div>Executor实现中除MapGetExecutor外，其余的Executor均通过内置一个introspector实现方法的构建，过程与上述ASTMethod节点渲染过程中introspector.getMethod()一致，只是方法名做了封装，如GetExecutor的方法名为get， PropertyExecutor的方法名为get”属性名”， BooleanPropertyExecutor方法名为is”属性名”，具体构建流程不再赘述。</div>
-<div>最终，ASTIndentifier.execute()方法通过UberInspectImpl.getPropertyGet()获得VelGetImpl，并调用VelGetImpl.invoke()获取方法执行的结果，写入输出流，完成渲染。</div>
-<div>UberInspectImpl.getPropertySet()的执行过程于getPropertyGet()大体一致，区别在于获取的是VelSetImpl，内置了SetExecutor，SetExecutor有三个扩展对应为MapSetExecutor（Map.key=value形式），PutExecutor（put(key, value)形式），SetPropertyExecutor（set”属性名”(value)形式）。其内部同样使用introspector.getMethod()方法构建Method，通过反射执行设置属性值。</div>
-<div><strong><span style="font-size: large;">三、总结</span></strong></div>
-<div>总的来说，作为模板语言velocity提供了可用的自省机制完成模板中对象引用及方法执行的的渲染。并在自省过程中提供了有效的缓存机制用以提升自省效率。但每次依旧需要解析AST，反射执行引用节点的方法，效率方面似乎还有优化的余地。</div>
-<div><strong><span style="font-size: large;">参考文档</span></strong></div>
-<div>《Java Introspeciton》 http://download.oracle.com/javase/tutorial/javabeans/introspection/index.html</div>
-<div>《Type Introspection》 http://en.wikipedia.org/wiki/Type_introspection</div>
-<div>《Introspection》http://en.wikipedia.org/wiki/Introspection</div>
-</p>
+<p>memcache的chunk分布是均匀的，这是为了通用性考虑，但是现实中一些场景chunk的分布是不均运的，例如为了减小对数据库的压力，对数据进行了全量缓存，为标识数据库中不存在的记录，向缓存中放置了一个stupidObject。这个对象大小是固定的，且该数据的量很大，导致该数据类型所在的slab占用了大量缓存空间。再一次调整对象结构时，修改了这个StupidObject大小，使其分布在另一个slab中，但是这个原分配的slab空间不会回收，空闲空间不足，导致大量逐出。</p>
 </div>
   
   
@@ -695,7 +430,7 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2011/08/19/velocity_overview/">Velocity源码分析（一）——概述</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a></h1>
     
     
       <p class="meta">
@@ -711,101 +446,136 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
   
 
 
-<time datetime="2011-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2011</time>
+<time datetime="2012-04-08T11:23:00+08:00" pubdate data-updated="true">Apr 8<span>th</span>, 2012</time>
         
-         | <a href="/blog/2011/08/19/velocity_overview/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p><h2>一、概述</h2>
-Velocity模板引擎处理机制分为五个基本步骤：
-<ol>
-	<li>引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。</li>
-	<li>获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream），然后通过AST（Abstract Syntax Tree）解析器将InputStream解析为一个AST。</li>
-	<li>创建一个Context</li>
-	<li>将模板渲染所需的参数放入context</li>
-	<li>执行模板渲染，产生输出流。渲染过程中通过遍历该模板对应的AST，调用相应节点的处理器执行渲染。</li>
-</ol>
-整个处理流程如下图所示：</p>
+  <div class="entry-content"><h3>问题现象</h3>
 
-<p><a href="/images/uploads/2011/08/Velocity-process-structure.png"><img class="aligncenter size-full wp-image-59" title="Velocity处理流程" src="/images/uploads/2011/08/Velocity-process-structure.png" alt="" width="619" height="407" /></a>
-<h2>二、详细渲染流程</h2>
-下面以一个简单的模板template.vm为例，详细解释渲染过程。<br />
-VelocityMergeTest.java
-<pre class="brush:java">public class VelocityMergeTest {</pre></p>
+<p>现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例：</p>
 
-<p>public static void main(String[] args) {<br />
-VelocityEngine ve = new VelocityEngine();<br />
-ve.setProperty(Velocity.RESOURCE_LOADER, &#8220;class&#8221;);<br />
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-try {<br />
-//引擎初始化<br />
-ve.init();<br />
-//加载解析模板<br />
-Template tp = ve.getTemplate(&#8220;template.vm&#8221;);<br />
-//创建context<br />
-Context context = new VelocityContext();<br />
-//设置Context中参数值<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-StringWriter writer = new StringWriter();<br />
-//执行渲染<br />
-tp.merge(context, writer);<br />
-System.out.println(writer.toString());<br />
-} catch (Exception e) {<br />
+<pre><code>public class VasViewVO {
+
+    private String description;
+
+    private Date gmtOpen;
+
+    private Date gmtClose;
+
+    private CreditVasType serviceType;
+
+    private CreditVasMemberStatus creditVasMemberStatus;
+    ...//此处省略getter和setter方法
 }
-}<br />
+</code></pre>
+
+<p>通常按照如下方式构造一个VasViewVO实例：</p>
+
+<pre><code>    VasViewVO vasViewVO = new VasViewVO();
+    vasViewVO.setCreditVasMemberStatus(CreditVasMemberStatus.OPEN);
+    vasViewVO.setGmtOpen(new Date());
+    vasViewVO.setServiceType(CreditVasType.fastpay);
+    vasViewVO.setDescription("open fastpay");
+    //do something with vasViewVO
+</code></pre>
+
+<p>如此构造VasViewVO的实例并非有严重的逻辑错误或者其他的问题，只是不够简洁易懂（贴近自然语言）。
+最近学习过jQuery的都知道，jQuery中可以按如下方式连续调用api</p>
+
+<pre><code>    $("p").hide().fadeIn("slow").slideUp("slow").slideDown("slow");
+</code></pre>
+
+<p>如果Java程序中也可以使用类似的方式将会简洁许多。</p>
+
+<h3>解决方法</h3>
+
+<h4>使用方法链</h4>
+
+<p>jQuery中之所以能够连续调用api，主要是因为每个方法返回的都是一个jQuery对象。Java本身也可这样做，即返回一个this(自身引用)，也就是常说的<a href="http://en.wikipedia.org/wiki/Method_chaining">方法链</a>。
+方法链的实现非常简单，通常的setter方法返回void，方法链返回的是this引用，如下：</p>
+
+<pre><code>    public VasViewVO description(String description) {
+        this.description = description;
+        return this;
+    }
+
+    public VasViewVO gmtOpen(Date gmtOpen) {
+        this.gmtOpen = gmtOpen;
+        return this;
+    }
+
+    public VasViewVO gmtClose(Date gmtClose) {
+        this.gmtClose = gmtClose;
+        return this;
+    }
+
+    public VasViewVO serviceType(CreditVasType serviceType) {
+        this.serviceType = serviceType;
+        return this;
+    }
+</code></pre>
+
+<p>如此一来在调用时只需要新建一个对象，连续调用赋值方法即可：</p>
+
+<pre><code>    VasViewVO vasView = new VasViewVO();
+    vasView.creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
+            .description("Commoent cxxx").gmtClose(new Date())
+            .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
+</code></pre>
+
+<p>如此相比连续调用5次setter方法简洁的多。</p>
+
+<h4>使用静态工厂和static import优化</h4>
+
+<p>使用方法链之后简化了setter调用，但是每次还必须要先new一个实例，略显繁琐。这个问题可以通过Effectvie Java的第一条静态工厂来解决，即在VasViewVO内部实现一个静态工厂方法。</p>
+
+<pre><code>    public static VasViewVO with() {
+        return new VasViewVO();
+    }
+</code></pre>
+
+<p>这个with的方法名与一般的静态工厂所用的getInstance，newInstance不同，主要时为了更加贴近自然语言。
+如此，构造一个VasViewVO实例就可简化为</p>
+
+<pre><code>    VasViewVO vasViewVO = VasViewVO.with()
+                .creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
+                .description("Commoent cxxx").gmtClose(new Date())
+                .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
+</code></pre>
+
+<p>代码已经很简洁，不过每次都是用枚举类长长的类名，感觉很是不雅，可以通过static import解决，最终的到的简化后构造一个VasViewVO实例的代码如下：</p>
+
+<pre><code>import static  com.alibaba.china.credit.common.constants.CreditVasType.*;
+import static com.alibaba.china.credit.vas.dal.constant.CreditVasMemberStatus.*;
+public class Test{
+    public static void main(String[] args) {
+        . . .
+
+        VasViewVO vasViewVO = VasViewVO.with()
+            .creditVasMemberStatus(CLOSE)
+            .description("Commoent cxxx").gmtClose(new Date())
+            .gmtOpen(new Date()).serviceType(fastpay);
+        . . .
+    }
 }
-template.vm
-<pre class="brush:xml">&lt;html&gt;
-&lt;body&gt;
-Hello $foo world!
-&lt;/body&gt;
-&lt;/html&gt;</pre>
-<h3>1.引擎初始化</h3>
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-设置引擎的资源加载使用ClasspathResourceLoader。<br />
-ve.init()执行引擎的初始化。
-<h3>2.加载解析模板</h3>
-当执行ve.getTemplate(&#8220;template.vm&#8221;)时，首先通过ResourceLoader将tempalte加载为InputStream，然后通过Parser生成如下Token集合：<br />
-{[&lt;html&gt; &lt;body&gt; Hello], [$foo], [world! &lt;/body&gt; &lt;/html&gt; ]}，<br />
-可以发现velocity根本不关系模板最终要渲染出来的是html还是什么的其他的东西，也就以为这所有的html标签对velocity来讲都是纯文本。<br />
-最终构建的AST如下</p>
+</code></pre>
 
-<p><a href="/images/uploads/2011/08/AST.png"><img class="aligncenter size-full wp-image-60" title="AST" src="/images/uploads/2011/08/AST.png" alt="" width="367" height="169" /></a></p>
+<h3>进阶总结</h3>
 
-<p>根节点下有三个子节点：
-<ol>
-	<li>[&lt;html&gt; &lt;body&gt; Hello]对应的ASTText节点；</li>
-	<li>[$foo]对应的ASTReference节点；</li>
-	<li>[world! &lt;/body&gt; &lt;/html&gt; ]对应的ASTText节点</li>
-</ol>
-Velocity引擎在这里有个优化策略，可以针对生成的语法树进行cache。
-<h3>3.创建context并设置参数</h3>
-Context context = new VelocityContext();<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-创建一个context，并在其中放入一个foo=VV的参数。
-<h3>4.执行渲染</h3>
-当执行tp.merge(context, writer);时，模板遍历其对应的AST树，执行每个节点的渲染过程。如ASTText节点只是简单的将文本写入writer。ASTReference节点需要从context中获取引用的参数foo的值VV，将$foo替换，并写入到writer中。Velocity的AST中有多种节点，如ASTIdentitor等，有些需要反射机制处理。当整个AST遍历结束，也就意味着模板渲染结束，渲染的结果位于writer流中。
-<h2>三、关于AST解析</h2>
-Velocity作为模板语言，其核心在与模板文件的解析，构建AST。Velocity的解析器是通过JavaCC构建的，JavaCC（Java Complier Complier）是一个用于生成解析器的工具，可以根据语法定义（.jj文件）生成用于校验一份文本是否符合该语法定义的java代码。JJTree是JavaCC中提供的一种根据语法定义（.jjt文件）生成构建符合该语法定义的文本的语法树的java代码的工具。<br />
-Velocity源码包中提供了用于构建velocity语法解析的的jjt文件，位于src/parser/Parser.jjt。可以自己手动从源码构建Velocity的解析器。步骤如下：<br />
-1.下载安装JavaCC，到http://javacc.java.net/下载即可，velocity的解析器需要3.2版本以上。下载后解压即可。<br />
-2.使用JJTree生成节点定义：<br />
-$ javacc-5.0/bin/jjtree Parser.jjt<br />
-这一过程中会生成节点定义的Java文件和Parser.jj语法定义文件<br />
-3.使用JavaCC生成解析器<br />
-$ javacc-5.0/bin/javacc Parser.jj<br />
-最终会生成Parser.java解析器和个节点定义。
-<h2>参考资料</h2>
-《Velocity Developer Guide》<a href="http://velocity.apache.org/engine/devel/developer-guide.html">http://velocity.apache.org/engine/devel/developer-guide.html</a>
-《JavaCC》<a href="http://javacc.java.net/">http://javacc.java.net/</a>
-《Velocity源码分析》<a href="http://www.khotyn.com/2011/07/22/velocity_sourcecode/">http://www.khotyn.com/2011/07/22/velocity_sourcecode/</a>
-《Velocity的一些优化记录》<a href="http://agapple.iteye.com/blog/1051724">http://agapple.iteye.com/blog/1051724</a></p>
+<p>程序设计要解决的是讲现实世界中的问题描述转化为计算机可识别的计算机语言（二进制码），因此编程语言必须为这一转化过程提供有效的抽像机制。现有编程语言提供的抽象机制侧重各有不同，在C，C++，JAVA等通用语言中更关注语言的基本语义，离实际的问题域描述较远；SQL，CSS等特定领域语言更关注特定问题域问题的抽象，更贴近实际的问题描述。</p>
+
+<p>站在人的角度，语言越是贴近实际问题的描述越是容易理解，对问题的描述也更加准确。但现有的特定领域语言又不具备通用变成语言解决问题的的通用性，因此我们更希望能够在通用语言上进行更高层次的抽象，使其更加贴近具体的问题域。某种程度上讲语言提供的API或者方法库就是对基本问题的更高层次抽象，但离具体的问题域还是太远，有时我们更渴望更加贴近具体问题的语言来解决问题并兼具通用语言的通用性，因此诞生了通用语言的内部DSL。
+<a href="http://www.martinfowler.com/bliki/FluentInterface.html">流畅接口（Fluent Interface）</a>是实现内部DSL的重要手段，<a href="http://en.wikipedia.org/wiki/Fluent_interface">wikipedia上如此描述</a>Fluent Interface：</p>
+
+<pre><code>A fluent interface (as first coined by Eric Evans and Martin Fowler) is an implementation of an object oriented API that aims to provide for more readable code. A fluent interface is normally implemented by using method chaining to relay the instruction context of a subsequent call (but a fluent interface entails more than just method chaining)。
+</code></pre>
+
+<p>方法链（method chain）是实现Fluent Interface的重要手段（注意，method chain!= Fluent Interface!=DSL）。但仅仅有方法链是不足够构建有效的DSL的，除此之外还需要一些且他编程技巧，比如static factory和static import等，具体请参见<a href="http://www.infoq.com/articles/internal-dsls-java">《An Approach to Internal Domain－Specific Languages in Java》</a></p>
 </div>
   
   
@@ -837,9 +607,8 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
 </section>
 <section>
   <h1>关于我</h1>
-  <p>一个非纯种程序员，爱代码爱产品爱旅行爱美女</p>
-  <iframe width="100%" height="550" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=550&fansRow=1&ptype=1&speed=0&skin=2&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
-
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
 </section>
 <section>
   <h1>Recent Posts</h1>
@@ -863,26 +632,6 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
       </li>
     
   </ul>
@@ -919,6 +668,10 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
 
 
 
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
 
   
 </aside>

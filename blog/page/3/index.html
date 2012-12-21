@@ -9,7 +9,11 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="元数据的持久化 HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。 &hellip;">
+  <meta name="description" content="HDFS中DataNode主要负责维护block->stream bytes的映射关系，即实际block数据的存储。
+一个datanode的磁盘上存储目录下实际的文件部署结构如下： data/
+├── blocksBeingWritten
+├── current
+│   ├── VERSION &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -81,7 +85,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a></h1>
     
     
       <p class="meta">
@@ -97,300 +101,186 @@
   
 
 
-<time datetime="2012-10-18T21:51:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:56:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-datanode-structure/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><h2>元数据的持久化</h2>
+  <div class="entry-content"><p>HDFS中DataNode主要负责维护block->stream bytes的映射关系，即实际block数据的存储。
+一个datanode的磁盘上存储目录下实际的文件部署结构如下：</p>
 
-<p>HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。NameNode启动时会从本地磁盘加载FSImage和FSEditLog，并将EditLog中的日志信息合并到FSImage中进行之持久化（该合并过程称为一个检查点：checkpoint），并构建文件系统的元信息。</p>
-
-<p>但是持久化的数据中不包括block<->datanode的映射信息，该信息由每个datanode向NameNode发起blockReport()请求时报告其所拥有的block信息。</p>
-
-<h3>Editlog记录修改日志</h3>
-
-<p>EditLog的持久化文件是一个二进制文件，大体结构如下：</p>
-
-<p><img src="/images/hdfs/EditLogFile.png" alt="EditLogFile" /></p>
-
-<p>EditLog文件开始是一个日志版本号，0.19版本的hdfs中该version为-18。
-随后是每一条操作的事务日志，每条日志的起始为一个操作类型位，随后是该操作的详细信息，不同的操作类型所带的详细信息也不同。加载EditLog是根据layoutVersion和edit_op位采取不同的方式解析后面的详细信息。
-EditLog能够记录如下17中操作：</p>
-
-<p><img src="/images/hdfs/EditLogOp.png" alt="EditLogOp" /></p>
-
-<p>EditLog为每种操作都提供了相应的log方法，当系统中发生文件修改时，会调用相应的log方法记录日志</p>
-
-<h2>元数据加载与恢复</h2>
-
-<p>NameNode启动过程中最终会通过FSImage.loadFSImage()来从fsimage目录中加载最新的fsimage镜像和editslog，并合并构建命名空间。
-代码结构如下：</p>
-
-<pre><code>  boolean loadFSImage() throws IOException {
-    // 根据checkpointtime查找最新的fsimage
-    long latestNameCheckpointTime = Long.MIN_VALUE;
-    long latestEditsCheckpointTime = Long.MIN_VALUE;
-    StorageDirectory latestNameSD = null;
-    StorageDirectory latestEditsSD = null;
-    boolean needToSave = false;
-    isUpgradeFinalized = true;
-    Collection&lt;String&gt; imageDirs = new ArrayList&lt;String&gt;();
-    Collection&lt;String&gt; editsDirs = new ArrayList&lt;String&gt;();
-    for (Iterator&lt;StorageDirectory&gt; it = dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      if (!sd.getVersionFile().exists()) {
-        needToSave |= true;
-        continue; // some of them might have just been formatted
-      }
-      boolean imageExists = false, editsExists = false;
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
-        imageExists = getImageFile(sd, NameNodeFile.IMAGE).exists();
-        imageDirs.add(sd.getRoot().getCanonicalPath());
-      }
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
-        editsExists = getImageFile(sd, NameNodeFile.EDITS).exists();
-        editsDirs.add(sd.getRoot().getCanonicalPath());
-      }
-
-      checkpointTime = readCheckpointTime(sd);
-      if ((checkpointTime != Long.MIN_VALUE) &amp;&amp; 
-          ((checkpointTime != latestNameCheckpointTime) || 
-           (checkpointTime != latestEditsCheckpointTime))) {
-        // Force saving of new image if checkpoint time
-        // is not same in all of the storage directories.
-        needToSave |= true;
-      }
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE) &amp;&amp; 
-         (latestNameCheckpointTime &lt; checkpointTime) &amp;&amp; imageExists) {
-        latestNameCheckpointTime = checkpointTime;
-        latestNameSD = sd;
-      }
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS) &amp;&amp; 
-           (latestEditsCheckpointTime &lt; checkpointTime) &amp;&amp; editsExists) {
-        latestEditsCheckpointTime = checkpointTime;
-        latestEditsSD = sd;
-      }
-      if (checkpointTime &lt;= 0L)
-        needToSave |= true;
-      // set finalized flag
-      isUpgradeFinalized = isUpgradeFinalized &amp;&amp; !sd.getPreviousDir().exists();
-    }
-
-    // 确保至少有一个fsimage和一个edits目录
-    if (latestNameSD == null)
-      throw new IOException("Image file is not found in " + imageDirs);
-    if (latestEditsSD == null)
-      throw new IOException("Edits file is not found in " + editsDirs);
-
-    // 确保获得的fsimage和edits是同一个检查点
-    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime
-        &amp;&amp; latestNameSD != latestEditsSD
-        &amp;&amp; latestNameSD.getStorageDirType() == NameNodeDirType.IMAGE
-        &amp;&amp; latestEditsSD.getStorageDirType() == NameNodeDirType.EDITS) {
-      // This is a rare failure when NN has image-only and edits-only
-      // storage directories, and fails right after saving images,
-      // in some of the storage directories, but before purging edits.
-      // See -NOTE- in saveNamespace().
-      LOG.error("This is a rare failure scenario!!!");
-      LOG.error("Image checkpoint time " + latestNameCheckpointTime +
-          " &gt; edits checkpoint time " + latestEditsCheckpointTime);
-      LOG.error("Name-node will treat the image as the latest state of " +
-          "the namespace. Old edits will be discarded.");
-    } else if (latestNameCheckpointTime != latestEditsCheckpointTime)
-      throw new IOException("Inconsitent storage detected, " +
-          "image and edits checkpoint times do not match. " +
-          "image checkpoint time = " + latestNameCheckpointTime +
-          "edits checkpoint time = " + latestEditsCheckpointTime);
-
-    // 如果上次检查点中断了，则恢复该检查点
-    needToSave |= recoverInterruptedCheckpoint(latestNameSD, latestEditsSD);
-
-    long startTime = FSNamesystem.now();
-    long imageSize = getImageFile(latestNameSD, NameNodeFile.IMAGE).length();
-
-    //
-    // 加载fsimage文件
-    //
-    latestNameSD.read();
-    needToSave |= loadFSImage(getImageFile(latestNameSD, NameNodeFile.IMAGE));
-    LOG.info("Image file of size " + imageSize + " loaded in " 
-        + (FSNamesystem.now() - startTime)/1000 + " seconds.");
-
-    // 加载最新的edits并作用于fsimage上
-    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime)
-      // the image is already current, discard edits
-      needToSave |= true;
-    else // latestNameCheckpointTime == latestEditsCheckpointTime
-      needToSave |= (loadFSEdits(latestEditsSD) &gt; 0);
-
-    return needToSave;
-  }
+<pre><code>data/
+├── blocksBeingWritten
+├── current
+│   ├── VERSION
+│   ├── blk_-1148021215131449924
+│   ├── blk_-1148021215131449924_1001.meta
+│   ├── blk_-8598609183581346893
+│   ├── blk_-8598609183581346893_1002.meta
+│   ├── blk_6693595845022390257
+│   ├── blk_6693595845022390257_1003.meta
+│   └── dncp_block_verification.log.curr
+├── detach
+├── storage
+└── tmp
 </code></pre>
 
-<p>其中FSImage.loadFSImage(File curFile) 代码如下：</p>
+<p>data目录的路径是hdfs-site.xml中配置的dfs.data.dir的路径，表示每个datanode上数据存储的目录</p>
 
-<pre><code>  boolean loadFSImage(File curFile) throws IOException {
-    assert this.getLayoutVersion() &lt; 0 : "Negative layout version is expected.";
-    assert curFile != null : "curFile is null";
+<p>1) blocksBeingWritten：当前正在写入的block，写完之后会将block移至current目录</p>
 
-    FSNamesystem fsNamesys = FSNamesystem.getFSNamesystem();
-    FSDirectory fsDir = fsNamesys.dir;
+<p>2) current：当前已经写入的block文件目录</p>
 
-    //
-    // Load in bits
-    //
-    boolean needToSave = true;
-    DataInputStream in = new DataInputStream(new BufferedInputStream(
-                              new FileInputStream(curFile)));
-    try {
-      /*
-       * Note: Remove any checks for version earlier than 
-       * Storage.LAST_UPGRADABLE_LAYOUT_VERSION since we should never get 
-       * to here with older images.
-       */
+<p>2.1) VERSION为存储的VERSION文件，包括namespaceId，存储Id，存储版本，存储类型，创建时间戳等信息</p>
 
-      /*
-       * TODO we need to change format of the image file
-       * it should not contain version and namespace fields
-       */
-      // 读取imageversion
-      int imgVersion = in.readInt();
-      // 读取namespaceid
-      this.namespaceID = in.readInt();
+<p>2.2）blk-*:文件为实际的block数据文件</p>
 
-      // 读取镜像中的文件数
-      long numFiles;
-      if (imgVersion &lt;= -16) {
-        numFiles = in.readLong();
-      } else {
-        numFiles = in.readInt();
-      }
+<p>2.3）blk-*_xxx.meta: block的元信息文件</p>
 
-      this.layoutVersion = imgVersion;
-      // 读取镜像时间戳
-      if (imgVersion &lt;= -12) {
-        long genstamp = in.readLong();
-        fsNamesys.setGenerationStamp(genstamp); 
-      }
+<p>2.4）dncp_*.log.curr: 当前copy文件</p>
 
-      needToSave = (imgVersion != FSConstants.LAYOUT_VERSION);
+<p>3) detach：copy-on-write使用的目录</p>
 
-      // 读取每个文件的信息
-      short replication = FSNamesystem.getFSNamesystem().getDefaultReplication();
+<p>4) tmp： 临时目录，DataNode启动时会检查 tmp的数据并删除。</p>
 
-      LOG.info("Number of files = " + numFiles);
+<h2>Storage相关</h2>
 
-      byte[][] pathComponents;
-      byte[][] parentPath = ;
-      INodeDirectory parentINode = fsDir.rootDir;
-      for (long i = 0; i &lt; numFiles; i++) {
-        long modificationTime = 0;
-        long atime = 0;
-        long blockSize = 0;
-        //读取文件名(path)
-        pathComponents = readPathComponents(in);
-        //读取副本数
-        replication = in.readShort();
-        //调整副本数，使其不超过系统的最大和最小副本数限制
-        replication = FSEditLog.adjustReplication(replication);
-        //读取文件修改时间
-        modificationTime = in.readLong();
-        if (imgVersion &lt;= -17) {
-        //读取最近访问时间
-          atime = in.readLong();
-        }
-        if (imgVersion &lt;= -8) {
-        //读取block块大小
-          blockSize = in.readLong();
-        }
-        //读取block数
-        int numBlocks = in.readInt();
-        //构建blocks
-        Block blocks[] = null;
+<p>Storage用于描述存储的类型，状态，目录等信息。
+其主要结构如下：
+<img src="/images/hdfs/Storage.png" alt="Storage" /></p>
 
-        // 老版本hdfs中，numBlocks=0表示目录，新版本中numBlocks=-1表示目录
-        if ((-9 &lt;= imgVersion &amp;&amp; numBlocks &gt; 0) ||
-            (imgVersion &lt; -9 &amp;&amp; numBlocks &gt;= 0)) {
-           //构建文件block信息
-          blocks = new Block[numBlocks];
-          for (int j = 0; j &lt; numBlocks; j++) {
-            blocks[j] = new Block();
-            if (-14 &lt; imgVersion) {
-              blocks[j].set(in.readLong(), in.readLong(), 
-                            Block.GRANDFATHER_GENERATION_STAMP);
-            } else {
-              // 读取block信息
-              blocks[j].readFields(in);
-            }
-          }
-        }
-        // 老版本inode中不维护blocksize，如果存在多个block，blocksize选取第一个block的大小，如果只有一个block，则选该block大小和默认大小中较大的，如果没有block，则选用默认大小
-        if (-8 &lt;= imgVersion &amp;&amp; blockSize == 0) {
-          if (numBlocks &gt; 1) {
-            blockSize = blocks[0].getNumBytes();
-          } else {
-            long first = ((numBlocks == 1) ? blocks[0].getNumBytes(): 0);
-            blockSize = Math.max(fsNamesys.getDefaultBlockSize(), first);
-          }
-        }
+<h3>StorageInfo</h3>
 
-        // 如果是目录（blocks=null），读取该目录的配额
-        long nsQuota = -1L;
-        if (imgVersion &lt;= -16 &amp;&amp; blocks == null) {
-          nsQuota = in.readLong();
-        }
-        long dsQuota = -1L;
-        if (imgVersion &lt;= -18 &amp;&amp; blocks == null) {
-          dsQuota = in.readLong();
-        }
+<p>StorageInfo表示一个存储的通用信息，包括：</p>
 
-        //获取权限信息
-        PermissionStatus permissions = fsNamesys.getUpgradePermission();
-        if (imgVersion &lt;= -11) {
-          permissions = PermissionStatus.read(in);
-        }
+<ol>
+<li>layoutVersion： 存储文件中的版本号</li>
+<li>namespaceId： 存储所属的命名空间ID</li>
+<li>ctime： 该存储创建的时间戳</li>
+</ol>
 
-        //如果该path为root，且设置了配额信息，则更新根目录的配额
-        if (isRoot(pathComponents)) { // it is the root
-          // update the root's attributes
-          if (nsQuota != -1 || dsQuota != -1) {
-            fsDir.rootDir.setQuota(nsQuota, dsQuota);
-          }
-          fsDir.rootDir.setModificationTime(modificationTime);
-          fsDir.rootDir.setPermissionStatus(permissions);
-          continue;
-        }
-        //如果该inode的parent与当前路径不一至，获取新的parentPaht
-        if(!isParent(pathComponents, parentPath)) {
-          parentINode = null;
-          parentPath = getParent(pathComponents);
-        }
-        // 将该inode添加到inode树中
-        parentINode = fsDir.addToParent(pathComponents, parentINode, permissions,
-                                        blocks, replication, modificationTime, 
-                                        atime, nsQuota, dsQuota, blockSize);
-      }
 
-      // 加载datanode信息，imgVersion&lt;-12的版本事实上啥都不做，datanode信息已经不保存在fsimage中
-      this.loadDatanodes(imgVersion, in);
+<h3>Storage</h3>
 
-      // 加载正在构建中的文件
-      this.loadFilesUnderConstruction(imgVersion, in, fsNamesys);
+<p>存储信息的抽象类，管理一个server（NameNode或DataNode）上的存储目录。</p>
 
-    } finally {
-      in.close();
-    }
+<p>Storage有两个关键属性：</p>
 
-    return needToSave;
-  }
-</code></pre>
+<ol>
+<li>storageType: 表示该存储所属的节点类型（NameNode或是DataNode）</li>
+<li>storageDirs: 该存储上存储目录的列表(ArrayList<StorageDirectory>),StorageDirectory表示一个存储目录。</li>
+</ol>
 
-<p>其核心就是加载并解析fsimage文件，构建命名空间，fsimage文件的结构参见《NameNode中主要数据结构》</p>
+
+<h4>StorageDirectory</h4>
+
+<p>表示一个存储目录，有三个属性：</p>
+
+<ol>
+<li>root：根目录</li>
+<li>lock：当前目录的文件锁</li>
+<li>dirType：目录类型</li>
+</ol>
+
+
+<h4>StorageSate</h4>
+
+<p>表示存储的状态：</p>
+
+<ol>
+<li>NON_EXISTENT: 目录不存在</li>
+<li>NOT_FORMATTED: 目录未格式化</li>
+<li>COMPLETE_UPGRADE: 升级完成</li>
+<li>RECOVER_UPGRADE: 撤销升级</li>
+<li>COMPLETE_FINALIZE: 提交完成</li>
+<li>COMPLETE_ROLLBACK: 回滚完成</li>
+<li>RECOVER_ROLLBACK: 撤销回滚</li>
+<li>COMPLETE_CHECKPOINT: checkpoint完成</li>
+<li>RECOVER_CHECKPOINT: 撤销checkpoint</li>
+<li>NORMAL: 正常</li>
+</ol>
+
+
+<h3>DataStorage</h3>
+
+<p>DataStorage是DataNode上使用的存储类，指定了datanode上各类存储文件的前缀：</p>
+
+<ol>
+<li>subdir：子目录前缀</li>
+<li>blk_：块文件前缀</li>
+<li>dncp_：拷贝文件前缀</li>
+</ol>
+
+
+<h2>DatanodeBlockInfo</h2>
+
+<p>DataNode使用DatanodeBlockInfo管理block和其元数据之间的映射关系，结构如下：</p>
+
+<p><img src="/images/hdfs/DatanodeBlockInfo.png" alt="DatanodeBlockInfo" /></p>
+
+<ol>
+<li>volmun：block所属的卷</li>
+<li>file：block文件</li>
+<li>detached：是否完成copy-on-write</li>
+</ol>
+
+
+<h2>FSDataSet相关</h2>
+
+<p>DataNode通过FSDataSet来完成数据的存储。FSDataset类结构如下：
+<img src="/images/hdfs/FSDataset.png" alt="FSDataset" /></p>
+
+<h3>FSVolume</h3>
+
+<p>FSVolumne用于进行block文件所属的卷管理，统计存储目录额使用情况，其中：</p>
+
+<ol>
+<li>currentDir： 当前数据目录, 对应data/current目录</li>
+<li>dataDir： 数据目录</li>
+<li>tmpDir： 临时目录, 对应data/tmp目录</li>
+<li>dtacheDir: 用于实现写时复制的文件，对应data/detach目录</li>
+<li>usage: 目录使用的空间</li>
+<li>dfsusage: dfs使用的空间</li>
+<li>reseved: 空余空间</li>
+<li>blocksBeingWritten: 正在写入的block，对应data/blocksBeingWritten目录</li>
+</ol>
+
+
+<h3>FSVolumeSet</h3>
+
+<p>FSVolumeSet是FSVolume的集合，提供了所有容量，剩余空间等方法。其中getNextVolume中提供了round-robin策略选取下一个volume，从而实现简单的IO负载均衡，提高IO处理能力。</p>
+
+<h3>FSDataSet</h3>
+
+<p>FSDataSet是在FSVolumeSet之上进行封装实现FSDatasetInterface借口，向外提供块查询和操作方法。</p>
+
+<p>其中有几个主要属性:</p>
+
+<ol>
+<li>volumes: 卷集合（FSVolumeSet）</li>
+<li>ongoingCreates: 当前活动的文件</li>
+<li>maxBlocksPerDir: 每个目录下最多能存放发block数，可通过dfs.datanode.numblocks配置</li>
+<li>volumeMap：块与块文件的映射信息(HashMap&lt;Block, DatanodeBlockInfo>)，当前集合中所有的块信息均维护在该map中</li>
+</ol>
+
+
+<h3>FSDir</h3>
+
+<p>用于构建block块在datanode磁盘上的层次结构，默认情况下每个目录下最多64个子目录，最多能存储64个块。目录初始化时会递归扫描目录下的所有子目录和文件，构建一个树形结构。</p>
+
+<p>addBlock时，首先尝试在当前目录新加块，如果当前目录没有空闲空间，则尝试在子目录中添加，如果没有子目录，则新建一个子目录。</p>
+
+<h3>BlockAndFile</h3>
+
+<p>Block与其文件名的封装</p>
+
+<h3>ActiveFile</h3>
+
+<p>表示一个当前活动中的文件</p>
 </div>
   
   
@@ -403,7 +293,7 @@ EditLog能够记录如下17中操作：</p>
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a></h1>
     
     
       <p class="meta">
@@ -419,789 +309,367 @@ EditLog能够记录如下17中操作：</p>
   
 
 
-<time datetime="2012-10-18T21:46:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:55:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/10/18/hdfs-namenode-block-management/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>HDFS通过一个BlockManager管理集群中所有的block信息</p>
-
-<h2>主要数据结构</h2>
-
-<h3>Block</h3>
-
-<p>Block是HDFS读写的基本单元，集群中每个block通过一个long id来唯一标示。</p>
-
-<h3>BlockInfo</h3>
-
-<p>维护一个block的元信息，主要通过</p>
-
-<h3>BlockMap</h3>
-
-<p>通过一个GSet&lt;Block, BlockInfo>维护一个block与其元数据信息的映射关系，元信息包括其所属的BlockCollection和存储该block的datanode节点，每个BlockMap有个初始容量capacity</p>
-
-<h3>BlockCollection</h3>
-
-<h2>Block和副本管理</h2>
-
-<h3>Block和副本状态</h3>
-
-<p>Block有如下状态：</p>
-
-<ol>
-<li>committed：所有的副本已经被创建且更新至最新</li>
-<li>Under construction: 需要创建一个或多个副本</li>
-<li>To be deleted: 所有副本需要被删除。发生在文件被删除或者block被重写</li>
-<li>Over-replicated: 过多的副本存在。此时副本中的一个需要设置为无效并删除。</li>
-</ol>
-
-
-<p>副本有如下状态：</p>
-
-<ol>
-<li>Current: 正常状态，该副本正确反应block内容</li>
-<li>Conrrupt: 某个副本损坏。副本损坏是由client报告给namenode的。client通过checksum检查副本是否损坏，如果损坏了，通过BlockManager.invalidateBlock()处理</li>
-<li>On a faild DataNode: DataNode Heartbeat发现有DataNode失效时，即将在改datanode上创建的副本将被删除</li>
-<li>Out of Date: 当Datanode失效，且副本所属的block发生更新后，Datanode恢复正常。过期的block将通过blockreport报告给namenode，并将其删除</li>
-<li>Under construction: 副本尚未被写入并在Datanode上被验证。在NameNode看来，只有当收到blockReport并且报告中timestamp正确时，猜人物副本写入正常。</li>
-</ol>
-
-
-<h2>Block分配</h2>
-
-<h2>Block查询</h2>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-lease-management/">HDFS源码学习（6）——租约管理（lease Management)</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:44:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-lease-management/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-secondary-namenode/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>LeaseManagement是HDFS中的一个同步机制，用于保证同一时刻只有一个client对一个文件进行写或创建操作。如当新建一个文件f时，client向NameNode发起一个create请求，那么leaseManager会想该client分配一个f文件的lease。client凭借该lease完成文件的创建操作。此时其他client无法获得f的当client长时间（默认为超过1min）不进行操作时，发放的lease将被收回。</p>
+  <div class="entry-content"><h2>概述</h2>
 
-<p>LeaseManager主要完成两部分工作：</p>
+<p>SecondaryNameNode在HDFS中的主要作用是帮助master NameNode周期性执行checkpoint操作。</p>
+
+<p>NameNode将运行过程中对文件的修改记录保存在EditLog中。当NameNode重新启动时会从FSImage中加载命名空间镜像，并将EditLog中的内容合并到FSImage中，将合并后的FSImage写入到磁盘，同时清空EditLog，共后续使用。但如果NameNode长时间不重启，随时间增长，EditLog将会越来越大（每次文件操作都要记录），大量占用NameNode磁盘空间，且会导致下一次重启花费大量时间在合并Editlog上。</p>
+
+<p>为了解决这个问题，SecondaryNameNode会定期从NameNode下载最新的FSImage和EditLog，合并editLog日志到FSImage，将合并后的FSImage上传到NameNode，并清空NameNode上的Editlog，将EditLog日志大小控制在一定限度下。</p>
+
+<h2>代码解析</h2>
+
+<p>SecondaryNameNode代码结构如下：</p>
+
+<p><img src="/images/hdfs/SecondaryNameNode.png" alt="SecondaryNameNode" /></p>
+
+<p>SecondaryNameNode本身就是实现了Runnable接口，即一个可执行线程。</p>
+
+<p>checkpointImage表示当前SecondNameNode上的FsImage镜像，该类CheckpointStorage扩展自FSImage。</p>
+
+<p>其中有两个主要的可配置属性：</p>
 
 <ol>
-<li>文件create，write，complete操作时，创建lease、更新时间戳、回收lease</li>
-<li>一个后台线程定期检查是否有过期的lease</li>
+<li>checkpointPeriod: 两次检查点的间隔时间，可通过fs.checkpoint.period配置</li>
+<li>checkpointSize: EditLog文件的最大值，当EditLog超过这个最大值时会强制之行checkpoint，可通过fs.checkpoint.size配置，默认是64M</li>
 </ol>
 
 
-<p>LeaseManager的代码结构如下</p>
+<h3>run()</h3>
 
-<p><img src="/images/hdfs/LeaseManager.png" alt="LeaseManager" /></p>
+<p>run方法代码如下：</p>
 
-<p>其中Lease表示一个租约，包括一个client(holder)所拥有的所有文件锁(paths)。</p>
+<pre><code>  public void run() {
 
-<p>Monitor是检查是否有过期租约的线程。</p>
-
-<p>LeaseManager中有几个主要数据结构：</p>
-
-<ol>
-<li>leases（TreeMap&lt;String, Lease>）：维护holder -> leased的映射集合</li>
-<li>sortedLeases (TreeSet<Lease>): lease集合</li>
-<li>sortedLeaseByPath(TreeMap&lt;String, Lease>): 维护paths->lease的映射集合</li>
-</ol>
-
-
-<h2>一、创建lease</h2>
-
-<p>当client向NameNode发起create操作时，NameNode.create()调用FSNameSystem.startFile()->FSNameSystem.startFileInternal()，该方法最终会调用leaseManager.addLease(cons.clientName, src)来创建lease。</p>
-
-<p>LeaseManager.addLease()方法如下：</p>
-
-<pre><code>  synchronized Lease addLease(String holder, String src
-      ) throws IOException {
-    Lease lease = getLease(holder);
-    if (lease == null) {
-      lease = new Lease(holder);
-      leases.put(holder, lease);
-      sortedLeases.add(lease);
-    } else {
-      renewLease(lease);
-    }
-    sortedLeasesByPath.put(src, lease);
-    lease.paths.add(src);
-    return lease;
-  }
-</code></pre>
-
-<p>代码结构简单：判断该client是否有lease，没有则新建一个lease，并将起加到leases集合中。否则更新lease。更新sortedLeasesByPath，将filepath加入到该lease的paths集合中</p>
-
-<h2>二、更新时间戳</h2>
-
-<p>针对已经存在的lease，通过LeasemManager.renewLease()来更新该lease的时间戳。代码如下：</p>
-
-<pre><code>  synchronized void renewLease(Lease lease) {
-    if (lease != null) {
-      sortedLeases.remove(lease);
-      lease.renew();
-      sortedLeases.add(lease);
-    }
-  }
-</code></pre>
-
-<p>lease.renew()代码如下：</p>
-
-<pre><code>/** Only LeaseManager object can renew a lease */
-private void renew() {
-  this.lastUpdate = FSNamesystem.now();
-}
-</code></pre>
-
-<h2>三、compelete时回收lease</h2>
-
-<p>当client调用NameNode.complete()方法时，最终会调用FSNameSystem.completeFileInternal()方法。其中执行finalizeINodeFileUnderConstruction()是调用leaseManager.removeLease()释放lease。</p>
-
-<p>代码结构如下：</p>
-
-<pre><code>  synchronized void removeLease(String holder, String src) {
-    Lease lease = getLease(holder);
-    if (lease != null) {
-      removeLease(lease, src);
-    }
-  }
-</code></pre>
-
-<p> removeLease(lease, src);代码如下：</p>
-
-<pre><code>  /**
-   * Remove the specified lease and src.
-   */
-  synchronized void removeLease(Lease lease, String src) {
-    sortedLeasesByPath.remove(src);
-    if (!lease.removePath(src)) {
-      LOG.error(src + " not found in lease.paths (=" + lease.paths + ")");
+    //
+    // Poll the Namenode (once every 5 minutes) to find the size of the
+    // pending edit log.
+    //
+    long period = 5 * 60;              // 5 minutes
+    long lastCheckpointTime = 0;
+    if (checkpointPeriod &lt; period) {
+      period = checkpointPeriod;
     }
 
-    if (!lease.hasPath()) {
-      leases.remove(lease.holder);
-      if (!sortedLeases.remove(lease)) {
-        LOG.error(lease + " not found in sortedLeases");
-      }
-    }
-  }
-</code></pre>
-
-<h2>四、后台线程回收过期lease</h2>
-
-<p>Monitor回收lease线程代码结构如下：</p>
-
-<pre><code> class Monitor implements Runnable {
-    final String name = getClass().getSimpleName();
-
-    /** Check leases periodically. */
-    public void run() {
-      for(; fsnamesystem.isRunning(); ) {
-        fsnamesystem.writeLock();
-        try {
-          checkLeases();
-        } finally {
-          fsnamesystem.writeUnlock();
-        }
-
-        try {
-          Thread.sleep(2000);
-        } catch(InterruptedException ie) {
-          if (LOG.isDebugEnabled()) {
-            LOG.debug(name + " is interrupted", ie);
-          }
-        }
-      }
-    }
-  }
-</code></pre>
-
-<p>代码结构简单，每个2s周期性执行checkLeases()。</p>
-
-<h3>4.1 checkLeases()</h3>
-
-<pre><code>  /** Check the leases beginning from the oldest. */
-  synchronized void checkLeases() {
-    for(; sortedLeases.size() &gt; 0; ) {
-      final Lease oldest = sortedLeases.first();
-      if (!oldest.expiredHardLimit()) {
-        return;
-      }
-
-      LOG.info("Lease " + oldest + " has expired hard limit");
-
-      final List&lt;String&gt; removing = new ArrayList&lt;String&gt;();
-      // need to create a copy of the oldest lease paths, becuase 
-      // internalReleaseLease() removes paths corresponding to empty files,
-      // i.e. it needs to modify the collection being iterated over
-      // causing ConcurrentModificationException
-      String[] leasePaths = new String[oldest.getPaths().size()];
-      oldest.getPaths().toArray(leasePaths);
-      for(String p : leasePaths) {
-        try {
-          fsnamesystem.internalReleaseLeaseOne(oldest, p);
-        } catch (IOException e) {
-          LOG.error("Cannot release the path "+p+" in the lease "+oldest, e);
-          removing.add(p);
-        }
-      }
-
-      for(String p : removing) {
-        removeLease(oldest, p);
-      }
-    }
-  }
-</code></pre>
-
-<h2>Lease Recovery ——租约回收</h2>
-
-<h3>lease recovery时机</h3>
-
-<p>lease发放之后，在不用时会被回收，回收的产经除上述Monitor线程检测lease过期是回收外，还有：</p>
-
-<ol>
-<li>NameNode收到DataNode的Sync block command时</li>
-<li>DFSClient主动关闭一个流时</li>
-<li>创建文件时，如果该DFSClient的lease超过soft limit时</li>
-</ol>
-
-
-<h3>lease recovery 算法</h3>
-
-<p>1) NameNode查找lease信息</p>
-
-<p>2) 对于lease中的每个文件f，令b为f的最后一个block，作如下操作：</p>
-
-<p>2.1) 获取b所在的datanode列表</p>
-
-<p>2.2) 令其中一个datanode作为primary datanode p</p>
-
-<p>2.3) p 从NameNode获取最新的时间戳</p>
-
-<p>2.4) p 从每个DataNode获取block信息</p>
-
-<p>2.5) p 计算最小的block长度</p>
-
-<p>2.6) p 用最小的block长度和最新的时间戳来更新具有有效时间戳的datanode</p>
-
-<p>2.7) p 通知NameNode更新结果</p>
-
-<p>2.8) NameNode更新BlockInfo</p>
-
-<p>2.9) NameNode从lease中删除f，如果此时该lease中所有文件都已被删除，将删除该lease</p>
-
-<p>2.10) Name提交修改的EditLog</p>
-
-<h2>Client续约 —— DFSClient.LeaseChecker</h2>
-
-<p>在NameNode上的LeaseManager.Monitor线程负责检查过期的lease，那么client为了防止尚在使用的lease过期，需要定期想NameNode发起续约请求。该任务有DFSClient中的LeaseChecker完成。</p>
-
-<p>LeaseChecker结构如下：</p>
-
-<p><img src="/images/hdfs/LeaseChecker.png" alt="LeaseChecker" /></p>
-
-<p>其中pendingCreates是一个TreeMap&lt;String, OutputStream>用来维护src->当前正在写入的文件的DFSOutputStream的映射。</p>
-
-<p>其核心是周期性（每个1s）调用run()方法来对租约过半的lease进行续约</p>
-
-<pre><code>public void run() {
-  long lastRenewed = 0;
-  while (clientRunning &amp;&amp; !Thread.interrupted()) {
-    //当租约周期过半时需要进行续约
-    if (System.currentTimeMillis() - lastRenewed &gt; (LEASE_SOFTLIMIT_PERIOD / 2)) {
+    while (shouldRun) {
       try {
-        renew();
-        lastRenewed = System.currentTimeMillis();
-      } catch (IOException ie) {
-        LOG.warn("Problem renewing lease for " + clientName, ie);
+        Thread.sleep(1000 * period);
+      } catch (InterruptedException ie) {
+        // do nothing
       }
-    }
-
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException ie) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(this + " is interrupted.", ie);
+      if (!shouldRun) {
+        break;
       }
-      return;
-    }
-  }
-}
-</code></pre>
+      try {
+        long now = System.currentTimeMillis();
 
-<p>其中renew()方法如下：</p>
-
-<pre><code>    private void renew() throws IOException {
-      synchronized(this) {
-        //如果当前创建中的文件列表为空，则不需要续约
-        if (pendingCreates.isEmpty()) {
-          return;
+        long size = namenode.getEditLogSize();
+        if (size &gt;= checkpointSize || 
+            now &gt;= lastCheckpointTime + 1000 * checkpointPeriod) {
+          doCheckpoint();
+          lastCheckpointTime = now;
         }
-      }
-      //向NameNode发起续约请求
-      namenode.renewLease(clientName);
-    }
-</code></pre>
-
-<p>NameNode接收到renewLease请求后，调用FSNameSystem.renewLease()并最终调用LeaseManager.renewLease()完成续约。</p>
-</div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:43:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-replica-management/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>HDFS中的副本管理通过FSNameSystem.java中的ReplicationMonitor线程来完成。该线程代码结构较为简单。</p>
-
-<pre><code>  class ReplicationMonitor implements Runnable {
-    static final int INVALIDATE_WORK_PCT_PER_ITERATION = 32;
-    static final float REPLICATION_WORK_MULTIPLIER_PER_ITERATION = 2;
-    public void run() {
-      while (fsRunning) {
-        try {
-          computeDatanodeWork();
-          processPendingReplications();
-          Thread.sleep(replicationRecheckInterval);
-        } catch (InterruptedException ie) {
-          LOG.warn("ReplicationMonitor thread received InterruptedException.", ie);
-          break;
-        } catch (IOException ie) {
-          LOG.warn("ReplicationMonitor thread received exception. " + ie +  " " +
-              StringUtils.stringifyException(ie));
-        } catch (Throwable t) {
-          LOG.fatal("ReplicationMonitor thread received Runtime exception. " + t + " " +
-              StringUtils.stringifyException(t));
-          Runtime.getRuntime().exit(-1);
-        }
+      } catch (IOException e) {
+        LOG.error("Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+      } catch (Throwable e) {
+        LOG.error("Throwable Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+        Runtime.getRuntime().exit(-1);
       }
     }
   }
 </code></pre>
 
-<p>该线程只是周期性调用computeDatanodeWork()和processPendingReplications()。</p>
+<p>其核心就是周期性（默认每个5分钟)调用doCheckpoint().</p>
 
-<h2>一、computeDatanodeWork()</h2>
+<h3>doCheckpoint()</h3>
 
-<pre><code>  public int computeDatanodeWork() throws IOException {
-    int workFound = 0;
-    int blocksToProcess = 0;
-    int nodesToProcess = 0;
-    // blocks should not be replicated or removed if safe mode is on
-    if (isInSafeMode())
-      return workFound;
-    //计算需要备份的block数和节点数
-    synchronized(heartbeats) {
-      blocksToProcess = (int)(heartbeats.size() 
-          * ReplicationMonitor.REPLICATION_WORK_MULTIPLIER_PER_ITERATION);
-      nodesToProcess = (int)Math.ceil((double)heartbeats.size() 
-          * ReplicationMonitor.INVALIDATE_WORK_PCT_PER_ITERATION / 100);
+<pre><code>  void doCheckpoint() throws IOException {
+
+    // 准备合并所需的空间
+    startCheckpoint();
+
+    // 通知NameNode将修改信息记录到新的editlog中，并获取一个用于上传合并后的fsimage的token
+    CheckpointSignature sig = (CheckpointSignature)namenode.rollEditLog();
+
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(0)) {
+      throw new IOException("Simulating error0 " +
+                            "after creating edits.new");
     }
-    //执行备份
-    workFound = computeReplicationWork(blocksToProcess); 
+    //从NameNode获取fsimage和editslog
+    downloadCheckpointFiles(sig);   // Fetch fsimage and edits
+    //合并editlog到fsimage
+    doMerge(sig);                   // Do the merge
 
-    // Update FSNamesystemMetrics counters
-    pendingReplicationBlocksCount = pendingReplications.size();
-    underReplicatedBlocksCount = neededReplications.size();
-    scheduledReplicationBlocksCount = workFound;
-    corruptReplicaBlocksCount = corruptReplicas.size();
+    //上传合并后的fsimage到NameNode
+    putFSImage(sig);
 
-    //HADOOP-5549 : Fix bug of schedule both replication and deletion work in one iteration
-    workFound += computeInvalidateWork(nodesToProcess);
-    return workFound;
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(1)) {
+      throw new IOException("Simulating error1 " +
+                            "after uploading new image to NameNode");
+    }
+    // 通知NameNode使用该fsimage作为最新的镜像
+    namenode.rollFsImage();
+    checkpointImage.endCheckpoint();
+
+    LOG.warn("Checkpoint done. New Image Size: " 
+              + checkpointImage.getFsImageName().length());
   }
 </code></pre>
 
-<h3>1.1. computeReplicationWork()</h3>
+<h4>1. startCheckpoint()</h4>
 
-<pre><code>  private int computeReplicationWork(
-                                  int blocksToProcess) throws IOException {
-    // stall only useful for unit tests (see TestFileAppend4.java)
-    if (stallReplicationWork)  {
-      return 0;
-    }
+<p>该方法主要用于准备合并所需的磁盘空间，代码如下：</p>
 
-    // 选取需要备份的block
-    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
-      chooseUnderReplicatedBlocks(blocksToProcess);
-
-    // 执行备份
-    return computeReplicationWorkForBlocks(blocksToReplicate);
+<pre><code>  private void startCheckpoint() throws IOException {
+    checkpointImage.unlockAll();
+    // 关闭当前Editlog
+    checkpointImage.getEditLog().close();
+    // 检查当前checkpoints目录，如果不存在则创建一个新目录，如果目录中存在异常，则尝试恢复该目录
+    checkpointImage.recoverCreate(checkpointDirs, checkpointEditsDirs);
+    // 为新的checkpoint准备目录空间，将当前的目录空间更名为lastcheckpoint.™p，新建一个current目录 
+    checkpointImage.startCheckpoint();
   }
 </code></pre>
 
-<h3>1.1.1 选取需要备份的block —— chooseUnderReplicatedBlocks()</h3>
+<h4>2. namenode.rollEditLog();</h4>
 
-<pre><code>  List&lt;List&lt;Block&gt;&gt; chooseUnderReplicatedBlocks(int blocksToProcess) {
-    // 初始化返回值数据结构，返回值是一个二维优先级列表
-    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
-      new ArrayList&lt;List&lt;Block&gt;&gt;(UnderReplicatedBlocks.LEVEL);
-    for (int i = 0; i &lt; UnderReplicatedBlocks.LEVEL; i++) {
-      blocksToReplicate.add(new ArrayList&lt;Block&gt;());
-    }
-
-    writeLock();
-    try {
-      synchronized (neededReplications) {
-        if (neededReplications.size() == 0) {
-          return blocksToReplicate;
-        }
-
-        for (int priority = 0; priority&lt;UnderReplicatedBlocks.LEVEL; priority++) {
-        //遍历所有需要备份的block列表（UnderReplicatedBlocks结构）
-        BlockIterator neededReplicationsIterator = neededReplications.iterator(priority);
-        int numBlocks = neededReplications.size(priority);
-        //检查该优先级列表中是否已经开始备份（relIndex数组中保存的是当前每个优先级列表中已备份的block索引）
-        if (replIndex[priority] &gt; numBlocks) {
-          replIndex[priority] = 0;
-        }
-        // skip to the first unprocessed block, which is at replIndex
-        for (int i = 0; i &lt; replIndex[priority] &amp;&amp; neededReplicationsIterator.hasNext(); i++) {
-          neededReplicationsIterator.next();
-        }
-        // 计算该优先级下需要备份的block数，低优先级的block备份数不超过总配额的20%
-        int blocksToProcessIter = getQuotaForThisPriority(blocksToProcess,
-            numBlocks, neededReplications.getSize(priority+1));
-        blocksToProcess -= blocksToProcessIter;
-
-        //便利改优先级列表将该优先级下的block添加到返回值中
-        for (int blkCnt = 0; blkCnt &lt; blocksToProcessIter; blkCnt++, replIndex[priority]++) {
-          if (!neededReplicationsIterator.hasNext()) {
-            // start from the beginning
-            replIndex[priority] = 0;
-            neededReplicationsIterator = neededReplications.iterator(priority);
-            assert neededReplicationsIterator.hasNext() :
-              "neededReplications should not be empty.";
-          }
-
-          Block block = neededReplicationsIterator.next();
-          blocksToReplicate.get(priority).add(block);
-        } // end for
-        }
-      } // end try
-      return blocksToReplicate;
-    } finally {
-      writeUnlock();
-    }
-  }
-</code></pre>
-
-<h3>1.1.2. 备份blocks —— computeReplicationWorkForBlocks（）</h3>
-
-<pre><code>  int computeReplicationWorkForBlocks(List&lt;List&lt;Block&gt;&gt; blocksToReplicate) {
-    int requiredReplication, numEffectiveReplicas, priority;
-    List&lt;DatanodeDescriptor&gt; containingNodes;
-    DatanodeDescriptor srcNode;
-    INodeFile fileINode = null;
-
-    int scheduledWork = 0;
-    List&lt;ReplicationWork&gt; work = new LinkedList&lt;ReplicationWork&gt;();
-
-    writeLock();
-    try {
-      synchronized (neededReplications) {
-        for (priority = 0; priority &lt; blocksToReplicate.size(); priority++) {
-          for (Block block : blocksToReplicate.get(priority)) {
-            // block should belong to a file
-            //获取该block所属的INode
-            fileINode = blocksMap.getINode(block);
-            // abandoned block not belong to a file
-            if (fileINode == null ) {
-              neededReplications.remove(block, priority); // remove from neededReplications
-              replIndex[priority]--;
-              continue;
-            }
-            //获取该文件需要的副本数
-            requiredReplication = fileINode.getReplication();
-
-            // 获取一个源datanode节点
-            containingNodes = new ArrayList&lt;DatanodeDescriptor&gt;();
-            NumberReplicas numReplicas = new NumberReplicas();
-            srcNode = chooseSourceDatanode(block, containingNodes, numReplicas);
-            if (srcNode == null) // block can not be replicated from any node
-            {
-              continue;
-            }
-
-          // 检查正在备份中的副本数是否满足备份需要，满足则不需要再备份
-            numEffectiveReplicas = numReplicas.liveReplicas() +
-              pendingReplications.getNumReplicas(block);
-            if (numEffectiveReplicas &gt;= requiredReplication) {
-              neededReplications.remove(block, priority); // remove from neededReplications
-              replIndex[priority]--;
-              continue;
-            }
-            //添加到待备份列表中
-            work.add(new ReplicationWork(block, fileINode, requiredReplication
-                - numEffectiveReplicas, srcNode, containingNodes, priority));
-          }
-        }
-      }
-    } finally {
-      writeUnlock();
-    }
-
-    // 选取一个备份目标datanode
-    for(ReplicationWork rw : work){
-      DatanodeDescriptor targets[] = chooseTarget(rw);
-      rw.targets = targets;
-    }
-
-    writeLock();
-    try {
-      for(ReplicationWork rw : work){
-        DatanodeDescriptor[] targets = rw.targets;
-        if(targets == null || targets.length == 0){
-          rw.targets = null;
-          continue;
-        }
-        synchronized (neededReplications) {
-          Block block = rw.block;
-          priority = rw.priority;
-          // 重新检查INode和备份数，因为全局锁已经释放
-          // block should belong to a file
-          fileINode = blocksMap.getINode(block);
-          // abandoned block not belong to a file
-          if (fileINode == null ) {
-            neededReplications.remove(block, priority); // remove from neededReplications
-            rw.targets = null;
-            replIndex[priority]--;
-            continue;
-          }
-          requiredReplication = fileINode.getReplication();
-
-
-          NumberReplicas numReplicas = countNodes(block);
-          numEffectiveReplicas = numReplicas.liveReplicas() +
-            pendingReplications.getNumReplicas(block);
-          if (numEffectiveReplicas &gt;= requiredReplication) {
-            neededReplications.remove(block, priority); // remove from neededReplications
-            replIndex[priority]--;
-            rw.targets = null;
-            continue;
-          }
-
-          // 将block添加到datanode的需要备份的block列表中
-          rw.srcNode.addBlockToBeReplicated(block, targets);
-
-          scheduledWork++;
-
-          //设置namenode的block调度计数器
-          for (DatanodeDescriptor dn : targets) {
-            dn.incBlocksScheduled();
-          }
-
-          // Move the block-replication into a "pending" state.
-          // The reason we use 'pending' is so we can retry
-          // replications that fail after an appropriate amount of time.
-          //将该block移至pendingReplications（PendingReplicationBlocks）中，表示该block的状态为'pending'(正在备份中)。'pending'表示如果失败了还可以重试
-          pendingReplications.add(block, targets.length);
-          NameNode.stateChangeLog.debug(
-            "BLOCK* block " + block
-              + " is moved from neededReplications to pendingReplications");
-
-          // remove from neededReplications
-          //从 neededReplication列表中移除该block
-          if (numEffectiveReplicas + targets.length &gt;= requiredReplication) {
-            neededReplications.remove(block, priority); // remove from neededReplications
-            replIndex[priority]--;
-          }
-        }
-      }
-    } finally {
-      writeUnlock();
-    }
-
-    // 更新 metrics
-    updateReplicationMetrics(work);
-
-    // 打印debug信息
-    if(NameNode.stateChangeLog.isInfoEnabled()){
-      // log which blocks have been scheduled for replication
-      for(ReplicationWork rw : work){
-        // report scheduled blocks
-        DatanodeDescriptor[] targets = rw.targets;
-        if (targets != null &amp;&amp; targets.length != 0) {
-          StringBuffer targetList = new StringBuffer("datanode(s)");
-          for (int k = 0; k &lt; targets.length; k++) {
-            targetList.append(' ');
-            targetList.append(targets[k].getName());
-          }
-          NameNode.stateChangeLog.info(
-            "BLOCK* ask "
-              + rw.srcNode.getName() + " to replicate "
-              + rw.block + " to " + targetList);
-        }
-      }
-    }
-
-    // 记录一次备份操作
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("BLOCK* neededReplications = "
-          + neededReplications.size() + " pendingReplications = "
-          + pendingReplications.size());
-    }
-    return scheduledWork;
-  }
-</code></pre>
-
-<h4>1.1.2.1. 选取源datanode —— chooseSourceDatanode（）</h4>
-
-<p>获取一个源datanode节点</p>
-
-<pre><code>  private DatanodeDescriptor chooseSourceDatanode(
-                                    Block block,
-                                    List&lt;DatanodeDescriptor&gt; containingNodes,
-                                    NumberReplicas numReplicas) {
-    containingNodes.clear();
-    DatanodeDescriptor srcNode = null;
-    int live = 0;
-    int decommissioned = 0;
-    int corrupt = 0;
-    int excess = 0;
-    Iterator&lt;DatanodeDescriptor&gt; it = blocksMap.nodeIterator(block);
-    Collection&lt;DatanodeDescriptor&gt; nodesCorrupt = corruptReplicas.getNodes(block);
-    while(it.hasNext()) {
-      DatanodeDescriptor node = it.next();
-      Collection&lt;Block&gt; excessBlocks = 
-        excessReplicateMap.get(node.getStorageID());
-      if ((nodesCorrupt != null) &amp;&amp; (nodesCorrupt.contains(node)))
-        corrupt++;
-      else if (node.isDecommissionInProgress() || node.isDecommissioned())
-        decommissioned++;
-      else if (excessBlocks != null &amp;&amp; excessBlocks.contains(block)) {
-        excess++;
-      } else {
-        live++;
-      }
-      containingNodes.add(node);
-      // Check if this replica is corrupt
-      // If so, do not select the node as src node
-      if ((nodesCorrupt != null) &amp;&amp; nodesCorrupt.contains(node))
-        continue;
-      if(node.getNumberOfBlocksToBeReplicated() &gt;= maxReplicationStreams)
-        continue; // already reached replication limit
-      // the block must not be scheduled for removal on srcNode
-      if(excessBlocks != null &amp;&amp; excessBlocks.contains(block))
-        continue;
-      // never use already decommissioned nodes
-      if(node.isDecommissioned())
-        continue;
-      // we prefer nodes that are in DECOMMISSION_INPROGRESS state
-      if(node.isDecommissionInProgress() || srcNode == null) {
-        srcNode = node;
-        continue;
-      }
-      if(srcNode.isDecommissionInProgress())
-        continue;
-      // switch to a different node randomly
-      // this to prevent from deterministically selecting the same node even
-      // if the node failed to replicate the block on previous iterations
-      if(r.nextBoolean())
-        srcNode = node;
-    }
-    if(numReplicas != null)
-      numReplicas.initialize(live, decommissioned, corrupt, excess);
-    return srcNode;
-  }
-</code></pre>
-
-<h4>1.1.2.2. 选取目标datanode —— chooseTarget(rw);</h4>
-
-<pre><code>  private DatanodeDescriptor[] chooseTarget(ReplicationWork work) {
-    if (!neededReplications.contains(work.block)) {
-      return null;
-    }
-    if (work.blockSize == BlockCommand.NO_ACK) {
-      LOG.warn("Block " + work.block.getBlockId() + 
-          " of the file " + work.fileINode.getFullPathName() + 
-          " is invalidated and cannot be replicated.");
-      return null;
-    }
-    if (work.blockSize == DFSUtil.DELETED) {
-      LOG.warn("Block " + work.block.getBlockId() + 
-          " of the file " + work.fileINode.getFullPathName() + 
-          " is a deleted block and cannot be replicated.");
-      return null;
-    }
-    //实际调用replicator(BlockPlacementPolicy)的chooseTarget方法选取target
-    return replicator.chooseTarget(work.fileINode,
-        work.numOfReplicas, work.srcNode,
-        work.containingNodes, null, work.blockSize);
-  }
-</code></pre>
-
-<h2>副本存放策略</h2>
-
-<p><img src="img/BlockAllocation.png" alt="BlockAllocation" /></p>
-
-<p>如图所示，HDFS默认的副本存放策略为：</p>
+<p>namenode.rollEditLog()实际通过NameNodeProtocol调用NameNode.rollEditLog()方法，并最终调用FSImage.rollEditLog()，该方法主要完成：</p>
 
 <ol>
-<li>第一个副本存放在当前datanode的本地</li>
-<li>第二个副本存放在与第一个副本所在datanode不在同一机架上的一个datanode上</li>
-<li>第三个副本存放在与第二个副本同一机架但不同datanode上</li>
+<li>调用FSEditLog.rollEditLog()关闭当前editLog，新建一个editLog：edits.new</li>
+<li>返回一个CheckpointSignature做为上传合并后镜像的token</li>
 </ol>
 
+
+<h5>2.1. FSEditLog.rollEditLog()</h5>
+
+<p>该方法主要完成：</p>
+
+<ol>
+<li>关闭当前editlog， 打开一个新的editlog： edit.new</li>
+<li>返回editlog的最新更新时间</li>
+</ol>
+
+
+<p>代码结构如下</p>
+
+<pre><code>  synchronized void rollEditLog() throws IOException {
+    //检查edit.new是否已经存在，如果存在，检查是否所有目录都存在，如果是则认为edits.new已经建好了，直接返回
+    //
+    if (existsNew()) {
+      for (Iterator&lt;StorageDirectory&gt; it = 
+               fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+        File editsNew = getEditNewFile(it.next());
+     if (!editsNew.exists()) { 
+          throw new IOException("Inconsistent existance of edits.new " +
+                                editsNew);
+        }
+      }
+      return; // nothing to do, edits.new exists!
+    }
+
+    //关闭当前的editLog
+    close();                     // close existing edit log
+
+    //
+    // 新建一个editLog： edits.new
+    //
+    for (Iterator&lt;StorageDirectory&gt; it = 
+           fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      try {
+        EditLogFileOutputStream eStream = 
+             new EditLogFileOutputStream(getEditNewFile(sd));
+        eStream.create();
+        editStreams.add(eStream);
+      } catch (IOException e) {
+        // remove stream and this storage directory from list
+        processIOError(sd);
+       it.remove();
+      }
+    }
+  }
+</code></pre>
+
+<h4>3. downloadCheckpointFiles()</h4>
+
+<p>该方法用于从NameNode下载FSImage和FSEditLog，代码结构如下：</p>
+
+<pre><code>  private void downloadCheckpointFiles(CheckpointSignature sig
+                                      ) throws IOException {
+
+    checkpointImage.cTime = sig.cTime;
+    checkpointImage.checkpointTime = sig.checkpointTime;
+
+    // 获取fsimage
+    String fileid = "getimage=1";
+    File[] srcNames = checkpointImage.getImageFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+             srcNames[0].length() + " bytes.");
+
+    // 获取editlog
+    fileid = "getedit=1";
+    srcNames = checkpointImage.getEditsFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+        srcNames[0].length() + " bytes.");
+
+    // 标示checkpoint所需文件已经准备完成
+    checkpointImage.checkpointUploadDone();
+  }
+</code></pre>
+
+<h4>4. doMerge()</h4>
+
+<p>doMerge主要完成editLog与fsimage的合并，实际调用的checkpointImage.doMerge(sig);</p>
+
+<pre><code>private void doMerge(CheckpointSignature sig) throws IOException {
+  getEditLog().open();
+  StorageDirectory sdName = null;
+  StorageDirectory sdEdits = null;
+  Iterator&lt;StorageDirectory&gt; it = null;
+  it = dirIterator(NameNodeDirType.IMAGE);
+  if (it.hasNext())
+    sdName = it.next();
+  it = dirIterator(NameNodeDirType.EDITS);
+  if (it.hasNext())
+    sdEdits = it.next();
+  if ((sdName == null) || (sdEdits == null))
+    throw new IOException("Could not locate checkpoint directories");
+  // 加载fsimage
+  loadFSImage(FSImage.getImageFile(sdName, NameNodeFile.IMAGE));
+  // 加载editlog，并合并到fsimage
+
+  loadFSEdits(sdEdits);
+  // 校验新fsimage的一致性，主要包括版本，更新时间，namespaceId
+  sig.validateStorageInfo(this);
+  // 将fsImage存储到本地，并创建新edits
+  saveFSImage();
+}
+</code></pre>
+
+<p>该方法与NameNode启动时类似:</p>
+
+<ol>
+<li>加载fsiamge</li>
+<li>加载editslog，并作用到fsimage中</li>
+<li>校验合并后的fsimage</li>
+<li>将新fsimage存储到本地，并新建空的edit是目录</li>
+</ol>
+
+
+<h4>5. putFSImage(sig);</h4>
+
+<p>该方法比较简单，主要通过TransferFsImage工具类将合并后的fsimage上传到NameNode</p>
+
+<pre><code>  private void putFSImage(CheckpointSignature sig) throws IOException {
+    String fileid = "putimage=1&amp;port=" + infoPort +
+      "&amp;machine=" +
+      InetAddress.getLocalHost().getHostAddress() +
+      "&amp;token=" + sig.toString();
+    LOG.info("Posted URL " + fsName + fileid);
+    TransferFsImage.getFileClient(fsName, fileid, (File[])null);
+  }
+</code></pre>
+
+<h4>6. namenode.rollFsImage();</h4>
+
+<p>上传完新fsiamge之后，SecondaryNameNode通过namenode.rollFsImage()通知NameNode使用新的fsimage.ckpt作为最新镜像，并清空editslog。该请求最终由NameNode上的FsImage.rollFsImage()处理，代码如下：</p>
+
+<pre><code> void rollFSImage() throws IOException {
+    if (ckptState != CheckpointStates.UPLOAD_DONE) {
+      throw new IOException("Cannot roll fsImage before rolling edits log.");
+    }
+    //
+    // 校验fsimage.ckpt和edits.new是否存在于所有目录
+    if (!editLog.existsNew()) {
+      throw new IOException("New Edits file does not exist");
+    }
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      if (!ckpt.exists()) {
+        throw new IOException("Checkpoint file " + ckpt +
+                              " does not exist");
+      }
+    }
+    //删除旧的edits，并将edits.new重命名为edits
+    editLog.purgeEditLog(); // renamed edits.new to edits
+
+    //
+    // 重命名fsimage
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      File curFile = getImageFile(sd, NameNodeFile.IMAGE);
+      // renameTo fails on Windows if the destination file 
+      // already exists.
+      if (!ckpt.renameTo(curFile)) {
+        curFile.delete();
+        if (!ckpt.renameTo(curFile)) {
+          // Close edit stream, if this directory is also used for edits
+          if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+            editLog.processIOError(sd);
+        // add storage to the removed list
+          removedStorageDirs.add(sd);
+          it.remove();
+        }
+      }
+    }
+
+    //
+    // 更新所有目录的fstime
+    //
+    this.layoutVersion = FSConstants.LAYOUT_VERSION;
+    this.checkpointTime = FSNamesystem.now();
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                           dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      // delete old edits if sd is the image only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        File editsFile = getImageFile(sd, NameNodeFile.EDITS);
+        editsFile.delete();
+      }
+      // delete old fsimage if sd is the edits only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        File imageFile = getImageFile(sd, NameNodeFile.IMAGE);
+        imageFile.delete();
+      }
+      try {
+        sd.write();
+      } catch (IOException e) {
+        LOG.error("Cannot write file " + sd.getRoot(), e);
+        // Close edit stream, if this directory is also used for edits
+        if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+          editLog.processIOError(sd);
+      //add storage to the removed list
+        removedStorageDirs.add(sd);
+        it.remove();
+      }
+    }
+    ckptState = FSImage.CheckpointStates.START;
+  }
+</code></pre>
 </div>
   
   
@@ -1214,7 +682,7 @@ private void renew() {
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a></h1>
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a></h1>
     
     
       <p class="meta">
@@ -1230,368 +698,57 @@ private void renew() {
   
 
 
-<time datetime="2012-10-18T21:38:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+<time datetime="2012-10-18T21:54:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
         
-         | <a href="/blog/2012/10/18/hdfs-heartbeat/#disqus_thread">Comments</a>
+         | <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下：</p>
+  <div class="entry-content"><p>NameNode和DataNode间的通信分为四种场景：</p>
 
-<pre><code>  class HeartbeatMonitor implements Runnable {
-    /**
-     */
-    public void run() {
-      while (fsRunning) {
-        try {
-          heartbeatCheck();
-        } catch (Exception e) {
-          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
-        }
-        try {
-          Thread.sleep(heartbeatRecheckInterval);
-        } catch (InterruptedException ie) {
-        }
-      }
-    }
-  }
-</code></pre>
+<ol>
+<li>初始时DataNode注册：</li>
+<li>周期性心跳检测：</li>
+<li>周期性blockreport：</li>
+<li>完成一个副本的写入：</li>
+</ol>
 
-<p>代码很简单，心跳检测线程周期性调用heartbeatCheck()。</p>
 
-<h2>一、心跳检查——heartbeatCheck()</h2>
+<h2>一、初始时DataNode注册</h2>
 
-<p>该方法主要用于检测是否有过期的心跳检测，如有，检测其上的block是否已经进行过重新备份。该线程每次只处理一个datanode。</p>
+<p>DataNode在启动时会向NameNode注册，注册时需要提交的信息有DatanodeRegistration表示。结构如下：</p>
 
-<pre><code>  void heartbeatCheck() {
-    if (isInSafeMode()) {
-      // 安全模式下不做心跳检测
-      return;
-    }
-    boolean allAlive = false;
-    while (!allAlive) {
-      boolean foundDead = false;
-      DatanodeID nodeID = null;
+<p><img src="/images/hdfs/DatanodeRegistration.png" alt="DatanodeRegistration" /></p>
 
-      // 获取第一个dead datanode
-      synchronized(heartbeats) {
-        for (Iterator&lt;DatanodeDescriptor&gt; it = heartbeats.iterator();
-             it.hasNext();) {
-          DatanodeDescriptor nodeInfo = it.next();
-          if (isDatanodeDead(nodeInfo)) {
-            foundDead = true;
-            nodeID = nodeInfo;
-            break;
-          }
-        }
-      }
+<p>主要包括：</p>
 
-      // 申请fsnamesystem锁，删除dead datanode
-      if (foundDead) {
-        writeLock();
-        try {
-          synchronized(heartbeats) {
-            synchronized (datanodeMap) {
-              DatanodeDescriptor nodeInfo = null;
-              try {
-                nodeInfo = getDatanode(nodeID);
-              } catch (IOException e) {
-                nodeInfo = null;
-              }
-              if (nodeInfo != null &amp;&amp; isDatanodeDead(nodeInfo)) {
-                NameNode.stateChangeLog.info("BLOCK* NameSystem.heartbeatCheck: "
-                                             + "lost heartbeat from " + nodeInfo.getName());
-                removeDatanode(nodeInfo);
-              }
-            }
-          }
-        } finally {
-          writeUnlock();
-        }
-      }
-      allAlive = !foundDead;
-    }
-  }
-</code></pre>
+<ol>
+<li>name：机器名（主机名+服务端口号）</li>
+<li>infoPort: 状态信息服务端口好</li>
+<li>ipcPort： 提供ipc服务的端口号</li>
+</ol>
 
-<h3>1.1 判断是否已死 —— isDatanodeDead（）</h3>
 
-<p>判断一个datanode是否已经dead的标准很简单，当前距该节点最后的更新时间差是否已经超过心跳检测的过期时间限制</p>
+<p>此外，该类中的storageID是该datanode在集群中的唯一id，在注册时有NameNode分配</p>
 
-<pre><code>private boolean isDatanodeDead(DatanodeDescriptor node) {
-    return (node.getLastUpdate() &lt;
-            (now() - heartbeatExpireInterval));
-  }
-</code></pre>
+<p>注册的主要流程如下：
+<img src="/images/hdfs/register.png" alt="DataNodeRegister" /></p>
 
-<h3>1.2 删除datanode —— removeDatanode（）</h3>
+<h2>二、心跳检测（heartbeat）</h2>
 
-<pre><code>  private void removeDatanode(DatanodeDescriptor nodeInfo) {
-    synchronized (heartbeats) {
-      if (nodeInfo.isAlive) {
-        updateStats(nodeInfo, false);
-        //从heartbeats中移除
-        heartbeats.remove(nodeInfo);
-        //更新datanode状态
-        nodeInfo.isAlive = false;
-      }
-    }
+<p>DataNode通过周期性调用namenode.sendHeartbeat()来完成心跳检测.主要流程如下：</p>
 
-    nodeInfo.hasInitialBlockReport = false;
-    for (Iterator&lt;Block&gt; it = nodeInfo.getBlockIterator(); it.hasNext();) {
-      //移除该节点上的block
-      removeStoredBlock(it.next(), nodeInfo);
-    }
-    unprotectedRemoveDatanode(nodeInfo);
-    clusterMap.remove(nodeInfo);
-  }
-</code></pre>
+<p><img src="/images/hdfs/sendHeartbeat.png" alt="sendHeartbeat" /></p>
 
-<h4>1.2.1 removeStoredBlock（）</h4>
+<h2>三、blockReport</h2>
 
-<p>该方法更新block->datanode的映射(blocksMap)，如果block还有效，有可能导致block备份发生</p>
+<p>DataNode周期性向NameNode发送blockReport，告知自己最新的block信息：
+<img src="/images/hdfs/blockReport.png" alt="blockReport" /></p>
 
-<pre><code>  void removeStoredBlock(Block block, DatanodeDescriptor node) {
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
-                                    +block + " from "+node.getName());
-    }
-    assert (hasWriteLock());
-    if (!blocksMap.removeNode(block, node)) {
-      if (NameNode.stateChangeLog.isDebugEnabled()) {
-        NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
-                                      +block+" has already been removed from node "+node);
-      }
-      return;
-    }
-
-    //
-    //检查是否需要备份删除的block
-    INode fileINode = blocksMap.getINode(block);
-    if (fileINode != null) {
-      //减小当前系统中安全block（备份数满足最小值的block）数量
-      decrementSafeBlockCount(block);
-      //更新需要备份的block数量
-      updateNeededReplications(block, -1, 0);
-    }
-
-    //
-    // 从excessblocks中删除改block，并从excessReplicateMap删除改datanode
-    Collection&lt;Block&gt; excessBlocks = excessReplicateMap.get(node.getStorageID());
-    if (excessBlocks != null) {
-      if (excessBlocks.remove(block)) {
-        excessBlocksCount--;
-        if (NameNode.stateChangeLog.isDebugEnabled()) {
-          NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
-              +block+" is removed from excessBlocks");
-        }
-        if (excessBlocks.size() == 0) {
-          excessReplicateMap.remove(node.getStorageID());
-        }
-      }
-    }
-
-    // 从corruptReplicas中移除该block
-    corruptReplicas.removeFromCorruptReplicasMap(block, node);
-  }
-</code></pre>
-
-<h5>1.2.1.1  BlocksMap.removeNode（）</h5>
-
-<p>其中BlocksMap.removeNode()方法如下：</p>
-
-<pre><code>  boolean removeNode(Block b, DatanodeDescriptor node) {
-    BlockInfo info = blocks.get(b);
-    if (info == null)
-      return false;
-
-    // 从datanode 的blocklist中移除block，并从block的datalist中移除datanode
-    boolean removed = node.removeBlock(info);
-
-    if (info.getDatanode(0) == null     // no datanodes left
-              &amp;&amp; info.inode == null) {  // does not belong to a file
-      //从blocksmap中移除该block
-      blocks.remove(b);  // remove block from the map
-    }
-    return removed;
-  }
-</code></pre>
-
-<h5>1.2.1.2 减小当前安全的block数 —— decrementSafeBlockCount()</h5>
-
-<p>减小当前副本数安全的的block数，此举有可能触发系统进入安全模式（safemode）</p>
-
-<pre><code>  void decrementSafeBlockCount(Block b) {
-    if (safeMode == null) // mostly true
-      return;
-
-    safeMode.decrementSafeBlockCount((short)countNodes(b).liveReplicas());
-  }
-</code></pre>
-
-<p>其中safeMode.decrementSafeBlockCount()代码如下：</p>
-
-<pre><code>synchronized void decrementSafeBlockCount(short replication) {
-
-  if (replication == safeReplication-1) {
-    //安全的block数减一
-    this.blockSafe--;
-    //检查是否需要进入到safemode
-    checkMode();
-  }
-}
-</code></pre>
-
-<p>SafeModeInfo.checkMode()代码如下：</p>
-
-<pre><code>    private void checkMode() {
-      //当安全的block数比例降至安全值以下，进入安全模式
-      if (needEnter()) {
-        enter();
-        // check if we are ready to initialize replication queues
-        if (canInitializeReplQueues() &amp;&amp; !isPopulatingReplQueues()) {
-          //初始化副本队列
-          initializeReplQueues();
-        }
-        reportStatus("STATE* Safe mode ON.", false);
-        return;
-      }
-      // 如果安全模式已经关闭或者门槛小于0，则跳出安全模式
-      if (!isOn() ||                           // safe mode is off
-          extension &lt;= 0 || threshold &lt;= 0) {  // don't need to wait
-        this.leave(true); // leave safe mode
-        return;
-      }
-
-      //之前已经进入安全模式，直接返回
-      if (reached &gt; 0) {  // threshold has already been reached before
-        reportStatus("STATE* Safe mode ON.", false);
-        return;
-      }
-      // 启动SafeModeMonitor线程
-      reached = now();
-      smmthread = new Daemon(new SafeModeMonitor());
-      smmthread.start();
-      reportStatus("STATE* Safe mode extension entered.", true);
-    }
-</code></pre>
-
-<h5>1.2.1.3 更新需要备份的列表 —— updateNeededReplications（）</h5>
-
-<pre><code>  /* updates a block in under replication queue */
-  void updateNeededReplications(Block block,
-                        int curReplicasDelta, int expectedReplicasDelta) {
-    writeLock();
-    try {
-    //计算当前副本数
-    NumberReplicas repl = countNodes(block);
-    //期望的副本数
-    int curExpectedReplicas = getReplication(block);
-    //将该block更新到需要备份的列表中（neededReplications）
-    neededReplications.update(block, 
-                              repl.liveReplicas(), 
-                              repl.decommissionedReplicas(),
-                              curExpectedReplicas,
-                              curReplicasDelta, expectedReplicasDelta);
-    } finally {
-      writeUnlock();
-    }
-  }
-</code></pre>
-
-<h4>1.2.2 移除datanode —— unprotectedRemoveDatanode</h4>
-
-<pre><code>  void unprotectedRemoveDatanode(DatanodeDescriptor nodeDescr) {
-    //重置清空datanode中block信息
-    nodeDescr.resetBlocks();
-    //从invlidateSet中移除datanode
-    removeFromInvalidates(nodeDescr.getStorageID());
-    if (NameNode.stateChangeLog.isDebugEnabled()) {
-      NameNode.stateChangeLog.debug(
-                                    "BLOCK* NameSystem.unprotectedRemoveDatanode: "
-                                    + nodeDescr.getName() + " is out of service now.");
-    }
-  }
-</code></pre>
-
-<h5>1.2.2.1 removeFromInvalidates()</h5>
-
-<pre><code>  private void removeFromInvalidates(String storageID) {
-    //从recentInvalidateSet中移除该datanode
-    Collection&lt;Block&gt; blocks = recentInvalidateSets.remove(storageID);
-    if (blocks != null) {
-      //从正在删除的block总数中减去当前节点上的block总数
-      pendingDeletionBlocksCount -= blocks.size();
-    }
-  }
-</code></pre>
-
-<h2>二、 处理心跳检测请求 —— handleHeartbeat()</h2>
-
-<p>NameNode只负责创建一个HeartbeatMonitor来通过每个datanode的最新更新时间周期性检查是否有过期的datanode，而每个datanode是否的最新更新时间是由datanode主动向namenode报告的，namenode通过handleHeartbeat()处理心跳请求。</p>
-
-<pre><code>  DatanodeCommand[] handleHeartbeat(DatanodeRegistration nodeReg,
-      long capacity, long dfsUsed, long remaining,
-      int xceiverCount, int xmitsInProgress) throws IOException {
-    DatanodeCommand cmd = null;
-    synchronized (heartbeats) {
-      synchronized (datanodeMap) {
-        DatanodeDescriptor nodeinfo = null;
-        try {
-          nodeinfo = getDatanode(nodeReg);
-        } catch(UnregisteredDatanodeException e) {
-          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
-        }
-
-        // 检查该datanode是否需要被关闭，可以通过设置datanode的adminState为DECOMMISSIONED来关闭一个datanode
-        if (nodeinfo != null &amp;&amp; shouldNodeShutdown(nodeinfo)) {
-          setDatanodeDead(nodeinfo);
-          throw new DisallowedDatanodeException(nodeinfo);
-        }
-
-        if (nodeinfo == null || !nodeinfo.isAlive) {
-          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
-        }
-
-        updateStats(nodeinfo, false);
-        nodeinfo.updateHeartbeat(capacity, dfsUsed, remaining, xceiverCount);
-        updateStats(nodeinfo, true);
-
-        //检查租约恢复状态
-        cmd = nodeinfo.getLeaseRecoveryCommand(Integer.MAX_VALUE);
-        if (cmd != null) {
-          return new DatanodeCommand[] {cmd};
-        }
-
-        ArrayList&lt;DatanodeCommand&gt; cmds = new ArrayList&lt;DatanodeCommand&gt;(2);
-        //检查正在备份中的副本
-        cmd = nodeinfo.getReplicationCommand(
-              maxReplicationStreams - xmitsInProgress);
-        if (cmd != null) {
-          cmds.add(cmd);
-        }
-        //检查无效的block
-        cmd = nodeinfo.getInvalidateBlocks(blockInvalidateLimit);
-        if (cmd != null) {
-          cmds.add(cmd);
-        }
-        if (!cmds.isEmpty()) {
-          return cmds.toArray(new DatanodeCommand[cmds.size()]);
-        }
-      }
-    }
-
-    //检查是否需要升级系统
-    cmd = getDistributedUpgradeCommand();
-    if (cmd != null) {
-      return new DatanodeCommand[] {cmd};
-    }
-    return null;
-  }
-</code></pre>
+<h2>四、完成副本写入</h2>
 </div>
   
   
@@ -1623,9 +780,8 @@ private void renew() {
 </section>
 <section>
   <h1>关于我</h1>
-  <p>一个非纯种程序员，爱代码爱产品爱旅行爱美女</p>
-  <iframe width="100%" height="550" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=550&fansRow=1&ptype=1&speed=0&skin=2&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
-
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
 </section>
 <section>
   <h1>Recent Posts</h1>
@@ -1649,26 +805,6 @@ private void renew() {
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
       </li>
     
   </ul>
@@ -1705,6 +841,10 @@ private void renew() {
 
 
 
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
 
   
 </aside>

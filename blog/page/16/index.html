@@ -9,7 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="今天终于把yaffs挂载上去了~不容易啊~~记录一下。原来出现的问题：mount: Mounting /dev/mtdblock/1 on /mnt/yaffs failed: No such file or directory然后能够进入根文件系统cramfs中，终端输出如下：BusyBox &hellip;">
+  <meta name="description" content="史前时代：BIOS-计算机的启动过程 加电 电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
+这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -81,7 +82,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2009/05/12/post/">S3c2410开发日志——关于yaffs无法解压</a></h1>
+      <h1 class="entry-title"><a href="/blog/2010/10/26/post/">Linux启动过程分析</a></h1>
     
     
       <p class="meta">
@@ -97,22 +98,173 @@
   
 
 
-<time datetime="2009-05-12T00:00:00+08:00" pubdate data-updated="true">May 12<span>th</span>, 2009</time>
+<time datetime="2010-10-26T00:00:00+08:00" pubdate data-updated="true">Oct 26<span>th</span>, 2010</time>
         
-         | <a href="/blog/2009/05/12/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2010/10/26/post/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>今天终于把yaffs挂载上去了~不容易啊~~记录一下。<br />原来出现的问题：<br />mount: Mounting /dev/mtdblock/1 on /mnt/yaffs failed: No such file or directory<br />然后能够进入根文件系统cramfs中，终端输出如下：<br />BusyBox v1.00 (2005.01.20-11:59+0000) Built-in shell (ash)<br />Enter &#8216;help&#8217; for a list of built-in commands.</p>
-<p>runing /etc/profile ok<br />[/mnt/yaffs]<br />然后按照指导书上的方法将yaffs.tar.bz2通过ftp上传到目标板中，解压，出现错误如下：<br />[~/tmp]tar -jvxf yaffs.tar.bz2 -C /mnt/yaffs<br />./ad<br />./ad/s3c2410-adc.o<br />tar: Cannot create directory `./ad&#8217;: Operation not permitted<br />tar: ./ad/s3c2410-adc.o: No such file or directory<br />无法在/mnt/yaffs目录下进行任何操作。</p>
-<p>原因分析：<br />vivi中有两种分区格式，bon和mtd，<br />bon分区用bon part命令来分区，内核在启动的是后在bon分区里查找内核，和根文件系统，但是如果想挂载</p>
-<p>yaffs系统，就必须在bon分区中指定一个mtd分区，方法是在该分区后加一个:m，例如<br />bon part 0 128K 192K 1216K 6336K:m<br />这个命令就是将最后一个分区指定为mtd分区。<br />还有一点就是，part分区的时候为每个分区指定了名字，使用vivi下载的时候需要这个名字，因此，part分区中</p>
-<p>kernel，root，的起止地址要相同，否则会出现根文件系统无法下载。</p>
-<p>关于bon分区和mtd分区的具体区别还不清楚，目前只知道这样可以解决困扰了三天的问题。<br />2.6内核还是移植不上来，分区也已经改了，但是还是不行，网上的一个人说可能是内核的问题，下了一个</p>
-<p>2.6.22，还没来的及试。<br />基本上就这样吧</p></div>
+  <div class="entry-content"><h3>史前时代：BIOS-计算机的启动过程</h3>
+<ol>
+<li><strong>加电</strong>
+ 
+电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
+这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令，跳到真正BIOS启动代码除。</li>
+<li><strong>自检</strong>
+ BIOS启动代码首先进行POST（Power-On Self 
+Test，上电自检），POST的主要任务是检测系统中一些关键设备是否存在和能否正常工作， 
+例如内存和显卡等。如果系统BIOS在POST过程中发现致命错误，如未找到内存或内存有问题（640K内的常规内存），系统会直接控制喇叭报告错误，声
+音的长短和次数代表错误的类型。</li>
+<li><strong>设备初始化</strong>
+ 
+POST完成后BIOS会查找显卡的BIOS，存放显卡BIOS的ROM芯片的起始地址通常设在0xC0000处，找到显卡BIOS后，调用其初始代码，
+由显卡BIOS来初始化显卡， 
+此时多数显卡会在屏幕上显示出一些初始化信息，介绍生产厂商，图形芯片等内容。类似地，BIOS会查找其它设备的BIOS程序，调用这些BIOS内部的初
+始化代码来初始化相关设备。</li>
+<li><strong>测试设备</strong>
+ 
+查找完所遇其它设备的BIOS之后，系统BIOS将显示自己的启动画面，其中包括系统BIOS类型，序列号和版本号等内容。接着BIOS将检测和显示
+CPU的类型和工作频率，然后开始测试所有的RAM，并同时在屏幕上显示内存测试的进度。 
+内存测试通过后，系统BIOS将开始检测系统中安装的一些标准硬件设备，包括硬盘，光驱，串口，并口，软驱等，另外绝大多数较新版本的BIOS在这一过程
+中回自动检测和设置内存的定时参数，硬盘参数和配置系统中安装的即插即用设备，没找到一个设备之后，BIOS会在屏幕上显示出设备的名称和型号等信息，同
+时为该设备分配中断，DMA通道和I/O端口。</li>
+<li><strong>更新ESCD</strong>
+ 
+所有硬件检测配置完毕后，多数BIOS会重新清屏，并在屏幕上方显示出一个表格，其中概略的列出系统中安装的各种标准硬件设备，以及他们使用的资源和一些
+相关工作参数。接下来系统BIOS将更新ESCE（Extended System Configration Data， 
+扩展系统配置数据）。ESCD是系统BIOS用来与操作系统交换硬件配置信息的一种手段，这些数据被存放在CMOS（Complementary 
+metal oxide Semiconductor,互补金属氧化物半导体）之中。</li>
+<li><strong>启动操作系统</strong>
+ 
+ESCD更新完毕后，系统BIOS的启动代码将进行他的最后一项工作，即根据用户指定的启动顺序从软盘，硬盘或光驱启动操作系统。系统BIOS将启动盘的
+第一个扇区读入到内存的0x7C00除，并检查0x7dfe地址的内存，如果其内容是0xaa55，跳转到0x7c00处执行MBR（Master 
+Boot 
+Record，主引导记录），MBR从分区表中找到第一个活动分区，按照类似方式读取并执行这个活动分区的引导扇区，该引导扇区负责读取并执行
+bootloader（windows下C盘中的NTLDR），由bootloader加载系统内核</li>
+</ol>
+<h3><a name="Linux启动过程-远古时代：Bootloader"></a>
+远古时代：Bootloader</h3>
+<p>	引导装入程序（Bootloader）是BIOS将操作系统内核映像装载到RAM中执行的第一个程序。<br />
+	软盘启动与磁盘启动过程稍有不同，软盘启动时，BIOS将启动软盘的第一扇区指令装载到RAM中，由于通常现代内核都大于一个扇区大小(512B)，因此第一扇区的指令通常是将包含内核映像的扇区加载到RAM中。<br />
+	从硬盘启动时，硬盘的第一个扇区MBR中包含分区表和一小段程序，这段小程序用来装载被启动的操作系统所在分区的第一个扇区。Win98采用MBR中的小程序加载操作系统内核，而Linux在用一种更灵活的加载方式，bootloader。<br />
+	Linux2.4及以前的版本，在第一个512字节有一个最小的引导程序，因此在第一扇区拷贝一个内核镜像就可以使软盘启动，但在2.6内核中不再有该引导程序，要想在软盘中启动，必须采用与磁盘类似的方式，在第一个扇区中装入一个引导程序。<br />
+	
+Bootloader通常被安装在MBR上代替上面负责引导的小程序。Bootloader通常由于大于一个扇区，会被分为两部分，在BIOS将
+Bootloader的第一部分加载到RAM的0x00007c00处开始执行，bootloader自己加载到0x00096a00，建立实模式站
+(0x00098000~0x000969ff),并将bootloader的第二部分装入到0x00096c00开始的RAM中。<br />
+	第二部分一次从此版读取操作系统映射表，提示给用户，用户可以选择要启动的系统，引动程序将相应分区的引导扇区拷贝到RAM中并执行，或直接将内核拷贝到RAM中。<br />
+	Bootloader的主要执行过程：</p>
+<ol>
+<li>调用BIOS输出&quot;Loading&#8230;&quot;</li>
+<li>调用BIOS从磁盘装入内核映像的第一个扇区(512B)，从0x00090000装入RAM，并将setup()函数的代码从0x00090200开始装入RAM。</li>
+<li>调用一个BIOS从磁盘装入其余内核映像，并把内核映像放入从0x00010000(低装载，适用于make zImage的小内核映像）或0x00100000(高装载，make bzImage的大内核映像）</li>
+<li>跳转执行setup()</li>
+</ol>
+<h3><a name="Linux启动过程-奴隶社会：setup()"></a>
+奴隶社会：setup()</h3>
+<p>	setup()函数有汇编实现放在内核映像文件的偏移量0x200处，bootloader将其装载到0x00090200开始的RAM中。<br />
+	setup()函数的主要工作是初始化计算机中的硬件设备，并为内核程序的执行建立环境。尽管BIOS已经完成大部分设备的初始化，但是Linux并不依赖与BIOS，而已自己的方式重新初始化设备，以增强可移植性和健壮性。<br />
+	@TO-DO setup()过程</p>
+<h3><a name="Linux启动过程-封建社会：startup32()"></a>
+封建社会：startup_32()</h3>
+<p>	
+存在两个startup_32函数，setup()的最后是跳转执行的是arch/i386/boot/compressed/head.S中的
+startup_32()，此时startup_32已经被移动到0x00100000或0x00001000，对应于高装载或低装载。该函数的主要工作
+是解压内核。<br />
+	解压完的内核映像从arch/i386/kernel/head.S开始执行。该文件中包含另一个startup_32函数。改startup_32为Linux的第一个进程(pid=0)建立执行环境。<br />
+	@TO-DO startup_32()过程</p>
+<h3><a name="Linux启动过程-民国时代：startkernel()"></a>
+民国时代：start_kernel()</h3>
+<p>	startup_32函数最后回跳转执行start_kernel()，start_kernel完成内核初始化工作。start_kernel开始执行后会显示&quot;Linux version 2.6.11&#8230;&quot;<br />
+	该函数中最主要的一个步骤是调用kernel_thread()为进程1创建内核线程。这个线程回创建其它线程并执行/sbin/init程序。该程序会在控制台输出初始化信息，直至最后出现登录提示符，或X登录窗口。通知用户内核已启动，正在运行。</p>
+<h3><a name="Linux启动过程-新中国：启动脚本"></a>
+新中国：启动脚本</h3>
+<p>(该部分只适用Redhat系，如RHEL，CentOS，Fedora等，Debian/Ubuntu启动过程与此不同，后期会有分析)</p>
+<h5><a name="Linux启动过程-inittab"></a>
+inittab</h5>
+<p>	/sbin/init（进程1）会利用/etc/inittab获取运行级，并根据不同运行级的配置启动不同的服务项目。<br />
+	inittab配置文件格式</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">[设置项目]:[run level]:[init的操作行为]:[命令项目]<br />
+设置项目:最多4个字符，表示init的主要目的，就是一个名字<br />
+run level:该条目的运行级别<br />
+init操作行为:<br />
+	主要可选值如下：<br />
+		initdefault:表示默认的运行级别值<br />
+		sysinit:系统初始化操作项目<br />
+		ctrlaltdel:表示[ctrl+alt+del<br />
+		wait:表示必须等待后面的命令执行完才可以执行后续操作<br />
+		respawn:表示后面的操作会重新启动<br />
+命令项目:执行该项目的命令，通常为一个脚本命令</pre>
+</div>
+</div>
+<h5><a name="Linux启动过程-系统初始化(rc.sysinit)"></a>
+系统初始化(rc.sysinit)</h5>
+<p>	inittab中的有个条目是</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">si::sysinit:/etc/rc.d/rc.sysinit</pre>
+</div>
+</div>
+<p>按上述条目解释，系统初始化时会执行/etc/rc.d/rc.sysinit脚本，该脚本的主要功能如下:<br />
+1.获取网络环境与主机名<br />
+2.测试与载入内存设备/proc以及USB设备/sys<br />
+3.决定是否启动SELinux<br />
+4.检测接口设备与即插即用设备参数<br />
+5.用户自定义模块加载<br />
+6.加载核心的相关设置<br />
+7.设置系统时间<br />
+8.设置终端控制台字体<br />
+9.设置RAID与LVM等硬盘功能<br />
+10.fsck检查磁盘文件系统<br />
+11.进行磁盘配额quota的转换<br />
+12.重新怡可读取模式载入系统磁盘<br />
+13.启动quota功能<br />
+14.启动系统随机设备（产生随机数）<br />
+15.清除启动过程的临时文件<br />
+16.将启动相关信息加载到/var/log/dmesg文件中</p>
+<h5><a name="Linux启动过程-启动相关运行级服务"></a>
+启动相关运行级服务</h5>
+<p>	inittab中包含</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">id:3:initdefault:<br />
+<br />
+l3:3:wait:/etc/rc.d/rc 3</pre>
+</div>
+</div>
+<p>	第一行表示默认运行级为3，第二行表示第3级运行时以wait方式执行/etc/rc.d/rc 参数为3。<br />
+	rc脚本的主要功能是调用相应运行级X的配置脚本目录/etc/rcX.d/下的脚本。例如3级时对应的脚本目录是/etc/rc3.d/目录。<br />
+	脚本目录下的脚本名分为两类：一类是以K开头的，用于kill相应服务；另一类是以S开头的，用于开启相应服务。文件中还包含一个两位数字和服务名。rc脚本负责按照数字有小到大先kill所有服务然后开启所有服务的顺序执行。<br />
+	每个rcX.d的目录下的脚本都是链接到init.d目录下的脚本的软连接。并且均包含一个S99local-&gt;../rc.local，该脚本表示最后执行../rc.local脚本。<br />
+	rc.local即用户自定义的启动项配置脚本。可以在其中添加想开机启动的命令。比如想自动挂载一个windows下的分区，可以在rc.local中添加</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java">mount -ntfs /dev/sda5 /media/disk5</pre>
+</div>
+</div>
+<h5><a name="Linux启动过程-启动终端"></a>
+启动终端</h5>
+<p>	根据inittab中的配置，需要等待/etc/rc 3 运行完成。rc.local时期最后一个脚本。在rc.local执行完之后，继续按照inittab执行</p>
+<div class="code panel" style="border-width: 1px;">
+<div class="codeContent panelContent">
+<pre class="code-java"># Run gettys in standard runlevels<br />
+1:2345:respawn:/sbin/mingetty tty1<br />
+2:2345:respawn:/sbin/mingetty tty2<br />
+3:2345:respawn:/sbin/mingetty tty3<br />
+4:2345:respawn:/sbin/mingetty tty4<br />
+5:2345:respawn:/sbin/mingetty tty5<br />
+6:2345:respawn:/sbin/mingetty tty6<br />
+<br />
+# Run xdm in runlevel 5<br />
+x:5:respawn:/etc/X11/prefdm -nodaemon</pre>
+</div>
+</div>
+<p>该段配置表示在2,3,4,5运行级下执行/sbin/mingetty开启终端，并且执行六次，由此可知为何会有6个纯文本终端。最后的x:5:respawn:/etc/X11/prefdm -nodaemon表示在运行级5时开启X Window。</p></div>
   
   
 
@@ -124,7 +276,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2009/05/06/post/">Ubuntu 9.04安装arm-linux-gcc交叉编译工具</a></h1>
+      <h1 class="entry-title"><a href="/blog/2010/10/18/post/">在Spring中使用Quartz</a></h1>
     
     
       <p class="meta">
@@ -140,16 +292,177 @@
   
 
 
-<time datetime="2009-05-06T00:00:00+08:00" pubdate data-updated="true">May 6<span>th</span>, 2009</time>
+<time datetime="2010-10-18T00:00:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2010</time>
         
-         | <a href="/blog/2009/05/06/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2010/10/18/post/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>最近要开发嵌入式linux，但是手头上大多文档中介绍交叉编译环境的都是基于RedHat9的，这个版本虽说很经典，但是毕竟实在是太古老了，自己机器上本身装的是Ubuntu，因此小小的研究了一下，在ubuntu中安装交叉编译环境 arm-linux-gcc<br />下面所有yourname替换为你自己的位于/home目录下的用户名<br /><strong>首先是准本工作</strong>：<br />需要的安装包：<br />crosstool-0.43.tar.gz 可以在http://kegel.com/crosstool/crosstool-0.43.tar.gz获得<br />创建一个文件夹<br />mkdir /home/yourname/downloads也可以用mkdir ~/downloads<br />将crosstool-0.43.tar.gz复制到downloads目录下（下载完成后默认应该实在桌面上）<br /><br />另外，还有一些安装包：<br />binutils-2.16.1.tar.bz2&nbsp; <br />glibc-2.3.2.tar.bz2<br />glibc-linuxthreads-2.3.2.tar.bz2<br />gcc-3.3.6.tar.bz2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br />linux-2.6.15.4.tar.bz2<br />gcc-4.1.0.tar.bz2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br />linux-libc-headers-2.6.12.0.tar.bz2<br />gdb-6.5.tar.bz2<br />这些在安装过程中会自动下载，也可以自己提前下载好，放在/home/yourname/downloads下面，不过我建议提前下好，因为一会需要修改一下glibc里的一个文件。&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br /><strong><br />下面是一些安装是可能遇到的问题，提前些出来，省得大家忙活半天编译到一半发现错了还得重新编译，如果你想见识一下这些问题，可以直接跳转到下面的安装过程</strong>。<br />1.安装过程中会提示缺少下面两个包<br />bison<br />flex<br />如果以前没有装过，下载安装一下（具体包名我忘记了，可以直接输入bison查看，如果没装过，会提示你可以下载哪些包安装，flex类似）<br />sudo apt-get install bison<br />sudo apt-get install flex<br />另外网上说还需要一个mm4，不过我装的时候没有提示，好象是安装flex时，解决依赖性时自动装上了。<br /><br />2.还有一个莫名其妙的错误，提示说gcc版本太旧或者未安装，但是你用sudo apt-get install gcc 的时后会发现gcc已经是最新版本了，事实上这个错误是因为gcc版本太新了。解决方法如下：<br />sudo apt-get install gcc-3.4<br />cd /usr/bin<br />sudo rm gcc<br />ln -s gcc-3.4 gcc<br /><br />3.安装是还出现了如下错误：<br />/home/xxs/crosstool-0.43/build/arm-arm9tdmi-linux-gnu/gcc-4.1.1-glibc-2.3.2/build-glibc/csu/version-info.h:1:1:&nbsp; missing terminating &#8221; character<br />系统在编译生成version.o时候发现version-info.h文件有错误<br /><br />解决方法是需要修改一个文件<br />解压glibc-2.3.2.tar.bz2<br />找到glibc-2.3.2/csu目录下的Makefile按如下修改<br />文件末尾有2处echo<br />echo<br />&#8221;/&#8221;Compiled on a $$os $$version system&#8221; /<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#8220;on<br />`date +%Y-%m-%d`.//n/&#8221;&#8221; ;; /<br />改为：<br />echo<br />&#8221;/&#8221;Compiled on a $$os $$version system&#8221; /<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#8220;on<br />`date +%Y-%m-%d`.////n/&#8221;&#8221; ;; /<br />echo<br />&#8221;/&#8221;Available extensions://n/&#8221;&#8220;;<br />改为：<br />echo<br />&#8221;/&#8221;Available extensions:////n/&#8221;&#8220;&nbsp;&nbsp;&nbsp; /<br />保存并重新压缩为glibc-2.3.2.tar.bz2 覆盖原来downloads目录下的glibc-2.3.2.tar.bz2<br /><br /><strong>解决好上面的一些小问题就可以开始安装了</strong><br /><br />1.创建一个安装目录<br />sudo mkdir /opt/crosstool<br />这是因为安装文件默认是安装到这个目录里的<br /><br />2.为你自己添加权限<br />sudo chown yourname /opt/crosstool<br /><br />3.解压crosstools-0.43.tar.gz(此时安装包应该位于/home/yourname/downloads/目录下，不是的话自己改一下)<br />tar -zvxf crosstools-0.43.tar.gz<br />进入cross目录<br />cd cross-0.43<br />可以ls一下看看里面的文件，里面有一些脚本文件，具体功能可以到http://kegel.com/crosstool上查看FAQ<br /><br />4.运行./demo-arm.sh进行安装<br />这步要注意，网上有人说需要修改脚本文件里的一些设置，我没改也装上了，不知道为什么。<br /><br />5.剩下的就等着编译安装吧，很漫长～～<br /><br /><strong>修改环境变量</strong><br />安装完成后，默认的那装目录就是开始创建的那个/opt/crosstools/<br />1.添加环境变量<br />gedit ~/.bashrc<br />在最后添加如下<br />if [ -d /opt/crosstool/gcc-4.1.0-glibc-2.3.2/arm-unknow-linux-gnu ]; then<br />&nbsp;&nbsp;&nbsp; PATH=/opt/crosstool/gcc-4.1.0-glibc-2.3.2/arm-unknow-linux-gnu/bin:$PATH<br />fi<br />就是把安装的工具bin目录添加到PATH变量中。<br />保存<br />2.source ~/.bashrc<br />3.重启终端。<br />然后可以测试一下<br />arm-unknow-linux-gnu-gcc<br />正常的话就会出现<br />arm-unknow-linux-gnu-gcc: no input files<br />说明程序能用了。<br /><br />剩下的就是继续探索～<br />革命尚未成功，同志还需努力<br /></p></div>
+  <div class="entry-content"><p>	Spring 提供了几个帮助类用于在应用中做调度，包括JDK Timer类和OpenSymphony Quartz Scheduler两种.</p>
+<h3><a name="在Spring中使用Quartz-Quartz基础"></a>
+
+Quartz基础	</h3>
+<p>	Quartz包括五种主要结构用于实现调度：</p>
+<ul>
+<li>Job接口</li>
+<li>JobDetail类</li>
+<li>Trigger 抽象类</li>
+<li>Scheduler接口</li>
+<li>SchedulerFactory 接口</li>
+</ul>
+<p>	Job接口表示一个作业(job)。一个作业专注做一件事。它的API非常简洁。只有一个execute方法，该方法在作业被执行时有Quartz调度。该方法有一个JobExecuteContext参数，可以通过该参数给execute()方法传递有用信息。</p>
+<p><pre class="brush: java">public interface Job{
+    void execute(JobExecuteContext ctx);
+}</pre>
+</p>
+<p>一些数据可以通过JobDataMap传递给作业。如果一个JobDataMap被注册到JobDetail中，就能够在作业中通过
+JobExecuteContext来访问。JobDetail用来描述一个特定Job的信息。Job通过触发器（Trigger）触发。Quartz提
+供了集中Trigger的实现，如SimpleTrigger和CronTrigger。SimpleTrigger类似一个简单时钟，你可以定义开始是
+建，结束时间，重复次数，重复周期。CronTrigger类似Linux系统中的cron。CronTrigger的设置可以非常详细，如在每个月最后
+一个周五的上午10:15执行作业。需要注意的是Trigger和Job是具名的，可以被赋值给一个组，在同一组内不能出现同名。你可以对一个组创建一个
+触发器，在该组内的所有Job都将会执行。<br />
+
+	SchedulerFactory 用于获得Scheduler实例，可以用于注册作业和触发器。<br />
+
+	实现一个简单的实例：每十秒钟打印一次欢迎。<br />
+
+	首先实现一个作业：</p>
+<p><pre class="brush: java">public class SimpleJob implements Job {
+	@Override
+	public void execute(JobExecutionContext arg0)
+	throws JobExecutionException {
+		System.out.println(&quot;[JOB] Welcome to Quartz!&quot;);
+	}
+}</pre>
+</p>
+<p>定义一个Scheduler，注册触发器和作业:</p>
+<p><pre class="brush: java">public class SimpleSchedule {
+	public static void main(String[] args) {
+		SchedulerFactory factory=new StdSchedulerFactory();
+		try {
+			Scheduler scheduler = factory.getScheduler();
+			scheduler.start();
+										            
+			JobDetail jobDetail = new JobDetail(&quot;SimpleJob&quot;,null, SimpleJob.class);
+			Trigger simplerTrigger = TriggerUtils.makeSecondlyTrigger(10);
+			simplerTrigger.setName(&quot;SimpleTrigger&quot;);
+										            
+			scheduler.scheduleJob(jobDetail, simplerTrigger);
+		}catch (SchedulerException e) {
+		    // TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+}</pre>
+</p>
+<p>执行过后，每十秒输出<span class="nobr">[JOB]</span>
+
+Welcome to Quartz!</p>
+<h3>Spring中的Quartz</h3>
+<p>	Spring中的Quartz API位于org.springframework.scheduling.quartz包中。主要类结构包括：</p>
+<ul>
+<li>QuartzJobBean 抽象类</li>
+<li>JobDetailBean</li>
+<li>SimpleTriggerBean</li>
+<li>CronTriggerBean</li>
+<li>SchedulerFactoryBean</li>
+<li>MethodInvokingDetailFactoryBean
+</li>
+</ul>
+<p>
+很明显对应实现Quartz中相应的接口。QuartzJob实现Job，JobDetailBean继承JobDetail。
+SimpleTriggerBean和CronTriggerBean继承自相应的Trigger。
+MethodInvokingJobDetailFactoryBean用于在类中调用任何对象的方法。<br />
+<strong>声明Job
+</strong>
+</p>
+<p>JobDetailBean用于声明作业。可以为其设置作业名，以及需要的数据。</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleJob&quot; class=&quot;org.springframework.scheduling.quartz.JobDetailBean&quot;&gt;
+	&lt;property name=&quot;jobClass&quot; value=&quot;com.alibaba.jiang.learn.quartz.SimpleJob&quot; /&gt;
+	&lt;property name=&quot;jobDataAsMap&quot;&gt;
+		&lt;map&gt;
+			&lt;entry key=&quot;message&quot; value=&quot;Welcome to Quartz&quot; /&gt;
+		&lt;/map&gt;
+	&lt;/property&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>实现Job类：</p>
+<p><pre class="brush: java">public class SimpleJob extends QuartzJobBean {
+	@Override
+	protected void executeInternal(JobExecutionContext ctx) throws JobExecutionException {
+		String message = ctx.getJobDetail().getJobDataMap().getString(&quot;message&quot;);
+		System.out.println(message);
+	}
+}</pre>
+</p>
+<p>还可以通过setter注入的方式注入message。<br />
+声明触发器：</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;simpleTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
+	&lt;property name=&quot;jobDetail&quot; ref=&quot;simpleJob&quot;/&gt;
+	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
+	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>声明调度器,设置Job和Trigger：</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;schedulerFactory&quot; class=&quot;org.springframework.scheduling.quartz.SchedulerFactoryBean&quot;&gt;
+	&lt;property name=&quot;triggers&quot;&gt;
+		&lt;list&gt;
+			&lt;ref bean=&quot;simpleTrigger&quot;/&gt;
+		&lt;/list&gt;
+	&lt;/property&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>所有都设置好后，可以通过加载Context，调度器将自动执行：</p>
+<p><pre class="brush: java">public class SimpleSpringQuartz {
+	public static void main(String[] args) {
+		ApplicationContext ctx = new ClassPathXmlApplicationContext(&quot;beans.xml&quot;);
+	}
+}</pre>
+</p>
+<h4>使用MethodInvokingJobFactoryBean</h4>
+<p>上面的范例使用的是Quartz Job，事实上在Spring中可以使用自定义Pojo Bean，无须继承自QuartzJobBean。<br />
+首先声明一个PojoBean</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;welcomeBean&quot; class=&quot;com.alibaba.jiang.learn.quartz.WelcomeBean&quot;&gt;
+	&lt;property name=&quot;message&quot; value=&quot;Welcome to Quartz Method&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<p>对应的Pojo Bean：</p>
+<p><pre class="brush: java">public class WelcomeBean {
+    private String message;
+	public void setMessage(String message) {
+		this.message = message;
+	}
+	public void welcome(){
+		System.out.println(message);
+	}
+}</pre>
+</p>
+<p>声明MethodInvokingJobDetailFactoryBean:</p>
+<p><pre class="brush: xhtml">&lt;bean name=&quot;methodInvokingJob&quot; class=&quot;org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean&quot;&gt;
+	&lt;property name=&quot;targetObject&quot; ref=&quot;welcomeBean&quot;/&gt;
+	&lt;property name=&quot;targetMethod&quot; value=&quot;welcome&quot;/&gt;
+&lt;/bean&gt;
+&lt;bean name=&quot;methodTrigger&quot; class=&quot;org.springframework.scheduling.quartz.SimpleTriggerBean&quot;&gt;
+	&lt;property name=&quot;jobDetail&quot; ref=&quot;methodInvokingJob&quot; /&gt;
+	&lt;property name=&quot;startDelay&quot; value=&quot;0&quot;/&gt;
+	&lt;property name=&quot;repeatInterval&quot; value=&quot;10000&quot;/&gt;
+&lt;/bean&gt;</pre>
+</p>
+<h4>注意</h4>
+<p>一个触发器只能触发一个Job，不过一个Job可以有多个Trigger触发，这回带来并发问题。在Quartz中，如果你不想并发执行一个同一个
+Job，你可以实现StatefulJob，而不是Job。在Spring中如果使用
+MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&quot;属性来实现。</p>
+<h3><a name="在Spring中使用Quartz-尾注"></a>
+尾注</h3>
+<p>在Spring中使用Quartz而不是单独的一个应用的好处包括：</p>
+<ul>
+<li>将所有的任务调度设置放在同一个地方，是任务易于维护。</li>
+<li>只对Job编码，Trigger和Scheduler可以通过配置设置</li>
+<li>可以使用Pojo Java Bean执行job，而无需实现Job接口</li>
+</ul></div>
   
   
 
@@ -161,7 +474,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2009/05/05/post/">Android SDK1.5开发体验</a></h1>
+      <h1 class="entry-title"><a href="/blog/2010/09/06/post/">DBunit入门</a></h1>
     
     
       <p class="meta">
@@ -177,9 +490,9 @@
   
 
 
-<time datetime="2009-05-05T00:00:00+08:00" pubdate data-updated="true">May 5<span>th</span>, 2009</time>
+<time datetime="2010-09-06T00:00:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2010</time>
         
-         | <a href="/blog/2009/05/05/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2010/09/06/post/#disqus_thread">Comments</a>
         
       </p>
     
@@ -187,123 +500,306 @@
 
 
   <div class="entry-content"><p>&nbsp;</p>
-<p>今天在机房尝试了一下<a onclick="tagshow(event, 'Android');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>Android</strong></span></a> SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去<a href="http://developer.android.com/sdk/1.5_r1/index.html">http://developer.android.com/sdk/1.5_r1/index.html</a>上自己看吧。</p>
-<p>下面说个小问题，之前版本的SDK，你写个HelloWorld，按照<a onclick="tagshow(event, 'google');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>google</strong></span></a>网站上说的，run的时候，会出现</p>
-<p>[2009-05-05 16:18:13 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:18:13 - HelloWorld] Android Launch!<br />[2009-05-05 16:18:13 - HelloWorld] adb is running normally.<br />[2009-05-05 16:18:13 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:18:13 - HelloWorld] Failed to find an <a onclick="tagshow(event, 'AVD');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>AVD</strong></span></a> compatible with target &#8216;Android 1.1&#8217;. Launch aborted.</p>
-<p>针对这个问题官方的解释在</p>
-<p><a href="http://developer.android.com/guide/developing/eclipse-adt.html#Running">http://developer.android.com/guide/developing/eclipse-adt.html#Running</a></p>
-<p>看懂了之后其实很容易，就是在运行模拟器之前必须要自己创建一个AVD（Android Virtual Device，Android虚拟设备），相当于配置你要模拟的目标平台一样，方法如下：</p>
-<p>1.打开CMD，输入命令android list targets，查看所有可用的目标平台（如果出现android命令无法找到，是因为你的PATH变量没配置，这就不用我多说了），显示结果为</p>
-<p>Available Android targets:</p>
-<p>id: 1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
-<p>id: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.5<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
-<p>id: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Add-On<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Vendor: Google Inc.<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Description: Android + Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Based on Android 1.5 (API level 3)<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Libraries:<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />* com.google.android.maps (maps.jar)<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />API for Google Maps<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: QVGA-P, HVGA-L, HVGA (default), QVGA-L, HVGA-P</p>
-<p>2.创建一个你想要的AVD，使用如下<a onclick="tagshow(event, '%C3%FC%C1%EE');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>命令</strong></span></a>：</p>
-<p>android create avd &#8211;name<em>&lt;your_avd_name&gt;</em>&#8211;target<em>&lt;targetID&gt;</em></p>
-<p>例如：andorid create avd &#8211;name adt15 &#8211;target 2命令，创建了一个名为adt15的2号（Android1.5）平台的AVD。</p>
-<p>3.然后会询问是否配置硬件设备，我没有硬件，就没配置，默认是NO，如果你想配置的话，输入yes就行。</p>
-<p>4.回到Eclipse里，继续RUN，这是就能搞定了。</p>
-<p>PS一下：模拟器编译装载实在是太慢了，一个HelloWorld要用7分钟，才能运行，不过好歹是能运行了，一下是Eclipse里的输出：</p>
-<p>[2009-05-05 16:35:26 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:35:26 - HelloWorld] Android Launch!<br />[2009-05-05 16:35:26 - HelloWorld] adb is running normally.<br />[2009-05-05 16:35:26 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:35:26 - HelloWorld] Automatic Target Mode: launching new emulator with compatible AVD &#8216;android15r1&#8217;<br />[2009-05-05 16:35:26 - HelloWorld] Launching a new emulator with Virtual Device &#8216;android15r1&#8217;<br />[2009-05-05 16:35:30 - HelloWorld] New emulator found: emulator-5554<br />[2009-05-05 16:35:30 - HelloWorld] Waiting for HOME (&#8216;android.process.acore&#8217;) to be launched&#8230;<br />[2009-05-05 16:40:28 - HelloWorld] HOME is up on device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:28 - HelloWorld] Uploading HelloWorld.apk onto device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:29 - HelloWorld] Installing HelloWorld.apk&#8230;<br />[2009-05-05 16:42:11 - HelloWorld] Success!<br />[2009-05-05 16:42:11 - HelloWorld] Starting activity com.jiang.android.HelloWorld on device<br />[2009-05-05 16:42:51 - HelloWorld] ActivityManager: Starting: Intent { comp={com.jiang.android/com.jiang.android.HelloWorld} }</p>
-<p>这时你在模拟器里就能看到Helloworld了，注意，一定要耐心等待。</p></div>
-  
-  
+<h3></h3>
+<h3><a name="createtest">使用DBTestCase子类设置数据库</a></h3>
+<p><a name="createtest"></a> <a name="createdataset"></a></p>
+<h4><a name="createdataset">第1步：创建你的数据集文件</a></h4>
+<p><a name="createdataset"> </a></p>
+<p>你的测试需要一些数据来辅助。也就是说你必须创建一个数据集。在大多数情况下你会使用XML数据集。你可以手动从头创建一个<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">flat XML数据集</a>或从你的数据库中<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">导出</a>一些数据。</p>
+<h4>第2步：扩展类的DBTestCase</h4>
+<p>现在您需要创建一个测试类。最简单的使用DBUnit的方法是是你的测试类继承DBTestCase。DBTestCase扩展了JUnit TestCase类。一个getDataSet()模板方法必须被实现，该方法返回步骤1中创建的数据集。<a class="code">DBTestCase依赖IDatabaseTester来完成工作，默认配置使用PropertiesBasedJdbcDatabaseTester，它通过系统属性来定位DriverManager的配置。</a><a class="code">最简单的配置方法是通过测试类的构造函数来配置。</a><a class="code">你可以通过使用你自己的或其他3个系统提供的IDatabaseTester实现重载getDatabaseTester()来改变该行为。</a></p>
+<p>你还可以使用如下所述其他的DBTestCase子类：</p>
+<table class="bodyTable" border="0">
+<tbody>
+<tr class="a">
+<td><a class="code">JdbcBasedDBTestCase</a></td>
+<td>使用一个DriverManager创建连接（在JdbcDatabaseTester的辅助之下）。</td>
+</tr>
+<tr class="b">
+<td><a class="code">DataSourceBasedDBTestCase</a></td>
+<td>使用javax.sql.DataSource创建连接（在DataSourceDatabaseTester的辅助之下）。</td>
+</tr>
+<tr class="a">
+<td><a class="code">JndiBasedDBTestCase</a></td>
+<td>使用javax.sql.DataSource通过JNDI定位（在JndiDatabaseTester的辅助之下）。</td>
+</tr>
+</tbody>
+</table>
+<p>&nbsp;</p>
+<p>以下是一个示例实现，返回一个Hypersonic数据库连接和一个XML数据集：</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    public SampleTest(String name)
+    {
+        super( name );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_DRIVER_CLASS, "org.hsqldb.jdbcDriver" );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_CONNECTION_URL, "jdbc:hsqldb:sample" );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_USERNAME, "sa" );
+        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_PASSWORD, "" );
+	// System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_SCHEMA, "" );
+    }
+
+    protected IDataSet getDataSet() throws Exception
+    {
+        return new FlatXmlDataSetBuilder().build(new FileInputStream("dataset.xml"));
+    }
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>第3步：（可选）实现getSetUpOperation（）和getTearDownOperation（）方法</h4>
+<p>默认情况下，DBUnit的执行每个测试之前回进行<a href="http://www.dbunit.org/components.html#cleanInsert">CLEAN_INSERT</a>操作并且在之后没有清除操作。你可以通过重载getSetUpOperation（）和getTearDownOperation（）来改变这一行为。</p>
+<p>下面的示例展现了你可以很简单的重载测试前后的操作</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    ...
+    protected DatabaseOperation getSetUpOperation() throws Exception
+    {
+        return DatabaseOperation.REFRESH;
+    }
+
+    protected DatabaseOperation getTearDownOperation() throws Exception
+    {
+        return DatabaseOperation.NONE;
+    }
+    ...
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>第4步：（可选）重载方法setUpDatabaseConfig(DatabaseConfig congfig)</h4>
+<p>使用如下方法来改变DBUnit的DatabaseConfi中g某些配置设置。</p>
+<p>下面的示例演示如何你可以轻松地重写此方法：</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    ...
+    /**
+     * Override method to set custom properties/features
+     */
+    protected void setUpDatabaseConfig(DatabaseConfig config) {
+        config.setProperty(DatabaseConfig.PROPERTY_BATCH_SIZE, new Integer(97));
+        config.setFeature(DatabaseConfig.FEATURE_BATCHED_STATEMENTS, true);
+    }
+    ...
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>第5步：实现你的testXXX（）方法</h4>
+<p>像正常使用JUnit一样实现你的测试方法。现在你的数据库将按照你之前几步所做设置那样在每个测试方法之前进行初始化并在之后进行清除操作。</p>
+<p> <a name="noextend"></a></p>
+<h3><a name="noextend">用你自己的TestCase子类来是设置数据库</a></h3>
+<p><a name="noextend"></a></p>
+<p>使用Dbunit并不严格要求继承DBTestCase。你可以重写标准的JUnit的setUp()方法并在数据库上执行所需的操作。如果您需要执行清理还可以做一些类似tearDwon()的操作。</p>
+<p>例如：</p>
+<div class="source">
+<pre><pre class="brush: c-sharp">public class SampleTest extends TestCase
+{
+    public SampleTest(String name)
+    {
+        super(name);
+    }
+
+    protected void setUp() throws Exception
+    {
+        super.setUp();
+
+        // initialize your database connection here
+        IDatabaseConnection connection = null;
+        // ...
+
+        // initialize your dataset here
+        IDataSet dataSet = null;
+        // ...
+
+        try1
+        {
+            DatabaseOperation.CLEAN_INSERT.execute(connection, dataSet);
+        }
+        finally
+        {
+            connection.close();
+        }
+    }
+    ...
+}
+</pre> 
 
 
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2008/07/12/post/">Eclipse 中中文乱码的问题</a></h1>
-    
-    
-      <p class="meta">
-        
+</pre>
+</div>
+<p>&nbsp;</p>
+<p>自2.2版你可以使用新的IDatabaseTester来完成相同的壮举。如前所述，DBTestCase使用IDatabaseTester在内部进行工作，你的测试类也可以使用此方法来操纵数据集。目前有4个已有的实现：<br />
+<table class="bodyTable" border="0">
+<tbody>
+<tr class="b">
+<td><a class="code">JdbcDatabaseTester</a></td>
+<td>使用一个DriverManager来创建连接。</td>
+</tr>
+<tr class="a">
+<td><a class="code">PropertiesBasedJdbcDatabaseTester</a></td>
+<td>同样使用DriverManager，但配置是采取从系统性能。<br />DBTestCase的默认实现。</td>
+</tr>
+<tr class="b">
+<td><a class="code">DataSourceDatabaseTester</a></td>
+<td>使用javax.sql.DataSource创建连接。</td>
+</tr>
+<tr class="a">
+<td><a class="code">JndiDatabaseTester</a></td>
+<td>使用javax.sql.DataSource通过JNDI定位的。</td>
+</tr>
+</tbody>
+</table>
+<br />你也可以自己实现IDatabaseTester接口。建议以AbstractDatabaseTester作为出发点。</p>
+<p>示例：</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends TestCase
+{
+    private IDatabaseTester databaseTester;
+
+    public SampleTest(String name)
+    {
+        super(name);
+    }
+
+    protected void setUp() throws Exception
+    {
+        databaseTester = new JdbcDatabaseTester("org.hsqldb.jdbcDriver",
+            "jdbc:hsqldb:sample", "sa", "");
+
+        // initialize your dataset here
+        IDataSet dataSet = null;
+        // ...
+
+        databaseTester.setDataSet( dataSet );
+	// will call default setUpOperation
+        databaseTester.onSetUp();
+    }
+
+    protected void tearDown() throws Exception
+    {
+	// will call default tearDownOperation
+        databaseTester.onTearDown();
+    }
+    ...
+}
+</pre> 
 
 
 
+</pre>
+</div>
+<p>&nbsp;</p>
+<p> <a name="assertdata"></a></p>
+<h3><a name="assertdata">数据库数据检查</a></h3>
+<p><a name="assertdata"></a></p>
+<p>DBUnit支持校验两个表或者数据集中包含的数据是否相同。以下两种方法可以用来验证在测试用例执行期间你的数据库是否包含预期的数据。</p>
+<div class="source">
+<pre><pre class="brush: java">public class Assertion
+{
+    public static void assertEquals(ITable expected, ITable actual)
+    public static void assertEquals(IDataSet expected, IDataSet actual)
+}</pre> </pre>
+</div>
+<p>&nbsp;</p>
+<h4>示例</h4>
+<p>下面的示例，说明如何对数据库表的快照和XML数据表进行比较</p>
+<div class="source">
+<pre><pre class="brush: java">public class SampleTest extends DBTestCase
+{
+    public SampleTest(String name)
+    {
+        super(name);
+    }
+
+    // Implements required setup methods here
+    ...
+
+    public void testMe() throws Exception
+    {
+        // Execute the tested code that modify the database here
+        ...
+
+
+        // Fetch database data after executing your code
+        IDataSet databaseDataSet = getConnection().createDataSet();
+        ITable actualTable = databaseDataSet.getTable("TABLE_NAME");
+
+        // Load expected data from an XML dataset
+        IDataSet expectedDataSet = new FlatXmlDataSetBuilder().build(new File("expectedDataSet.xml"));
+        ITable expectedTable = expectedDataSet.getTable("TABLE_NAME");
+
+        // Assert actual database table match expected table
+        Assertion.assertEquals(expectedTable, actualTable);
+    }
+}
+</pre> 
 
 
 
-
-
-  
-
-
-<time datetime="2008-07-12T00:00:00+08:00" pubdate data-updated="true">Jul 12<span>th</span>, 2008</time>
-        
-         | <a href="/blog/2008/07/12/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>很久没有写Java程序了，最近课程设计，要做个搜索引擎，用Eclipse开发java，结果抓来的网页数据在Eclipse 中全是乱码，另外，程序中如果有中文，编译不能通过，提示cp1252编码错误，晕，头一次听说这个编码，在网上搜了搜，得到了简单的解决方案：（其实是基本常识，哈哈~）</p><p>1. 点击Run，选择Open run Dialog</p><p>2. 选择common面板</p><p>3. 修改编码方式，默认为那个所谓的cp1252,修改为UTF-8就OK啦</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2008/06/23/post/">Cygwin 和 Ns-2的安装</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2008-06-23T00:00:00+08:00" pubdate data-updated="true">Jun 23<span>rd</span>, 2008</time>
-        
-         | <a href="/blog/2008/06/23/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>由于这段时间要和老师一起做一个无限传感器网络的研究课题，所以要用到开源的网络模拟软件ns-2,这个东东虽好，可是安装起来继承了linux/unix软件的安装的特点，超级麻烦~ </p>
-<p>由于课题的大部分开发还是要在windows下开发，所以不得不选择使用cygwin（如果不知道这个是什么，那就不用学了~）</p>
-<p><strong>安装cygwin</strong> </p>
-<p>1.连到cygwin的网站上，http://www.cygwin.com，点击Install or Update now这个按钮，会下载一个网络安装的程序。 </p>
-<p>2.点击安装程序，按照步骤一步一步往下做，主要是在遇到Select Package这一个步骤的时候，要安装ns2需要的组件。（还有一点，就是选择下载的源，我用的是http://mirrors.kernel.org,感觉速度还可以,如果网速太慢，可以联系我，我这又全部所需的）点击View这个按钮使得Category变成full，可以看到所有的软件包，包括安装的和没安装的，点击下列软&nbsp;&nbsp; 件的New这一栏的Skip状态，使之变成日期（即最新版本）。 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFree86-base、XFree86-bin、XFree86-prog、XFree86-lib、XFree86-etc、make、patch、perl、gcc、gcc-&nbsp;&nbsp;&nbsp;g++、gawk、gnuplot、tar和gzip，还有X-startup-scripts、xorg-x11-base、xorg-x11-bin、xorg-x11-devel、xorg-x11-bin-dlls、xorg-x11-bin-lndir、xorg-x11-etc、xorg-x11-fenc、xorg-x11-fnts、xorg-x11-libs-data、xorg-x11-xwin，最好把vi 也安装上，会有用的。然后一路next就行了下面是关键的 </p>
-<p><strong>安装ns-2</strong> </p>
-<p>1.到http://nsnam.isi.edu/nsnam/index.php/Main_Page&nbsp; 下载ns-2.31 </p>
-<p>2.将ns-allinone-2.31.tar.gz解压到C:/cygwin/home下，如果没有就自己建一个 </p>
-<p>3.在cygwin中运行如下命令： &nbsp;&nbsp; cd /home/ns-allinone-2.31 &nbsp;&nbsp; /.install &nbsp;&nbsp; 然后就等着安装完成就行了（要安装很长时间，我装了一个多小时） </p>
-<p>4.看到install sucessfully的时候，恭喜了，你顺利地装完了，不过别高兴，关键的配置PATH才刚开始 &nbsp;&nbsp; 如果你能在 /home/你的用户名 的文件夹下找到后缀名为.bashrc的文件（反正我是没找到，以下都是老师教的，我没试过），注意，不是.bashrc.bak,用UltraEdit把它打开，（最好用UltraEdit，不要用记事本，应为该文件是unix文件，用记事本会出现意想不到的错误，当然如果你会用vi，肯定也没什么问题），在文件后加上 </p>
-<p>export NS_HOME=/home/<strong>Benson/</strong>ns-allinone-<strong>2.31</strong> 　</p>
-<p>export PATH=$NS_HOME/t<strong>cl8.4.14/</strong>unix:$NS_HOME<strong>/tk8.4.14</strong>/unix:$NS_HOME/bin:$PATH </p>
-<p>export LD_LIBRARY_PATH=$NS_HOME/<strong>tcl8.4.14</strong>/unix:$NS_HOME/<strong>tcl8.4.14/</strong>unix:$NS_HOME/otcl-<strong>1.13</strong>:$NS_HOME/lib:$LD_LIBRARY_PATH </p>
-<p>export TCL_LIBRARY=$NS_HOME/<strong>tcl8.4.14</strong>/librar</p>
-<p>注意修改你的相应的路径名和版本号（黑体的部分）</p>
-<p>##如果你找不到在/home/你的用户名 的目录下找不到那个文件，那么就去/etc 下 找到bash.bashrc文件，用UltraEdit打开，按上面的方式添加到文件末尾，点击保存，不过这时候，修改还是没有生效，必须在cygwin下运行</p>
-<p>cd /etc</p>
-<p>source bash.bashrc</p>
-<p>从而使修改生效</p>
-<p>至此，如果一切顺利的话你的ns-2就安装好了</p>
-<p>可以使用如下命令检测是否成功安装：</p>
-<p>startxwin.bat</p>
-<p>cd /home/ns-allinone-2.31/ns-2.31/tcl/ex(路径名可能和你安装的不一样，注意修改)</p>
-<p>ns wireless-flooding.tcl</p>
-<p>你将会看到一个ns-2的模拟事例</p></div>
+</pre>
+</div>
+<p>&nbsp;</p>
+<p>实际数据集是一个你要与预期的数据集进行比较的数据库快照。正如其名称表明，预期数据集包含的期望数据值。</p>
+<p>预期的数据集必须与你用来设置你的数据库的数据集不同。因此，你需要两个数据集，一在测试之前设置数据库，另一个是在测试过程中提供预期的数据。</p>
+<p> <a name="assertquery"></a></p>
+<h4><a name="assertquery">使用查询获取数据库快照</a></h4>
+<p><a name="assertquery"> </a></p>
+<p>你也可以验证一个查询的结果是否与预期的数据集相等。查询可以用来查询单个表的一个子集或多个表的级联查询。</p>
+<div class="source">
+<pre>ITable actualJoinData = getConnection().createQueryTable("RESULT_NAME",
+                "SELECT * FROM TABLE1, TABLE2 WHERE ..."); ;</pre>
+</div>
+<p>&nbsp;</p>
+<p> <a name="compareignorecolumns"></a></p>
+<h4><a name="compareignorecolumns">在比较中忽略一些列</a></h4>
+<p><a name="compareignorecolumns"> </a></p>
+<p>有时需要忽略一些列来进行比较;特别是主键，日期或时间值等根据测试代码生成的字段。一个解决方法是在期望的数据表中声明不需要的字段。然后，您可以筛选实际的数据库表只暴露预期的字段。<br />下面的代码片断显示了如何筛选实际的数据表。为了能够运行，实际的表必须至少包含所有预期表中的字段列。实际表中可以包含期望表中没有的额外字段。</p>
+<div class="source">
+<pre>        
+<pre class="brush: java">ITable filteredTable = DefaultColumnFilter.includedColumnsTable(actual, 
+            expected.getTableMetaData().getColumns());
+    Assertion.assertEquals(expected, filteredTable); </pre> </pre>
+</div>
+<p>&nbsp;</p>
+<p>该技术的一个主要限制是你不能使用你的预期持平的XML数据集的DTD。有了你需要过滤的DTD列从预期的和实际的表。参见常见问题解答有关<a href="http://www.dbunit.org/faq.html#columnfilter">在运行时不包括一些表列</a> 。</p>
+<p> <a name="roworder"></a></p>
+<h4><a name="roworder">排序</a></h4>
+<p><a name="roworder"> </a></p>
+<p>默认情况下，DBUnit是按照主键排序来对获取数据库表的快照的。如果表没有主键或主键是数据库自动生成的，行的顺序是无法预测的，此时<code>assertEquals</code>将失败。</p>
+<p>必须通过使用ORDER BY条件手动设置IDatabaseConnection.createQueryTable来获取排序的数据库表快照或者可以使用<code>SortedTable</code>装饰类：</p>
+<div class="source">
+<pre>Assertion.assertEquals(new SortedTable(expected),
+                new SortedTable(actual, expected.getTableMetaData()));      </pre>
+</div>
+<p>请注意，默认情况下SortedTable使用每一列的字符串值来排序因此，如果排序的是数字类型，排列顺序应该是如<em>1，10，11，12，2，3，4。</em>如果您想使用列的数据类型进行排序，如<em>1，2，3，4，10，12），</em>，可以如下操作：</p>
+<div class="source">
+<pre><pre class="brush: c-sharp">SortedTable sortedTable1 = new SortedTable(table1, new String[]{"COLUMN1"});
+          sortedTable1.setUseComparable(true); // must be invoked immediately after the constructor
+          SortedTable sortedTable2 = new SortedTable(table2, new String[]{"COLUMN1"});
+          sortedTable2.setUseComparable(true); // must be invoked immediately after the constructor
+          Assertion.assertEquals(sortedTable1, sortedTable2);</pre> 
+      </pre>
+</div>
+<p>参数目前不放在构造方法中原因是这样会使SortedTable的构造方法由4个变为8个，太多了。<em>未来还需不断探索如何能更好地实现该功能</em></p>
+<p>&nbsp;</p>
+<p> <a name="assert-collect-diff"></a></p>
+<h4><a name="assert-collect-diff">断言和收集差异</a></h4>
+<p><a name="assert-collect-diff"> </a></p>
+<p>默认情况下，DBUnit发现第一个不一致数据时立即失败从DBunit2.4开始，可以通过注册一个定制的FailHandler来指定什么样的异常会被抛出，以及发现数据不一致时如何处理。使用<a href="http://www.dbunit.org/apidocs/org/dbunit/assertion/DiffCollectingFailureHandler.html">DiffCollectingFailureHandler</a>可以避免数据不匹配是抛出异常，使你可以在事后比对所有的结果集。</p>
+<p>&nbsp;</p>
+<div class="source">
+<pre><pre class="brush: java">IDataSet dataSet = getDataSet();
+DiffCollectingFailureHandler myHandler = new DiffCollectingFailureHandler();
+//invoke the assertion with the custom handler
+assertion.assertEquals(dataSet.getTable("TEST_TABLE"),
+                       dataSet.getTable("TEST_TABLE_WITH_WRONG_VALUE"),
+                       myHandler);
+// Evaluate the results and throw an failure if you wish
+List diffList = myHandler.getDiffList();
+Difference diff = (Difference)diffList.get(0);</pre> </pre>
+</div>
+<p>&nbsp;</p></div>
   
   
 
@@ -311,6 +807,8 @@
     </article>
   
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/17/">&larr; Older</a>
     
     <a href="archives">Blog Archives</a>
     
@@ -332,9 +830,8 @@
 </section>
 <section>
   <h1>关于我</h1>
-  <p>一个非纯种程序员，爱代码爱产品爱旅行爱美女</p>
-  <iframe width="100%" height="550" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=550&fansRow=1&ptype=1&speed=0&skin=2&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
-
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
 </section>
 <section>
   <h1>Recent Posts</h1>
@@ -358,26 +855,6 @@
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
       </li>
     
   </ul>
@@ -414,6 +891,10 @@
 
 
 
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
 
   
 </aside>

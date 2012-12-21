@@ -1,0 +1,547 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="今天终于能用linux上网了，自从换了校园网，用上那个该死的锐捷，已经告别可爱的Ubuntu很久了，差了很多资料，一直无法上，无论是锐捷官方客户端xrgsu，还是xsuppclient,或者ruijieclient，都是有错误，最后找到了一个很好用的mentohust(http://code. &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/19/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+   <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+</hgroup>
+
+</header>
+  <!-- <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav> -->
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/24/post/">Linux锐捷上网-mentohust</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-24T00:00:00+08:00" pubdate data-updated="true">Nov 24<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/24/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天终于能用linux上网了，自从换了校园网，用上那个该死的锐捷，已经告别可爱的Ubuntu很久了，差了很多资料，一直无法上，无论是锐捷官方客户端xrgsu，还是xsuppclient,或者ruijieclient，都是有错误，最后找到了一个很好用的mentohust(http://code.google.com/p/mentohust/)华科的牛人开发的锐捷客户端，更新的比较及时，很不错，赞一个，而且安装非常简单，我是Ubuntu，直接下载了deb包，安装完成后，修改/etc/mentohust.conf:<br />
+&nbsp;&nbsp;&nbsp; ;(U)用户名，长度不超过64<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Username=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(P)密码，长度不超过64<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Password=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(N)网卡<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Nic=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(I)静态IP用户可以使用非本机IP<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; IP=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(G)网关，无关紧要<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Gateway=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(S)DNS服务器，无关紧要<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DNS=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(F)认证数据包，如果需要校验客户端，就需要正确设置，否则不必自找麻烦<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Package=/etc/mentohust/3_50.mpf<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(T)每次发包超时时间（秒）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Timeout=3<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(E)发送Echo包的间隔（秒）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EchoInterval=30<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(R)定时重连间隔（分）（如果学校支持使用私有地址认证，就可以把自动重连间隔设短一点，因为这种情况除非掉线才真正开始重连，否则建议设为0）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AutoReconnect=<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(A)寻找服务器时的组播地址类型 0标准 1私有<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; StartAddress=1<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(D)DHCP方式 0(不使用) 1(二次认证) 2(认证后) 3(认证前)<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DhcpMode=0<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ;(C)进行DHCP的脚本（可以为dhclient eth0等）<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DhcpScript=dhclient<br />
+将里面的选项都配置成和你学校配置相同就可以了，具体使用请参考官方wiki(http://code.google.com/p/mentohust/wiki/FAQ)</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/22/post/">Android文档（三）-数据存储</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-22T00:00:00+08:00" pubdate data-updated="true">Nov 22<span>nd</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/22/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">通常的<span style="font-family: Times New Roman;">OS</span>
+<span style="font-family: 宋体;">是采用一个文件系统来存储文件数据，是文件可以被几个文件共同访问。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中采用了不同的数据共享方法。在</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中，每个应用的数据文件是私有的，</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">也就是只有自己能够访问，但是<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">同时提供了一种机制，使得应用可以将自己的私有文件暴露给外部的其他应用程序，从而实现文件数据的共享。这种机制即</span>
+<span style="font-family: Times New Roman;">Content&nbsp;Providers</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">Content&nbsp;Providers<span style="font-family: 宋体;">是一个应用的可选组件，它提供了对数据进行修改的标准接口。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">为一些类型数据提供了</span>
+<span style="font-family: Times New Roman;">content&nbsp;Provides</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">，</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">例如，<span style="font-family: Times New Roman;">Image</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">audio</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">video</span>
+<span style="font-family: 宋体;">，以及</span>
+<span style="font-family: Times New Roman;">personal&nbsp;contact&nbsp;informations</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">无论如何将数据暴露给其他应用，都需要将数据存储起来。<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">提供了四种方法存储和检索数据：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;	</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">1.Preferences<span style="font-family: 宋体;">：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;	</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">preferences<span style="font-family: 宋体;">是一种轻量级的存储机制，采用原始数据类型的</span>
+<span style="font-family: Times New Roman;">key-values</span>
+<span style="font-family: 宋体;">对来进行存储和检索。通常用来存储应用的</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">，例如开机界面或者一个电话欢迎界面。通过</span>
+<span style="font-family: Times New Roman;">Context.getSharedPreferences()</span>
+<span style="font-family: 宋体;">方法读取和写入数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">为你想要给同一个应用中的其他组件共享的数据集合起一个名字，或者通过<span style="font-family: Times New Roman;">Activity.getPreferences()</span>
+<span style="font-family: 宋体;">直接访问</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据集。注意：</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据不能够用在不同应用间共享。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">2.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Files</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以直接在设备上或者移动存储设备上存储文件，但是默认条件下，这些文件对其他应用是不可访问的。</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以通过调用<span style="font-family: Times New Roman;">Context.openFileInput()</span>
+<span style="font-family: 宋体;">方法，并向其传递文件名和路径来读取文件。返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileInputStream</span>
+<span style="font-family: 宋体;">对象。写入文件是，调用</span>
+<span style="font-family: Times New Roman;">Context.opernFileOutput()</span>
+<span style="font-family: 宋体;">，返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileOutputStream</span>
+<span style="font-family: 宋体;">对象。但是文件访问只能针对本地文件，如果调用文件操作方法去操作其他应用中的文件是不可以的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">另外一种文件访问方法是，如果文件在编译时是静态的，可以通过将文件存储在<span style="font-family: Times New Roman;">res/raw/myDataFile</span>
+<span style="font-family: 宋体;">，调用</span>
+<span style="font-family: Times New Roman;">Resources.openRawResources(R.raw.myDataFile)</span>
+<span style="font-family: 宋体;">方法来访问，该方法返回一个</span>
+<span style="font-family: Times New Roman;">InputFileStream</span>
+<span style="font-family: 宋体;">对象。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">3.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Databases</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android&nbsp;API<span style="font-family: 宋体;">中包含了</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">API</span>
+<span style="font-family: 宋体;">，用于创建和使用</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">数据库。每个数据库只对创建它的那个应用是开放的，对其他应用都是私有的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">一个<span style="font-family: Times New Roman;">SQLiteDatabase</span>
+<span style="font-family: 宋体;">对象表示一个数据库，并具有可以与之交互的方法。可以调用</span>
+<span style="font-family: Times New Roman;">SQLiteDatabase.create()</span>
+<span style="font-family: 宋体;">方法创建一个数据库。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">同样提供了数据库管理函数用于操作存储封装成对象的复杂数据集合。例如，</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中定义了一个联系人信息</span>
+<span style="font-family: Times New Roman;">(contact&nbsp;information)</span>
+<span style="font-family: 宋体;">的类型，其中包含了姓名（</span>
+<span style="font-family: Times New Roman;">string)</span>
+<span style="font-family: 宋体;">，地址</span>
+<span style="font-family: Times New Roman;">(String)</span>
+<span style="font-family: 宋体;">，照片</span>
+<span style="font-family: Times New Roman;">(bitmap)</span>
+<span style="font-family: 宋体;">的多种描述人的信息数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">所有的数据库，<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">以及其它的，都被存储在设备上的</span>
+<span style="font-family: Times New Roman;">/data/data/package_name/databases</span>
+<span style="font-family: 宋体;">中。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">4.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Network</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">可以通过网络来检索和存储数据，当然，前提是可以联网。</span>
+</span>
+</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/16/post/">IAR开发环境中添加头文件</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-16T00:00:00+08:00" pubdate data-updated="true">Nov 16<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/16/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content">&nbsp;
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">今天在添加<span style="font-family: Times New Roman;">uart</span>
+<span style="font-family: 宋体;">驱动时，需要向现有的</span>
+<span style="font-family: Times New Roman;">uC/OS</span>
+<span style="font-family: 宋体;">工程文件中添加头文件。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">1.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">直接在工程目录下新建一个目录，将<span style="font-family: Times New Roman;">uart.c</span>
+<span style="font-family: 宋体;">和</span>
+<span style="font-family: Times New Roman;">uart.h</span>
+<span style="font-family: 宋体;">添加到该目录下，</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">2.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">在工程项目上右键<span style="font-family: Times New Roman;">-&gt;add-&gt;add&nbsp;group</span>
+<span style="font-family: 宋体;">，添加一个组</span>
+<span style="font-family: Times New Roman;">uC-UART</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">3.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">在该组上继续右键<span style="font-family: Times New Roman;">-&gt;add-&gt;add&nbsp;file</span>
+<span style="font-family: 宋体;">，添加</span>
+<span style="font-family: Times New Roman;">uart.c</span>
+<span style="font-family: 宋体;">和</span>
+<span style="font-family: Times New Roman;">uart.h</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt; text-align: center;"><span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">4.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">修改<span style="font-family: Times New Roman;">includes.h</span>
+<span style="font-family: 宋体;">，添加</span>
+<span style="font-family: Times New Roman;">#include&nbsp;&lt;uart.h&gt;</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">5.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">此时直接编译会报错说无法找到<span style="font-family: Times New Roman;">&lt;uart.h&gt;</span>
+<span style="font-family: 宋体;">，还需要将上述目录添加到编译路径中，右键工程</span>
+<span style="font-family: Times New Roman;">-&gt;option-&gt;C/C++&nbsp;Compiler-&gt;preprocessor</span>
+<span style="font-family: 宋体;">，将</span>
+<span style="font-family: Times New Roman;">uart.h</span>
+<span style="font-family: 宋体;">所在路径添加到</span>
+<span style="font-family: Times New Roman;">include</span>
+<span style="font-family: 宋体;">路径中</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt; text-align: center;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">6.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">重新编译，就没有错误了。</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p></div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/20/">&larr; Older</a>
+    
+    <a href="archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/18/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <ul id="recent_posts">
+      <li class="post">
+      <a href="http://jiangbo.me" alt="Home"><img src="/images/Home.png"></a>
+      <a href="http://jiangbo.me/archives/" alt="Archives"><img src="/images/Calendar.png"></a>
+      <a href="mailto:" alt="E-Mail"><img src="/images/Envelope.png"></a>
+      <a href="http://jiangbo.me/atom.xml" alt="subscribe feed"><img src="/images/rss.png"></a>
+      </li>
+  </ul>
+</section>
+<section>
+  <h1>关于我</h1>
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

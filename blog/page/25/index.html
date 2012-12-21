@@ -1,0 +1,460 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。
+Ubuntu默认安装的是DHCP
+# The primary network interface auto eth0 iface eth0 inet dhcp &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/25/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+   <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+</hgroup>
+
+</header>
+  <!-- <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav> -->
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/19/post/">Ubuntu在机房上网</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-19T00:00:00+08:00" pubdate data-updated="true">Jun 19<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/19/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。</p>
+<p>Ubuntu默认安装的是DHCP<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+先要取消DHCP<br />
+编辑/etc/network/interfaces
+<br />
+$sudo vim /etc/network/interfaces<br />
+# The primary network interface
+<br />
+auto eth0
+<br />
+#iface eth0 inet dhcp
+<br />
+&nbsp;<br />
+设置IP地址和网关地址<br />
+# The primary network interface
+<br />
+iface eth0 inet static
+<br />
+address 192.168.4.148
+<br />
+netmask 255.255.255.0
+<br />
+gateway 192.168.4.254</p>
+<p>设置DNS服务器地址,编辑文件/etc/resolv.conf<br />
+$sudo vim /etc/resolv.conf
+<br />
+nameserver 202.118.224.101
+<br />
+nameserver 202.106.0.20
+<br />
+&nbsp;<br />
+重启eth0<br />
+$sudo ifdown eth0
+<br />
+$sudo ifup eth0</p>
+<p>机房有时会限制MAC地址，修改MAC地址命令如下<br />
+$sudo ifconfig eth0 up
+<br />
+$sudo ifconfig eth0 hw ether 00:10:5C:E1:63:E1
+<br />
+$sudo ifconfig eth0 down</p>
+<p>
+不过每次重启后都会失效<br />
+&nbsp;自己写了一个脚本</p>
+<p>#!/bin/sh<br />
+echo &quot; **************************************************************&quot;<br />
+echo &quot; *&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Configure IP&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; * Copyright by Jiang Bo &lt;jiang_eis@hotmail.com&gt; 2009.6.10&nbsp;&nbsp;&nbsp; *&quot;<br />
+echo &quot; **************************************************************&quot;<br />
+<br />
+echo &quot; shut down eth0&#8230;&quot;<br />
+ifconfig eth0 down<br />
+<br />
+echo &quot; configure MAC&#8230;&quot;<br />
+ifconfig eth0 hw ether 00:10:5C:E1:63:E1<br />
+<br />
+echo &quot; configure ip address&#8230;&quot;<br />
+ifconfig eth0 192.168.4.148 netmask 255.255.255.0<br />
+<br />
+echo &quot; configure gateway address&#8230;&quot;<br />
+route add default gw 192.168.4.254<br />
+<br />
+echo &quot; set up eth0&#8230;&quot;<br />
+ifconfig eth0 up</p>
+<p>&nbsp;</p>
+<p>每次重启后直接执行这个脚本就行了^^</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/15/post/">关于进程间通信</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-15T00:00:00+08:00" pubdate data-updated="true">Jun 15<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/15/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>简要记录一下今天遇到的问题和解决方法<br />
+主函数需要创建一个监听网络端口的守护进程，并将监听到的数据传递给主函数，用于显示。其中，主函数有Qt实现，因此需要采用多线程来维护显示界面，即用一个线程维护显示界面，另一个线程负责向界面上添加数据。（坦白说，我觉得肯定有很简单的方法就能够实现显示数据，不过，由于图形界面不是我负责，自己又不会Qt，没办法了～～研究中）<br />
+现在的问题是，守护进程如何将监听到的数据传递给父进程中负责显示的线程？很显然，不能采用函数返回值，守护进程要是能返回，也就不叫守护进程了，也不能用全局变量，因为父子进程不共享全局变量。翻了半天书，发现可以用IPC，尝试了最简单的管道，找到一种很笨的方法。<br />
+下面是一个简单的例子<br />
+#include &lt;unistd.h&gt;<br />
+#include &lt;stdio.h&gt;<br />
+#include &lt;pthread.h&gt;<br />
+#define MAXLINE&nbsp;&nbsp;&nbsp; 1024<br />
+int fd[2];<br />
+pthread_t pthid;<br />
+void* getMsg(void* arg)//父进程中负责显示的线程函数<br />
+{<br />
+&nbsp;&nbsp;&nbsp; char buff[MAXLINE];<br />
+&nbsp;&nbsp;&nbsp; int n;<br />
+&nbsp;&nbsp;&nbsp; close(fd[1]); //关闭写管道<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; n=read(fd[0],buff,MAXLINE);//从管道中读取数据<br />
+&nbsp;&nbsp;&nbsp; buff[n]=&#8217;/0&#8217;;<br />
+&nbsp;&nbsp;&nbsp; printf(&quot;%s/n&quot;,buff);//实际应用中要用Qt实现~<br />
+&nbsp;&nbsp;&nbsp; }<br />
+<br />
+}<br />
+int main(void)<br />
+{<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; n;<br />
+&nbsp;&nbsp;&nbsp; int&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; err;<br />
+&nbsp;&nbsp;&nbsp; pid_t&nbsp;&nbsp;&nbsp; pid;<br />
+&nbsp;&nbsp;&nbsp; char&nbsp;&nbsp;&nbsp; line[MAXLINE];<br />
+<br />
+&nbsp;&nbsp;&nbsp; if(pipe(fd)&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr, &quot;pipe error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; if((pid=fork())&lt;0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;fork error/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; return -1;<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else if(pid＝0)//子进程<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; close(fd[0]);//关闭读管道<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; write(fd[1],&quot;hello/n&quot;,sizeof(&quot;hello/n&quot;));//向管道中写数据<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; else<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; err=pthread_create(&amp;pthid,NULL,getMsg,NULL);//创建线程<br />
+&nbsp;&nbsp;&nbsp; if(err!=0)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; fprintf(stderr,&quot;can&#8217;t create thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; exit(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; while(1)<br />
+&nbsp;&nbsp;&nbsp; {<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; printf(&quot;this is main thread/n&quot;);<br />
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; sleep(1);<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; }<br />
+&nbsp;&nbsp;&nbsp; return 0;<br />
+}<br />
+<br />
+感觉这个办法非常笨？但又找不到更好的～发愁中&hellip;&hellip;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/05/25/post/">关于ARM的内存重映射</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-25T00:00:00+08:00" pubdate data-updated="true">May 25<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/05/25/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>先说说存储器映射：<br />所谓存储器映射，是指将开发板上不同的存储器映射到开发人员可见的4GB地址空间上，例如，假设开发板上有一个32KB的片内FLASH，16KB的片内SRAM（纯属虚构，如有雷同，纯属巧合），那么，将32KBFLASH映射到地址空间的0x00000000~0x0x00008FFF上，将16KB的SRAM映射到x40000000~0x40004fff上，这样开发者在读写0x00000000~0x00008fff内的地址时，访问的就是片内FLASH，不同开发板的映射规则是开发板厂商事先设定好的。</p>
+<p><br />下面说说什么是重映射：<br />重映射分为中断向量的重映射和boot的重映射<br />首先说说中断向量重映射<br />ARM中中断向量的地址位于0x00000000~0x0000003c(每个向量占4字节，但是为了能够实现4GB范围内的任意跳转，通常在中断向量表后附加一个跳转地址空间，跳转空间占4字节，因此，总的中断向量表大小为64B,不熟悉的自己查查ARM的中断向量吧，不多说了)。注意，这里所说的0x0000000~0x0000003C指的是用户可见的4GB地址空间（也就是上面所说的存储器映射后的地址空间），真正的中断向量位于哪块存贮器的哪个地址上可不一定(不过通常都是为与片内FLASH的底部)，因此，需要将不同存储器的中断向量表映射到0x00000000~0x0000003c的地址上。另外，还有一次中断向量的映射，在用户RAM的映射模式（稍后说映射模式）下，需要将中断向量映射到静态RAM的底部(很明显，这样能够提高访问速度)。<br />下面是boot的重映射<br />这里所说的boot不是bootloader，而是厂商实现内嵌到板子中的一段代码，用于执行对FLASH的读写，擦除等任务，通常位于片内存储器上，但是不同的板子上存储器的大小不同，为了程序的兼容，通常需要将boottblock重映射到存储空间的顶端。</p>
+<p>最后说一下映射模式：<br />ARM中支持4中映射模式，由存储器控制寄存器控制<br />四种模式为：<br />1.boot装载程序模式：在任何复位操作后都会执行Boot装载程序。Bootblock中中断向量映射到存储器的底端以允许处理异常，并在Boot装载过程中使用中断。<br />2.用户FLASH模式：当在存储器中识别了一个有效的用户程序标识并且Boot装载操作未被执行时，由Boot装载程序启动。中断向量没有重新映射，位于Flash的存储器底部<br />3.用户Flash：中断向量被映射到静态RAM的底部<br />4.用户外部模式：中断向量有外部存储器映射到存储空间底部。</p>
+<p>大概就这些，该上课去了，全是个人揣摩，有错请轻拍:)</p></div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/26/">&larr; Older</a>
+    
+    <a href="archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/24/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <ul id="recent_posts">
+      <li class="post">
+      <a href="http://jiangbo.me" alt="Home"><img src="/images/Home.png"></a>
+      <a href="http://jiangbo.me/archives/" alt="Archives"><img src="/images/Calendar.png"></a>
+      <a href="mailto:" alt="E-Mail"><img src="/images/Envelope.png"></a>
+      <a href="http://jiangbo.me/atom.xml" alt="subscribe feed"><img src="/images/rss.png"></a>
+      </li>
+  </ul>
+</section>
+<section>
+  <h1>关于我</h1>
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

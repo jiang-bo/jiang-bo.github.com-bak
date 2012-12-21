@@ -1,0 +1,466 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="一、 目的： 将一个类的接口转换成客户希望的另一个接口。Adapter 模式使原本由于接口不兼容而不能一起工作的那些类可以一起工作。 ——GoF 《Design Pattern 》 二、 描述： 其实个人觉得Adapter模式在所有的模式当中算是比较简单的那种，也比较容易理解， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/22/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+   <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+</hgroup>
+
+</header>
+  <!-- <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav> -->
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/08/28/adapter-pattern/">设计模式学习笔记（3）——适配器模式(Adapter Pattern)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-08-28T16:48:00+08:00" pubdate data-updated="true">Aug 28<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/08/28/adapter-pattern/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>一、 目的：</p>
+
+<p>将一个类的接口转换成客户希望的另一个接口。Adapter 模式使原本由于接口不兼容而不能一起工作的那些类可以一起工作。</p>
+
+<p>——GoF 《Design Pattern 》</p>
+
+<p>二、 描述：</p>
+
+<p>其实个人觉得Adapter模式在所有的模式当中算是比较简单的那种，也比较容易理解，就像我们日常生活中经常会使用USB转换器，将某种非USB接口的外设转换我们本本上提供的USB接口一样，在面向对象设计中，有时候我们不得不将将某个类的接口转换成另外一种我们需要的类型，最通常的情况可能是因为我们要想为现有的系统添加额外的一个现有的子系统，而两个系统提供的接口不同，因此，我们不得不讲其中一个转换成另一个，或者进行双向转换。</p>
+
+<p>说起来好像很容易理解，那么到底应该如何应用Adapter模式呢，还是举HeadFirst中的例子吧：</p>
+
+<p>假设现在我们有一个现有系统SimuDuck，提供一个鸭子的接口Duck，要求系统中的所有的类必须实现该Duck接口</p>
+
+<p><img src="/images/_clip_image002.gif" alt="" /></p>
+
+<p>（注：staruml中设置接口图形格式：右键图标->Format->seterotype->None,不过怎么把方法显示出来还么研究好）</p>
+
+<p>该接口提供两个方法，fly(),飞， quack(),叫。</p>
+
+<p>现在要向这个系统中天加一个由一些火鸡组成的子系统，火鸡实现的是火鸡接口Turkey：</p>
+
+<p><img src="/images/o_clip_image004_2_633891499875937500.gif" alt="" /></p>
+
+<p>该接口提供的方法功能包括,fly()飞，gobble()叫。</p>
+
+<p>现在要想将实现Turkey的具体火鸡类在现有的使用Duck接口的系统中使用，就必须将Turkey转换成Duck，实现起来很简单，类图如下：</p>
+
+<p><img src="/images/o_adapter_duck_turkey_4.jpg" alt="" /></p>
+
+<p>设计一个TurkeyAdapter，该适配器实现了Duck接口，并使用一个Turkey作为构造参数，在TurkeyAdapter中实现Duck接口的方法时，实际调用的是Turkey的方法，下面时代码实现：</p>
+
+<p>Duck接口：</p>
+
+<p>[java] view plaincopy
+public interface Duck {</p>
+
+<pre><code>public abstract void quack();  
+public abstract void fly();  
+</code></pre>
+
+<p>}<br/>
+MallardDuck具体鸭子类：</p>
+
+<p>[java] view plaincopy
+public class MallardDuck implements Duck {</p>
+
+<pre><code>public void quack(){  
+    System.out.println("MallardDuck quack");  
+}  
+public void fly(){  
+    System.out.println("MallardDuck fly");  
+}  
+</code></pre>
+
+<p>}<br/>
+注意，这里的实现quack()和fly()方法时使用简单的直接实现，实际中应该采用Strategey（策略）模式，以后再说该模式。</p>
+
+<p>Turkey接口：</p>
+
+<p>[java] view plaincopy
+public interface Turkey {</p>
+
+<pre><code>public void fly();  
+public void gobble();  
+</code></pre>
+
+<p>}<br/>
+实现Turkey的具体WildTurkey：</p>
+
+<p>[c-sharp] view plaincopy
+public class WildTurkey implements Turkey {</p>
+
+<pre><code>public void fly(){  
+    System.out.println("WildTurkey fly");  
+}  
+public void gobble(){  
+    System.out.println("WildTurkey gobble");  
+}  
+</code></pre>
+
+<p>}<br/>
+最关键的TurkeyAdapter：</p>
+
+<p>[java] view plaincopy
+public class TurkeyAdapter implements Duck {</p>
+
+<pre><code>Turkey turkey;  
+public TurkeyAdapter(Turkey turkey){  
+    this.turkey = turkey;  
+}  
+public void quack(){  
+    turkey.gobble();  
+}  
+public void fly(){  
+    turkey.fly();  
+}  
+</code></pre>
+
+<p>}<br/>
+该类拥有一个Turkey的实例变量，一个以Turkey作为参数构造方法，也就是说在构造时将要转换的Turkey对象作为构造参数传递给该适配器，当调用适配器的Duck接口的方法时，实际调用的是turkey对象的方法。</p>
+
+<p>在这里，由于示例比较简单，没有什么问题，在实践中，可能会出现被转换的类不具备目标对象的某种功能，例如，如果Duck中有一个swim()方法，很明显，Turkey不能游泳，也就没有可以调用的方法，通常的做法是抛出一个异常CanNotFindMethodException。</p>
+
+<p>最后是测试程序：</p>
+
+<p>[java] view plaincopy
+public class Client {</p>
+
+<pre><code>public static void main(String[] args){  
+    MallardDuck duck = new MallardDuck();  
+
+    WildTurkey wildTurkey = new WildTurkey();  
+    Duck turkeyAdapter = new TurkeyAdapter(wildTurkey);  
+
+    System.out.println("Duck...");  
+    testDuck(duck);  
+
+    System.out.println("TurkeyAdapter...");  
+    testDuck(turkeyAdapter);  
+}  
+static void testDuck(Duck duck){  
+    duck.fly();  
+    duck.quack();  
+}  
+</code></pre>
+
+<p>}<br/>
+该测试程序的输出结果为：</p>
+
+<p>[java] view plaincopy
+Duck&#8230;<br/>
+MallardDuck fly<br/>
+MallardDuck quack<br/>
+TurkeyAdapter&#8230;<br/>
+WildTurkey fly<br/>
+WildTurkey gobble</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/08/26/post/">Eclipse中修改Tomcat端口</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-08-26T00:00:00+08:00" pubdate data-updated="true">Aug 26<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/08/26/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content">在Linux中新安装了Oracle，占用了原来Tomcat的8080端口，修改了tomcat中conf目录下的server.xml文件：<br /><connector port="&lt;font color="><font color="#ff0000">8080</font>&#8221; protocol=&#8221;HTTP/1.1&#8221; <br />               connectionTimeout=&#8221;20000&#8221; <br />               redirectPort=&#8221;8443&#8221; /&gt;<br />将上面的8080改为未被占用的1024以上的端口，我改的是9000，保存后运行startup.sh脚本启动Tomcat，但是在Eclipse中，原来设置的Tomcat服务器启动时仍然报错，说8080被占用，tomcat无法启动，解决方法如下：<br />在server面板中（如果没有，通过windows-&gt;show view-&gt;Other-&gt;servers打开）删除原来设置的tomcat服务器，重启Eclipse，重新设置一个服务器，启动，一切正常了～<br />～Good Luck~<br /><br /><div class="zemanta-pixie"><img class="zemanta-pixie-img" alt="" src="http://img.zemanta.com/pixy.gif?x-id=d55ce718-3dc4-86e1-abe6-bc4529e04031" /></div>
+</connector></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/08/24/post/">Ubuntu9.04安装Oracle XE</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-08-24T00:00:00+08:00" pubdate data-updated="true">Aug 24<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/08/24/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>&nbsp;</p>
+<p>一直听说Ubuntu上安装Oracle相当麻烦，今天体验了一把，可能比较幸运，没出什么问题，简单记录一下，先声明，我装的是Oracle XE版，也就是官网上所说的快捷版，企业版的安装要麻烦的多，而且好想也不支持Ubuntu。</p>
+<p>简单来说步骤如下：</p>
+<p>1.将http://oss.oracle.com/debian unstable non-free添加到软件源中</p>
+<p>2.添加密钥 sudo apt-key add RPM-GPG-KEY-oracle（不过我安装时提示密钥无效，但最后也装上了，不了解）</p>
+<p>3.sudo apt-get update更新（不过我添加后立即更新没能什么都没有，没什么反应，过了几个小时自动更新里提示安装）</p>
+<p>4.正常的话会自动安装</p>
+<p>5.配置数据库 sudo /etc/init.d/oracle-xe configure，这里包括监听端口号，http端口，以及帐户密码等选项，默认安装就可以了，当然，密码要自己设。</p>
+<p>6.安装完成后，网上很多人提示说是要配置环境变量，但是我发现安装过程自己配置了，可以通过echo $ORACLE_HOME等方法查看一下，没设自己设一下把</p>
+<p>6.正常在GNOME环境中会在应用程序栏中添加Oracle菜单栏，选择转至数据库主页，正常的话就能够打开数据库主页，地址为：http://127.0.0.1:8080/apex，(8080是你在配置时设置的端口号，我的默认就是8080),然后输入用户名密码登录就OK了</p>
+<p>～～～看似简单，哈～希望大家也想我一样顺利哈～继续学习中～</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/23/">&larr; Older</a>
+    
+    <a href="archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/21/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <ul id="recent_posts">
+      <li class="post">
+      <a href="http://jiangbo.me" alt="Home"><img src="/images/Home.png"></a>
+      <a href="http://jiangbo.me/archives/" alt="Archives"><img src="/images/Calendar.png"></a>
+      <a href="mailto:" alt="E-Mail"><img src="/images/Envelope.png"></a>
+      <a href="http://jiangbo.me/atom.xml" alt="subscribe feed"><img src="/images/rss.png"></a>
+      </li>
+  </ul>
+</section>
+<section>
+  <h1>关于我</h1>
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>

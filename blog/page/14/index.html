@@ -9,10 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="&nbsp;
-一直听说Ubuntu上安装Oracle相当麻烦，今天体验了一把，可能比较幸运，没出什么问题，简单记录一下，先声明，我装的是Oracle XE版，也就是官网上所说的快捷版，企业版的安装要麻烦的多，而且好想也不支持Ubuntu。
-简单来说步骤如下：
-1.将http://oss. &hellip;">
+  <meta name="description" content="一、简介 一个实际的应用系统难免会出现问题。JVM能够实时的记录系统发生问题时JVM内部的运行状态，并将起存储在堆转储（Heap dump）文件中，dump文件为系统分析提供了重要依据。但是原始dump文件纯文本方式，难于理解，为了降低dump文件分析的复杂度，MAT（Eclipse Memory &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -84,7 +81,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2009/08/24/post/">Ubuntu9.04安装Oracle XE</a></h1>
+      <h1 class="entry-title"><a href="/blog/2011/08/02/use-mat-analysis-dump-file/">使用MAT进行dump文件分析</a></h1>
     
     
       <p class="meta">
@@ -100,26 +97,247 @@
   
 
 
-<time datetime="2009-08-24T00:00:00+08:00" pubdate data-updated="true">Aug 24<span>th</span>, 2009</time>
+<time datetime="2011-08-02T00:00:00+08:00" pubdate data-updated="true">Aug 2<span>nd</span>, 2011</time>
         
-         | <a href="/blog/2009/08/24/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2011/08/02/use-mat-analysis-dump-file/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><p>&nbsp;</p>
-<p>一直听说Ubuntu上安装Oracle相当麻烦，今天体验了一把，可能比较幸运，没出什么问题，简单记录一下，先声明，我装的是Oracle XE版，也就是官网上所说的快捷版，企业版的安装要麻烦的多，而且好想也不支持Ubuntu。</p>
-<p>简单来说步骤如下：</p>
-<p>1.将http://oss.oracle.com/debian unstable non-free添加到软件源中</p>
-<p>2.添加密钥 sudo apt-key add RPM-GPG-KEY-oracle（不过我安装时提示密钥无效，但最后也装上了，不了解）</p>
-<p>3.sudo apt-get update更新（不过我添加后立即更新没能什么都没有，没什么反应，过了几个小时自动更新里提示安装）</p>
-<p>4.正常的话会自动安装</p>
-<p>5.配置数据库 sudo /etc/init.d/oracle-xe configure，这里包括监听端口号，http端口，以及帐户密码等选项，默认安装就可以了，当然，密码要自己设。</p>
-<p>6.安装完成后，网上很多人提示说是要配置环境变量，但是我发现安装过程自己配置了，可以通过echo $ORACLE_HOME等方法查看一下，没设自己设一下把</p>
-<p>6.正常在GNOME环境中会在应用程序栏中添加Oracle菜单栏，选择转至数据库主页，正常的话就能够打开数据库主页，地址为：http://127.0.0.1:8080/apex，(8080是你在配置时设置的端口号，我的默认就是8080),然后输入用户名密码登录就OK了</p>
-<p>～～～看似简单，哈～希望大家也想我一样顺利哈～继续学习中～</p>
+  <div class="entry-content"><p><strong>一、简介</strong></p>
+
+<p><strong> </strong>一个实际的应用系统难免会出现问题。JVM能够实时的记录系统发生问题时JVM内部的运行状态，并将起存储在堆转储（Heap dump）文件中，dump文件为系统分析提供了重要依据。但是原始dump文件纯文本方式，难于理解，为了降低dump文件分析的复杂度，MAT（Eclipse Memory Analyzer）应运而生。MAT时公认的、强大的、“傻瓜式”堆转储文件分析工具。详细介绍见<a href="http://www.eclipse.org/mat/">http://www.eclipse.org/mat/</a></p>
+
+<p><strong>二、获取MAT</strong></p>
+
+<p>MAT现在提供两种安装方式，Eclipse IDE插件（集成版）和Eclipse RCP（单机版）。</p>
+
+<p>本文采用的时Eclipse RCP版本，可到<a href="http://www.eclipse.org/mat/downloads.php">http://www.eclipse.org/mat/downloads.php</a>下载。解压运行后如图所示</p>
+
+<p><a href="/images/uploads/2011/07/界面.png"><img class="alignnone size-large wp-image-21" title="界面" src="/images/uploads/2011/07/界面-1024x673.png" alt="" width="640" height="420" /></a></p>
+
+<p>&nbsp;</p>
+
+<p><strong>三、获取dump文件</strong></p>
+
+<p>可用通过多种方式获得dump文件，主要分为交互式和基于事件的方式。</p>
+
+<p><strong> 1.交互式</strong></p>
+
+<p>1）、使用Ctrl+Break：如果在JVM运行时参数上加入
+<p style="text-align: center;">-Xrunhprof:format=b,file=heapdump.hprof</p>
+参数。当java进程收到SIGQUIT信号（kill -3）时会生成一个HPROF格式的dump文件。</p>
+
+<p>2）、使用jmap工具：jmap是jdk自带的实用工具，在java6可以通过如下命令获得一个运行中java进程的dump文件
+<p style="text-align: center;">jmap -dump:format=b,file=<em>filename pid</em></p>
+<strong> 2.基于事件的方法</strong></p>
+
+<p>通常在生产环境中当出现问题时再去用交互式的方式获取dump文件为时已晚。因此实际的生产环境多用基于事件的方法。JVM支持在发生OutOfMemoryError时进行自动的堆转储，生成dump文件。需要在应用JVM启动参数中加入如下参数：
+<p style="text-align: center;">-XX:+HeapDumpOnOutOfMemoryError</p>
+<strong>四、文件分析</strong></p>
+
+<p>在MAT钟打开获取的转储文件，文件夹在完成后自动生成分析报告，如图所示</p>
+
+<p><a href="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.47-PM.png"><img class="alignnone size-large wp-image-29" title="文件分析" src="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.47-PM-1024x640.png" alt="" width="640" height="400" /></a></p>
+
+<p>主工作区展示文件分析的概况，可以看到主要的类占用（Biggest Objects）和可选的一些操作，Action，Reports等。</p>
+
+<p><a href="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.56-PM.png"><img class="alignnone size-full wp-image-30" title="action" src="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.23.56-PM.png" alt="" width="917" height="193" /></a></p>
+
+<p>左侧的Inspector区可以查看各个类的域信息，如图显示的是一个com.ibatis.sqlmap.engine.impl.SqlMapExecutorDelegate类实例的信息，包括其各个域的值。</p>
+
+<p><strong>五、一个OutOfMemoryError小例子</strong></p>
+
+<p><strong> 1.写一个明显会OutOfMemoryError小程序</strong></p>
+
+<p>&nbsp;</p>
+
+<p>import java.util.Date;</p>
+
+<p>import java.util.List;</p>
+
+<p>import java.util.ArrayList;</p>
+
+<p>public class Test{</p>
+
+<p>public static void main(String[] args){</p>
+
+<p>List&lt;Date&gt; list = new ArrayList&lt;Date&gt;();</p>
+
+<p>while(true){</p>
+
+<p>Date date = new Date();</p>
+
+<p>list.add(date);</p>
+
+<p>date=null;</p>
+
+<p>}</p>
+
+<p>&nbsp;</p>
+
+<p>}</p>
+
+<p>}</p>
+
+<p><strong> 2.设置启动参数</strong>
+<p style="text-align: center;">$ java -XX:+HeapDumpOnOutOfMemoryError Test</p>
+<strong> 3.如其获得异常</strong></p>
+
+<p><a href="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.29.07-PM.png"><img class="alignnone size-full wp-image-31" title="Screen shot 2011-07-29 at 3.29.07 PM" src="/images/uploads/2011/08/Screen-shot-2011-07-29-at-3.29.07-PM.png" alt="" width="534" height="130" /></a></p>
+
+<p>生成的dump文件为java_pid4931.hprof</p>
+
+<p><strong> 4.使用MAT导入dump文件</strong></p>
+
+<p><a href="/images/uploads/2011/08/dump文件.png"><img class="aligncenter size-full wp-image-32" title="dump文件" src="/images/uploads/2011/08/dump文件.png" alt="" width="1356" height="858" /></a></p>
+
+<p>从分析报告中可以明显看出有一个类Thread占用了99%的内存，该类由java.lang.ClassLoader加载。</p>
+
+<p>通过查看Leak Suspects报告可以看到更清晰的内存泄漏情况</p>
+
+<p><a href="/images/uploads/2011/07/Leak-Suspects.png"><img class="aligncenter size-large wp-image-24" title="Leak Suspects" src="/images/uploads/2011/07/Leak-Suspects-1024x647.png" alt="" width="640" height="404" /></a></p>
+
+<p>点击detail，可以查看详细信息</p>
+
+<p><a href="/images/uploads/2011/07/详细信息.png"><img class="aligncenter size-large wp-image-23" title="详细信息" src="/images/uploads/2011/07/详细信息-1024x636.png" alt="" width="640" height="397" /></a> 跟集合到内存消耗点的最短路径</p>
+
+<p><a href="/images/uploads/2011/07/最短路径.png"><img class="aligncenter size-full wp-image-22" title="最短路径" src="/images/uploads/2011/07/最短路径.png" alt="" width="593" height="195" /></a></p>
+
+<p>内存消耗的对象</p>
+
+<p><a href="/images/uploads/2011/07/内存消耗对象.png"><img class="aligncenter size-full wp-image-26" title="内存消耗对象" src="/images/uploads/2011/07/内存消耗对象.png" alt="" width="553" height="373" /></a></p>
+
+<p>此时应该就可以分析出大概情况了，内存溢出主要是因为还有大量的Date对象。进而查看下线程栈</p>
+
+<p><a href="/images/uploads/2011/07/Thread.png"><img class="aligncenter size-full wp-image-25" title="Thread" src="/images/uploads/2011/07/Thread.png" alt="" width="852" height="171" /></a></p>
+
+<p>也就基本能定位问题的所在了。问题代码就是：</p>
+
+<p>while(true){</p>
+
+<p>Date date = new Date();</p>
+
+<p>list.add(date);</p>
+
+<p>date=null;</p>
+
+<p>}</p>
+
+<p><strong>六、总结</strong></p>
+
+<p>MAT是一个功能强大的内存分析工具，目前介绍的只是很基本的一些功能，更多信息请参考</p>
+
+<p><a href="http://memoryanalyzer.blogspot.com">http://memoryanalyzer.blogspot.com</a>/</p>
+
+<p><a href="http://www.ibm.com/developerworks/cn/java/j-memoryanalyzer/index.html?ca=drs-">http://www.ibm.com/developerworks/cn/java/j-memoryanalyzer/index.html?ca=drs-</a></p>
+
+<p><a href="http://www.vogella.de/articles/EclipseMemoryAnalyser/article.html">http://www.vogella.de/articles/EclipseMemoryAnalyser/article.html</a></p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/03/15/post/">Mac OSX安装Git</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-15T00:00:00+08:00" pubdate data-updated="true">Mar 15<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/03/15/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><strong>一、安装Git</strong></p>
+<p class="p2"><span class="s1">由于mac git的地址<a href="http://code.google.com/p/git-osx-installer/"><span class="s2">http://code.google.com/p/git-osx-installer/</span></a>被墙，被迫使用源码安装，源码可以从<a href="http://kernel.org/pub/software/scm/git/"><span class="s2">http://kernel.org/pub/software/scm/git/</span></a></span><span class="s3">下载，编译源码需要先安装xcode，参考<a href="http://developer.apple.com/"><span class="s4">http://developer.apple.com</span></a>。</span></p>
+<p class="p3">编译安装</p>
+<p class="p3">1.解压</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;tar xjvf git-1.7.4.1.tar.tar.bz2</p>
+<p class="p3">2. 编译</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;cd git-1.7.4.1</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;./configure &#8211;prefix=/usr/local</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;make</p>
+<p class="p3">3.安装</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;sudo make install</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">Ok 了，which git试一下～</p>
+<p class="p5"><strong>二、设置SSH</strong></p>
+<p class="p3">github使用SSH链接，需要设置SSH</p>
+<p class="p3">1.检查SSH key</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; cd ~/.ssh</p>
+<p class="p3">2.备份已有的key，（如果有的话）</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mkdir key_backup</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mv id_rsa* key_backup</p>
+<p class="p3">3.生成SSH key</p>
+<p class="p3">$ ssh-keygen -t rsa -C <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">Generating public/private rsa key pair.</p>
+<p class="p3">Enter file in which to save the key (/Users/jiangbo/.ssh/id_rsa):&nbsp;</p>
+<p class="p3">Enter passphrase (empty for no passphrase):</p>
+<p class="p3">Enter same passphrase again:</p>
+<p class="p3">Your identification has been saved in yes.</p>
+<p class="p3">Your public key has been saved in id_rsa.pub.</p>
+<p class="p3">The key fingerprint is:</p>
+<p class="p3">fb:c4:b0:e0:47:fd:be:e0:fb:ea:73:ef:a8:29:d5:22 <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">The key&#8217;s randomart image is:</p>
+<p class="p3">+&#8211;[ RSA 2048]&#8212;-+</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . S ..&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp; . oE=o..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . +o+..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ..+.+..&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; oOB=+o&nbsp; |</p>
+<p class="p3">+&#8212;&#8212;&#8212;&#8212;&#8212;&#8211;+</p>
+<p class="p3">4.将SSH key添加到GitHub</p>
+<p class="p3">登录到GitHub页面，Account Settings-&gt;SSH Public Keys-&gt;Add another key</p>
+<p class="p3">将生成的key(id_rsa.pub文件）内容copy到输入框中，save。</p>
+<p class="p4"><img src="http://hi.csdn.net/attachment/201103/15/0_1300170843sWhI.gif" alt="" /></p>
+<p class="p3">5.测试链接</p>
+<p class="p6"><span class="s3">$ ssh <a href="mailto:git@github.com"><span class="s5">git@github.com</span></a></span></p>
+<p class="p3">The authenticity of host &#8217;<a href="http://github.com/"><span class="s5">github.com</span></a> (207.97.227.239)&#8217; can&#8217;t be established.</p>
+<p class="p3">RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.</p>
+<p class="p3">Are you sure you want to continue connecting (yes/no)? yes</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">PTY allocation request failed on channel 0</p>
+<p class="p3">Hi jiang-bo! You&#8217;ve successfully authenticated, but GitHub does not provide shell access.</p>
+<p class="p3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connection to <a href="http://github.com/"><span class="s5">github.com</span></a> closed.</p>
+<p class="p3">别担心，这是正常情况。</p>
+<p class="p5"><strong>三、设置个人信息</strong></p>
+<p class="p3">$ git config &#8211;global <a href="http://user.name/"><span class="s5">user.name</span></a> &#8220;Bo Jiang&#8221;</p>
+<p class="p3">$ git config &#8211;global user.email &#8220;jiang.bo.hit@gmail.com&#8221;</p>
+<p class="p3">&nbsp;</p>
 <p>&nbsp;</p></div>
   
   
@@ -132,7 +350,7 @@
       
   <header>
     
-      <h1 class="entry-title"><a href="/blog/2009/08/22/post/">安装MySQL时无法启动服务（could Not Start the Service MYSQL .Error:0）</a></h1>
+      <h1 class="entry-title"><a href="/blog/2011/03/10/post/">Java基础（1）－泛型</a></h1>
     
     
       <p class="meta">
@@ -148,657 +366,190 @@
   
 
 
-<time datetime="2009-08-22T00:00:00+08:00" pubdate data-updated="true">Aug 22<span>nd</span>, 2009</time>
+<time datetime="2011-03-10T00:00:00+08:00" pubdate data-updated="true">Mar 10<span>th</span>, 2011</time>
         
-         | <a href="/blog/2009/08/22/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>今天写程序时发现连接不上MySQL，检查了一下发现MySQL服务未启动，手动开启也不行，于是重新安装了一下，结果在安装过程中，执行execute时，出现了could not start the service MYSQL .Error:0的错误。网上搜了一下，一般在重装MySQL时会出现这个错误，我的解决的方法是将所有的与MySQL相关的文件全部删除，然后再重装一下，就行了，当然，这个方法很烂很暴力，好像修改一下my.ini文件就行，不太清楚，反正已经好了，懒得管了~呵呵~</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/08/20/post/">Android文档（二）-应用基础（1）应用组件（Application Components）</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-08-20T00:00:00+08:00" pubdate data-updated="true">Aug 20<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/08/20/post/#disqus_thread">Comments</a>
+         | <a href="/blog/2011/03/10/post/#disqus_thread">Comments</a>
         
       </p>
     
   </header>
 
 
-  <div class="entry-content"><h4>应用基础</h4> <p>Android应用程序由Java语言编写。Java字节码以及应用所需的所有数据资源文件都通过aapt工具打包成Android package，一种被标记问.apk的归档文件。这类文件是在移动设备上发布和安装应用程序的基础；用户下载这种文件到他们的设备上。一个.apk文件中所有的代码被认为是一个应用。</p> <p>在很多情况下，每个Android应用程序处于自己的生存空间内：</p> <p>1.默认情况下，每个应用运行在它自己的独立的linux进程环境中。当任何应用的代码需要被执行的时候，Android启动这个进程，当不再需要这个进程并且有其他的应用请求他的系统资源时，关闭该进程。</p> <p>2.每个进程有他自己的Java VM，因此应用之间的执行代码是相互隔离的。</p> <p>3.默认情况下，每个应用被赋给唯一的用户ID。通过权限设置使得这个应用的文件只对相应用户及应用本身可见。当然，也可以通过某种方式将这些文件导出给其它应用。</p> <p>可以通过两个应用共享同一个用户ID，使他们可以共享彼此的文件。为了节约系统资源，相同用户ID的应用可以运行在同一个Linux进程中，共享同一个VM。</p> <h5>应用组件（Application Components）</h5> <p>Android的一个核心特性就是一个应用可以利用其他应用的元素（得到这些应用的允许）。例如，你的应用需要显示一个滚动的图像列表，而另外一个应用已经开发了一个可用的滚动条，并且是其他应用可以应用这个滚动条，你可以调用这个滚动条，而不用自己开发一个。你的应用并不和其他应用的代码混合或连接，而是简单的启动其他应用所需的一部分。</p> <p>为了实现这种机制，当任何应用的某一部分被请求时，系统必须能够启动该应用的一个进程，并且为该进程实例化一个Java对象。这与大部分其他系统上的应用不同。Android应用不需要为每个应用设立入口点（无main()函数)。相对而言，只是一些核心组件，系统能够实例化这些组件，并且在需要时运行。</p> <p>共有4类组件：</p> <p><b>活动（Activities</b><b>）</b></p> <p>一个活动表示为一个与用户交互用户图形界面。例如，一个活动可以表示为一个菜单项组成的列表，用户能够从中选择，或者表示为一个可以显示带有标题的照片。一个文本消息应用可能拥有一个显示联系人的列表，另一个活动负责像这个被选中的联系人写消息，还有另外的一个活动负责查看已有的消息或者更改设置。尽管他们一起形成一个完整的用户界面，但是每个活动还是相互独立的。每一个都是基类Activity的子类。</p> <p>一个应用可能有一个或多个活动。这些活动是什么以及数量有多少取决于不同应用的设计。典型的，当应用启动时活动中的被标记为第一的应该第一个展现给用户。活动间的传递是通过当前活动启动下一活动来实现的。</p> <p>每个活动都被会旨在一个给定的窗口（window）上。典型的，一个窗口一改填充满整个屏幕（screen），但是，有时也可能小于屏幕或者漂浮（float）在其他窗口上。一个活动能够利用额外的窗口-例如，一个弹出窗口或者一个当用户在屏幕上选择了特定项是，用于显示重要信息的窗口。</p> <p>窗口的可视内容都是通过继承视图基类View实现的。每个视图控制着窗口内一个特定的矩形区域。父视图负责承接子视图并组织子视图的布局。叶视图（继承树中最低层的）绘制在矩形区域内负责直接控制和响应用户在该区域内的活动。也就是说，视图是活动与用户发生交互的地方。例如，一个试图可能显示一个小图片并且当用户查看该图片时初始化一个动作。Android有一些内置的视图共开发者使用-包括按钮（buttons），文本框（text field），滚动条（scroll bar)，菜单栏（menu items），选择框（check box），等等。</p> <p>视图通过活动窗口的Activity.setContentView()方法设置一个视图。content view是位于继承树根的View对象。</p> <p><b>服务（Services</b><b>）</b></p> <p>一个服务（service)没有可视用户界面，而是在一个不确定的时期内运行于后台。例如，在用户试图处理其他事物时，一个服务可能用于在后台播放音乐，或者从网络中接收数据或者计算一些事情并将结果发送给需要的活动。每个服务都是扩展于基类Service。</p> <p>一个初级的例子就是媒体播放器按照播放列表播放音乐。播放器应用可能拥有一个或多个活动，例如允许哦那个湖选择曲目并且开始播放等活动。然而，在后台播放的音乐并不由活动来处理，因为用户会希望在他们离开播放器，或者处理其他事务时，音乐能够持续播放。为了保持音乐播放，播放器活动必须能够开启一个服务用语在后台运行。当活动开启服务后并离开屏幕后，系统会保持循环播放的服务。</p> <p>可以连接一个正在运行的服务（如果服务没有开启，箱开启服务）。在连接时，你可以通过服务导出的接口与服务进行通信。对于音乐服务，这个接口可能允许用户暂停，倒退，停止，或者重启虚幻播放。</p> <p>类似于活动和其他组件，服务可以运行在应用进程的主线程中。因此他们不会影响其他组件或者用户接口。他们通常产生另外的线程用于耗时任务（例如音乐播放）。</p> <p><b>广播接收者（Broadcast receivers)</b></p> <p>一个广播接收者是一个仅用来接收和反射广播布告的组件。许多广播起源于系统代码-例如，通知说，时区已发生了变化，电池电量低，该图片已经采取，或用户改变了语言偏好。一个应用可以有任意数量的广播接收机，以应付任何它认为重要的通知。所有接收器扩展BroadcastReceiver基类。广播接收机不显示用户界面。然而，他们可能会启动一项活动去响应收到的信息，或者他们可以使用NotificationManager提醒用户。通知可以以各种方式引起用户的注意-闪动的背光，振动设备，播放声音，等等。它们通常在状态栏放置一个图标，用户可以打开它获得的信息。</p> <p><b>内容提供者</b><b>(</b><b>Content providers)</b></p> <p>内容提供商将一系列具体的应用程序数据提供给其他应用程序。这些数据可以存储在文件系统或 SQLite数据库中，或以任何其他有意义的方式存储 。内容提供商扩展于ContentProvider基类，实现了一组标准方法，使其他应用程序来检索和存储它所控制的数据类型。然而，应用程序不直接调用这些方法。相反，他们使用ContentResolver对象，并调用其方法。一个ContentResolver可以与任何内容提供商交互，它与供应商共同管理任何进程间通信。</p> <p>每当有一个请求需要被某一特定组件处理时，Android确保该组件的应用进程的正在运行，否则启动一个新进程，并确保该组件的一个适当实例可用，否则创建一个新的实例。</p> <p><b>活动组件：意图</b><b>(Intents)</b></p> <p>内容供应商在一个ContentResolver向其发出请求时被激活 。其他三个组成部分-活动，服务和广播接收机-被称为意图的异步消息激活 。一个意图是一种持有的内容信息的Intent对象。对于活动和服务，它意味着一个被请求的动作和指定位于其他事物中的所要使用的数据的URI。例如，它可能转达活动提出的请求去想用户展示一幅图片或使用户可以编辑一些文字。对于广播接收机，Intent对象意味着一个被宣布的活动。例如，它可能会向有关各方宣布相机按钮已被按下。</p> <p>有不同的方法激活各种类型的组件：</p> <p>Ÿ 可以通过向Context.startActivity()或Activity.startActivityForResult()传递一个Intent对象 激活一个活动。作出答复的活动可以通过调用getIntent()方法查询导致其激活的最初的意图，Android通过调用活动的onNewIntent()方法，传递intents。一项活动往往启动下一活动。如果期望从启动的活动返回结果，它必须调用startActivityForResult()而不是startActivity() 。例如，如果启动了一个可以让用户选择一个照片的活动，它可能会希望返回所选择的照片。</p> <p>Ÿ 启动一个服务（或新的指示被发送给正在进行的服务）是通过传递一个Intent对象给Context.startService() 。Android调用该服务的onStart()方法并且向其传递Intent对象。同样，一个intent可以被传递给Context.bindService()用于在请求组件和目标服务之间建立一个持续连接。服务通过onBind()调用获得这个intent对象。 （如果该服务尚未运行， bindService()可以有选择地启动它。 ）举例来说，一项活动可能与前面提到的音乐播放服务建立连接，以便它可以为用户提供的手段（用户界面）来控制播放。这项活动将调用bindService()建立连接，然后调用服务所定义的方法影响到播放。在后面的部分中， 远程过程调用（ Remote procedure calls ），有更多细关于绑定到服务的细节。</p> <p>Ÿ 一个应用程序就可以通过向Context.sendBroadcast() ， Context.sendOrderedBroadcast() ，和Context.sendStickyBroadcast()方法传递Intent对象初始化一个广播。Android是通过调用onReceive()方法，向所有有兴趣的广播接收机传递intent对象。</p> <p><b>关闭组件</b><b></b></p> <p>内容提供商只有在回应ContentResolver发出的请求时才被激活 。广播接收器只有在回应一个广播讯息时被激活。因此，没有必要显式地关闭这些组件。</p> <p>另一方面，活动提供了用户界面。他们处于长时间运行的用户会话中，并可能保持活跃，甚至在闲置，只要谈话继续进行。同样，服务也可能持续运行了很长一段时间。因此，Android需要适当方法来有条不紊地关闭活动和服务：</p> <p>Ÿ 一项活动可以通过调用finish()方法关闭。一项活动可以通过调用finishActivity() 关闭其他活动（一个通过startActivityForResult()启动的活动 ）。</p> <p>Ÿ 服务可以通过调用stopSelf()或Context.stopService()方法停止 。</p> <p>当组件不再被使用，或当Android必须收回内存去激活其他组件时，也可能被系统关闭。在后面的部分中， 组件生命周期（Component Lifecycles） ，讨论这种可能性及其影响的更多细节。</p> <p><b>manifest</b><b>文件</b><b></b></p> <p>在Android启动应用组件之前，它必须知道该组件的存在。因此，应用在一个捆绑在Android包中的清单文件中声明其组件， .apk文件还拥有应用程序的代码，文件和资源。</p> <p>该清单文件是一个XML文件和对所有的应用命名总是AndroidManifest.xml。除了声明该应用程序的组件，该文件还处理其他事情，如命名任何应用需要链接的库（除了默认的Android库） ，并确保应用的任何权限设置按预期执行。</p> <p>但其主要任务是主要是要通知Android的应用程序的组件。例如，一项活动可能会声明如下：</p> <p><i><?xml version='1.0' encoding='utf-8'?></i></p> <p><i><manifest></manifest></i></p> <p><i><application></application></i></p> <p><i><activity android:name="com.example.project.FreneticActivity"></activity></i></p> <p><i>android:icon=&#8221;@drawable/small_pic.png&#8221;</i></p> <p><i>android:label=&#8221;@string/freneticLabel&#8221; </i></p> <p><i>&#8230; &gt;</i></p> <p><i></i></p> <p><i>&#8230;</i></p> <p><i></i></p> <p><i></i></p> <p><activity>元素的name属性声明了实现活动的Activity的子类。icon和label属性指向包含一个图标和标签的资源文件，可显示给用户的展示活动。其它组件以同样的方式被生命- <service>元素表示服务， <receiver>元素表示广播接收机，<provider>元素表示内容提供商。没有在manifest中声明的活动，服务和内容提供商是对系统不可见，因此无法运行。</provider></receiver></service></activity></p> <p>然而，广播接收机既可以被声明在manifest中，或者他们可以在代码中动态创建（如BroadcastReceiver对象）和通过系统调用Context.registerReceiver()注册 。</p> <p><b>Intent</b><b>过滤器</b></p> <p>一个Intent对象可以显式的声明一个目标组件。这样一来，Android将查找这个组建（根据manifest文件中的声明） ，并激活它。但是，如果目标没有显式命名，Android必须找到最好的组件对该Intent作出反应。这是通过比较Intent对象和Intent过滤器中的潜在目标来实现的。一个组成部分的Intent过滤器通知Android组建能够处理的各种intent。像其他关于组件的基本信息一样，他们宣布在manifest文件。</p> <p>以下是扩展前面的例子，向活动中增加了两个Intent过滤器：</p> <p><i><?xml version='1.0' encoding='utf-8'?></i></p> <p><i><manifest></manifest></i></p> <p><i><application></application></i></p> <p><i><activity android:name="com.example.project.FreneticActivity"></activity></i></p> <p><i>android:icon=&#8221;@drawable/small_pic.png&#8221;</i></p> <p><i>android:label=&#8221;@string/freneticLabel&#8221; </i></p> <p><i>&#8230; &gt;</i></p> <p><i><intent-filter></intent-filter></i></p> <p><i><action android:name="android.intent.action.MAIN"></action></i></p> <p><i><category android:name="android.intent.category.LAUNCHER"></category></i></p> <p><i></i></p> <p><i><intent-filter></intent-filter></i></p> <p><i><action android:name="com.example.project.BOUNCE"></action></i></p> <p><i><data android:mimetype="image/jpeg"></data></i></p> <p><i><category android:name="android.intent.category.DEFAULT"></category></i></p> <p><i></i></p> <p><i></i></p> <p><i>&#8230;</i></p> <p><i></i></p> <p>事例中第一个过滤器——活动的结合“ android.intent.action.MAIN ”和类别“android.intent.category.LAUNCHER ” -是一种常见的过滤器。它标志着活动应在应用启动器上展示，屏幕列表应用的用户可以在设备上启动。换句话说，该活动是应用的切入点，当用户在应用启动器上选择是他们将能够看到一个初始的活动。</p> <p>第二个过滤器声明了一项，该活动可以在某一特定类型的数据上执行的动作。</p> <p>组件可以有任意数量的Intent过滤器，每一个宣布了一声明了不同的功能。如果它没有任何过滤器，它只能通过Intent显式的声明目标组建的方式激活。</p> <p>对于像广播接收器，在代码中创建和注册，Intent过滤器直接实例化一个IntentFilter对象。所有其他的过滤器的设置在manifest中。</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/08/19/post/">[转]Alexandru Popescu谈InfoQ.com网站架构</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/08/19/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>大家好，我是Ryan Slobojan，坐在我旁边的是InfoQ.com的首席架构师Alexandru Popescu。Alexandru，能否告诉我们InfoQ网站的一些架构信息&mdash;它是什么样子的？又是如何构建的？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>你可以从两种不同角度审视InfoQ的架构：从我们读者的角度看，InfoQ就像是一个普通的网站；但是对于我们的编辑和在后台工作的人员来说，它则是一个地地道道的CMS（内容管理系统）。因此，你所看到的InfoQ建立在一个自制的CMS的基础之上，它把内容与用户账号、跟踪系统、广告机制等等集成。我们可以从一个更易于理解的角度来描述 InfoQ网站&mdash;它是一个Web应用，即使是CMS，你也可以看作是一个Web应用，它有通常的分层结构：表现层、服务层和持久化层。   <br />两年半之前，当我启动这个项目的时候，面临着很多有趣的选择。例如，持久化方面不但基于关系型数据库，而且使用JCR API存储内容。同时，我们不得不在基于组件的Web框架和基于动作的框架中二者选其一，并最终选择了后者。我们认为它更贴近我们解决方案的设计，即使我们可能需要一些基于portlet的东西&hellip;&hellip;我想说那时侯portlet规范非常差，希望以后我不会让大家太失望。你可以想象作为一个三层结构是多么的简单，你应该能够猜到：一点Spring、一点WebWork、一点Hibernate和JCR API。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 能否给我们描述一下，当你作为一个用户和一个作者发出请求时，内部会发生什么变化？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>当然，希望我没有记错一些细节。让我们从浏览器开始。通常有两种方式访问我们的应用，要么是通过浏览器正常访问，要么是通过AJAX请求，如 XMLHTTPRequest，然后请求进入WebWork或者DWR。如果是普通请求，则它会经过WebWork处理。如果是AJAX请求，则进入 DWR，然后分派到服务层，这层的全部家当只不过是Spring和一些采用AspectJ的AOP，目的是增强我们的模型。然后，请求会进入持久化层，我刚才已经提到这层被分割为Hibernate和JCR。   <br />因此，最后我们拥有两种不同的存储。此时你可能会问为什么我们选择了两种解决方案来存储信息，这些信息本可以采用同一种存储方式。问题是，当我们设计 InfoQ的时候，我们并不确定模型会是什么样子的，也不确定我们的内容随着时间会如何变化。同时，在关系型模式下处理这些变化非常困难，在不同版本之间迁移和维护数据等等是非常复杂的。而JCR API明确支持非结构的内容和很多其他特性，比如版本化、全文索引，我们充分利用了这些功能。    <br />同时，对于编辑工具，它与你看到的InfoQ.com几乎完全一样，除了不太花哨。因为我们设计的是同一个应用，所以使用相同的栈、几乎相同的API，在构建时我们把API分为两部分，对外开放的部分使用只读API，而对于编辑工具，我们使用可读/写存取API，不过本质上它们都是基于同一份源代码。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你刚才提到使用WebWork和DWR处理前端。请问它们能够无缝集成吗，或者存在哪些挑战吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>起初我们像往常一样启动了这个工程。我是说我们过去有一个处理DWR和WebWork应用的模型。但是最终我意识到，如果存在一个通用的方式访问和判断我们是应该通过DWR还是WebWork处理请求的话，对我和开发人员都省力。于是，我建立一个模型把这两个框架集成在一起。同时，通过这种方式我也对 DWR贡献了代码，所以现在大家都可以使用它，它非常通用，你可以立刻把它应用到Struts 2或类似的技术。如今，我们在编写代码处理HTTP时，终于能够延迟决定如何处理请求：是通过普通的请求/响应周期还是通过AJAX方式。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 如果你有机会从头重新设计InfoQ.com，你会保留哪些，改变哪些？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>很多人提过这个问题，这可能是对我最具挑战性的问题。你能够想象，在同一个项目上工作两年半之后，你会有很多不同的想法来改变和提高一些东西。现在，我可能会说我不打算改变任何事情。我可能会尝试不同的方法来看一看它们的效果，但是到目前为止，我们在项目开始时选择的解决方案都工作的非常好。   <br />我可能会研究一下如何标准化访问存储的API，在Hibernate和JCR之上创建一个通用的API，这样开发人员不再费心思考真正的数据到底存储到何处。这可能会涉及到内部API，不会变化很大。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 能否提供一些关键的数据，比如InfoQ每天处理多少用户请求？其可扩展性呢？<a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>目前我能够对外公布的数据就是每月的独立访问用户量。你可以通过网站的左上角看到这个信息。目前我们每月的独立访问用户数大约是25万。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> Hibernate真的可以扩展吗？这种扩展性有用吗？它是一个适合扩展的框架吗还是&hellip;&hellip;还有一个问题是你对数据库分区吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我们一个问题一个问题的看。到目前为止，我还没有在Hinernate的层面上发现任何问题。我是说我们甚至都没有优化查询。我们使用的就是 Hibernate自动生成的东西，性能也非常非常好。其次，由于性能不错目前我们还没有对数据分区，即使我们需要在后台处理海量的数据。我们一直在关注网站的性能，但是现在还不需要做些什么。另外一件关于架构的趣事是，唯一可能的瓶颈是我们使用的关系型数据库，因为其他存储内容的数据库位于外部服务器上，所以在内容存储方面可以线性扩展。如果我们遇到与关系型数据库相关的性能问题，我们可以很容易的创建一个MySQL数据库集群。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn3.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你们在使用MySQL是吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>是的，我们创建了几个只读访问的实例和一个可写的实例。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 当数据量变得太大，你遇到过拷贝问题吗？比如从master拷贝到slaves？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>目前我还没有注意到。是会有一点延迟，但不明显。通常我们采用逻辑划分数据。而不是物理划分。这样我们不需要针对每一个请求都访问数据库。我们能够在真正需要处理一个请求的时候缓存大量信息。访问数据库的通常都是跟踪信息或者处理广告。即使在集群上发布数据的时候存在一些延迟，也影响不到前端的性能。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你们使用了多少缓存？在何处缓存数据，只有一个吗？使用分布式缓存吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我们使用本地缓存，单节点，对象缓存。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 那么是在Hibernate之上还是之下？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>在Hibernate之上。事实上，如果你说我们存在两个缓存也是正确的，因为我们使用了Hibernate缓存，但是我们把Hibernate对象混合到了我们的对象中，因为它们太复杂了。我们采用合理的缓存并通过自己的API访问这些定制的对象。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn4.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 最近视频流系统重新做了设计。你能详细介绍一下吗，比如新的架构是什么样子的？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>最初我们使用了基于流的解决方案并由第三方实现。不幸的是，在方案设计完并开始动工之后不久，我们就发现第三方提供的服务要求我们和客户开放特定端口来访问Flash流。这对我们的大客户来说是一个很大的问题，例如像IBM这样的大公司，完全处在防火墙后面，他们绝不会为你打开特定的端口，而只是为了收看 InfoQ上的视频，哪怕这些视频很有价值。因此，我们开始考虑替代方案。   <br />那时，我们注意到YouTube和其他视频服务提供商正在迁移到基于下载的视频方案上。与此同时，Amazon启动了目前很有名的服务，如S3和EC2。我们考虑使用这些开放服务（希望它们真的可靠）建立一个解决方案，新的架构就是基于Amazon S3和EC2服务。部署非常简单&mdash;你只需要一个web服务器让你能够访问被索引的视频，和一些存储，仅此而已。如果你开始考虑这样一个解决方案，你可能几天之内就能创建。现在就是这么简单。确信Amazon服务可靠对我们非常重要，它们为S3服务提供的SLA让我们决定采用S3。现在我们正在等待EC2的相同服务。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 当你获得视频的时候：InfoQ不做其他工作吗，所有的视频都是适合Flash播放的编码格式吗？有时你是否需要使用第三方或者内部、外部的编码转换机制？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>简单地说，这个视频处理是一个工作流。首先是获取原始视频，交给视频编辑专家来索引和创建元数据，然后我们拥有&mdash;个或者说我们正试图拥有一个更加自动化的管理工作流的方法。所以，就你的问题而言，所有的一切都是在公司内部完成的。目前不是全自动化的，我们会在几个月之后争取实现，以方便编辑的工作，这些小步骤现在都是手工的，但它是一个内部流程。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你提到你把视频存储到Amazon服务上。你得到的是一个放了一些数据的容器，不管它多大、是什么，你只是把数据放进去，他们负责传递。有没有一个URL可以提供给客户或者用户，在他的浏览器上使用？从内部键值到URL的映射关系存在何处？你如何知道你把视频存在哪里了？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我们有S3存储还有EC2服务器。为了能够提供视频服务，我们需要从S3上获取视频。因此，我们在S3容器和本地存储之间建立了一个同步机制，然后一切都通过此处访问。现在，解释一下如何获取资源。我们的内容数据库会提供资源的名字，因此所有我们存储在JCR中的元数据和与内容相关的信息都存在该数据库中。然后，我们提供一个ID，数据库里给出获取该视频的映射关系。即使是S3或者VitalStream第三方支持，都是一样的。说到底，就是基于ID的资源查找。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你刚才说把Hibernate对象映射到其它对象上，为什么要这样做？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>抱歉让你误会了。我刚才想说的是，我们的模型要比只从Hibernate得到的更丰富。因此我们把不同的对象组合到一起建立一个代表一个页面或者类似事物的对象。这是一个聚合过程，而不是从模型到DTO的迁移。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn3.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你是否使用了Hibernate提供的关联机制？例如，我创建了一个用户。一个用户可以有多种角色（你可以配置Hibernate来获取用户和全部角色）。Hibernate提供了这种功能。你说在更高一层作了聚合，这是否意味着你只能在更高的层次上获取单实体或者实体集合？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我提到过我们采用了不同的存储。我需要从所有存储中获取数据并组合成一个页面。我们使用了Hibernate的全部特性，比如延迟取、快速取、联合取等一切特性。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 所以聚合意味着你不得不组合来自不同存储的数据。 <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>完全正确。如果你看一看网页，你会努力把它描述成一个模型，页面有内容组成、广告元素、图片和其他类似数据&mdash;所有这些代表了我们模型的一部分。为了表示整个页面，我们需要聚合所有这些小部件，比如广告元素、内容，聚合的方式很有趣，因为首先使用内容，然后在与内容相关的元数据的基础上，我们努力推断出适合发布何种广告。简单的说，我们有一个核心模型、带有元数据的内容，然后利用其他的数据来修饰这个核心模型。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn2.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> InfoQ未来有什么规划吗？如何进行开发的？是围绕一个需求清单吗？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>考虑到我们公司非常虚拟化，我是说全球的工作人员，分布在不同的地点和时区，我们围绕着需求清单建立了一个定制过程，清单上按照优先级列举了未来几年内我们需要实现的事情，然后推动几个迭代过程，我们会讨论细节。针对你的问题，我的需求清单有七页之长。这些新功能迟早都会实现。我们还有一些新的想法没有写在清单上，但是我想给大家一个惊喜，我们现在有很多竞争者，所以我们将保守秘密。上一次，视频系统的重新实现，我们做了初稿并邀请用户浏览和评论，给我们反馈，以后主要的功能我们都会采用相同的流程。如果你在InfoQ上注册，就有机会帮助我们在未来实现新特性。欢迎注册。</p>
-<p><a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-right.gif" border="0" alt="" /></a> 你如何实现网站搜索？采用了哪些技术？ <a href="http://www.infoq.com/"><img src="http://cdn1.infoq.com/styles/cn/i/icon-collapse.gif" border="0" alt="" /></a></p>
-<p>我在采访开始的时候曾提到过JCR API提供了全文索引。因此，我们具备这项功能。但是目前我们使用Google搜索，因为我们发现这样性能会稍微好一点，运行的也非常好。我们正在考虑将来把这两项技术结合在一起提供高级搜索，能够使用特定的查询语言来搜索网站，你知道，我们对内容加了标签等，正好可以支持这种搜索。</p></div>
-  
-  
-
-
-    </article>
-  
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/07/16/post/">Android文档（一）——什么是Android?</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-07-16T00:00:00+08:00" pubdate data-updated="true">Jul 16<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/07/16/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><!--  [if !mso]&gt;
-&lt;mce:style&gt;&lt;!--
-v/:* {behavior:url(#default#VML);}
-o/:* {behavior:url(#default#VML);}
-w/:* {behavior:url(#default#VML);}
-.shape {behavior:url(#default#VML);}
--->
-<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:WordDocument&gt;
-  &lt;w:View&gt;Normal&lt;/w:View&gt;
-  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
-  &lt;w:PunctuationKerning /&gt;
-  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
-  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
-  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
-  &lt;w:ValidateAgainstSchemas /&gt;
-  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
-  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
-  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
-  &lt;w:Compatibility&gt;
-   &lt;w:SpaceForUL /&gt;
-   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
-   &lt;w:DoNotLeaveBackslashAlone /&gt;
-   &lt;w:ULTrailSpace /&gt;
-   &lt;w:DoNotExpandShiftReturn /&gt;
-   &lt;w:AdjustLineHeightInTable /&gt;
-   &lt;w:BreakWrappedTables /&gt;
-   &lt;w:SnapToGridInCell /&gt;
-   &lt;w:WrapTextWithPunct /&gt;
-   &lt;w:UseAsianBreakRules /&gt;
-   &lt;w:DontGrowAutofit /&gt;
-   &lt;w:UseFELayout /&gt;
-  &lt;/w:Compatibility&gt;
-  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
- &lt;/w:WordDocument&gt;
-&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
- &lt;/w:LatentStyles&gt;
-&lt;/xml&gt;&lt;![endif]--><!--  [if !mso]&gt;
-&lt;object
- classid="clsid:38481807-CA0E-42D2-BF39-B33AF135CC4D" id=ieooui&gt;
-&lt;/object&gt;
-&lt;mce:style&gt;&lt;!--
-st1/:*{behavior:url(#ieooui) }
--->
-<!-- [endif]-->
-<!--  [if gte mso 10]&gt;
-&lt;mce:style&gt;&lt;!--
- /* Style Definitions */
- table.MsoNormalTable
-	{mso-style-name:普通表格;
-	mso-tstyle-rowband-size:0;
-	mso-tstyle-colband-size:0;
-	mso-style-noshow:yes;
-	mso-style-parent:"";
-	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
-	mso-para-margin:0cm;
-	mso-para-margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:10.0pt;
-	font-family:"Times New Roman";
-	mso-fareast-font-family:"Times New Roman";
-	mso-ansi-language:#0400;
-	mso-fareast-language:#0400;
-	mso-bidi-language:#0400;}
--->
-<!-- [endif]-->
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
-<span style="font-family: 宋体;">是一个为移动设备设计的软件栈，包括操作系统，中间件和关键应用。</span>
-<span lang="EN-US">Android SDK</span>
-<span style="font-family: 宋体;">提供了使用</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">在</span>
-<span lang="EN-US">Andorid</span>
-<span style="font-family: 宋体;">平台上开发应用所需的工具和</span>
-<span lang="EN-US">API</span>
-<span style="font-family: 宋体;">。</span>
-</p>
-<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">特性</span>
-</h3>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">应用框架</span>
-</strong>
-<span style="font-family: 宋体;">：</span>
-<span style="font-family: 宋体;">提供了组件的复用和置换</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">Dalvik</span>
-</strong>
-<strong><span style="font-family: 宋体;">虚拟机</span>
-</strong>
-<span style="font-family: 宋体;">：</span>
-<span style="font-family: 宋体;">针对移动设备进行了优化</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">内置浏览器</span>
-</strong>
-<span style="font-family: 宋体;">：</span>
-<span style="font-family: 宋体;">基于开源的</span>
-<span lang="EN-US">WebKit</span>
-<span style="font-family: 宋体;">（</span>
-<span lang="EN-US">webkit.org</span>
-<span style="font-family: 宋体;">）引擎</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">优化图形支持</span>
-</strong>
-<span style="font-family: 宋体;">：</span>
-<span style="font-family: 宋体;">包括自定义的</span>
-<span lang="EN-US">2D</span>
-<span style="font-family: 宋体;">图形库；</span>
-<span lang="EN-US">3D</span>
-<span style="font-family: 宋体;">图形基于</span>
-<span lang="EN-US">OpenGL ES1.0</span>
-<span style="font-family: 宋体;">标准</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">SQLite</span>
-</strong>
-<span style="font-family: 宋体;">：</span>
-<span style="font-family: 宋体;">用于结构话的数据存储</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">多媒体支持</span>
-</strong>
-<span style="font-family: 宋体;">：支持常用的音频视频和图像格式（</span>
-<span lang="EN-US">MPEG4</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US"> H264</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">MP3</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">AAC</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">AMR</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">JPG</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">PNG</span>
-<span style="font-family: 宋体;">，</span>
-<span lang="EN-US">GIF</span>
-<span style="font-family: 宋体;">）</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">GSM</span>
-</strong>
-<strong><span style="font-family: 宋体;">技术</span>
-</strong>
-<span style="font-family: 宋体;">：依赖于具体硬件实现</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">蓝牙，</span>
-<span lang="EN-US">EDGE</span>
-</strong>
-<strong><span style="font-family: 宋体;">，</span>
-<span lang="EN-US">3G</span>
-<span lang="EN-US">,WiFi:</span>
-</strong>
-<span lang="EN-US"> </span>
-<span style="font-family: 宋体;">依赖于具体硬件</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">摄像，</span>
-<span lang="EN-US">GPS</span>
-</strong>
-<strong><span style="font-family: 宋体;">，加速：</span>
-</strong>
-<span style="font-family: 宋体;">依赖于硬件</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span style="font-family: 宋体;">丰富的开发环境</span>
-</strong>
-<span style="font-family: 宋体;">：包括设备模拟器，调试工具，内存和性能分析，以及</span>
-<span lang="EN-US">Eclipse IDE</span>
-<span style="font-family: 宋体;">插件</span>
-</p>
-<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
-<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">架构</span>
-</h3>
-<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">下图显示了</span>
-<span lang="EN-US">Android OS</span>
-<span style="font-family: 宋体;">的主要组件。下面每段对各个模块进行了详细描述</span>
-</p>
+  <div class="entry-content"><p>&nbsp;</p>
+<h2>一、Basic FAQ：</h2>
+<p><strong>1. What are Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics ara language feature that allows for definition and use of generic types and methods.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型指的是一种允许定义通用类型和方法的语言特性。</em></p>
+<p><strong>2. What is the primary purpose of Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初的目的是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics are invented primarily for implementation of generic collection.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初是为了实现通用集合类设计的。</em></p>
+<p><strong>3.What is the benefit of using Java generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>使用Java泛型的好处？？？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Early error detection at compile time.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>能够在编译期检查类型错误。</em></p>
+<p><strong>4.What does type-safe mean?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>什么叫做类型安全</em>？</p>
+<p>&nbsp;&nbsp; &nbsp; In Java, a program is considered type-safe if it compiles without errors and warnings and does not raise any unexpected ClassCastException at runtime.</p>
+<p><em>&nbsp;&nbsp; &nbsp; 在Java里，类型安全指的是：如果一个程序编译期未发现Error或Warning，那么在运行时就不会报ClassCastException。</em></p>
 <p>&nbsp;</p>
-<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;"><img src="http://p.blog.csdn.net/images/p_blog_csdn_net/JiangBo_HIT/EntryImages/20090716/system-architecture.jpg" alt="" width="713" height="512" />
-</span>
-</h3>
+<h2>奇怪的特性</h2>
+<p>&nbsp;&nbsp; &nbsp; 泛型有些特性，令人困扰，如下：</p>
 <p>&nbsp;</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><!--  [if !mso]&gt;
-&lt;mce:style&gt;&lt;!--
-v/:* {behavior:url(#default#VML);}
-o/:* {behavior:url(#default#VML);}
-w/:* {behavior:url(#default#VML);}
-.shape {behavior:url(#default#VML);}
--->
-<!-- [endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:WordDocument&gt;
-  &lt;w:View&gt;Normal&lt;/w:View&gt;
-  &lt;w:Zoom&gt;0&lt;/w:Zoom&gt;
-  &lt;w:PunctuationKerning /&gt;
-  &lt;w:DrawingGridVerticalSpacing&gt;7.8 磅&lt;/w:DrawingGridVerticalSpacing&gt;
-  &lt;w:DisplayHorizontalDrawingGridEvery&gt;0&lt;/w:DisplayHorizontalDrawingGridEvery&gt;
-  &lt;w:DisplayVerticalDrawingGridEvery&gt;2&lt;/w:DisplayVerticalDrawingGridEvery&gt;
-  &lt;w:ValidateAgainstSchemas /&gt;
-  &lt;w:SaveIfXMLInvalid&gt;false&lt;/w:SaveIfXMLInvalid&gt;
-  &lt;w:IgnoreMixedContent&gt;false&lt;/w:IgnoreMixedContent&gt;
-  &lt;w:AlwaysShowPlaceholderText&gt;false&lt;/w:AlwaysShowPlaceholderText&gt;
-  &lt;w:Compatibility&gt;
-   &lt;w:SpaceForUL /&gt;
-   &lt;w:BalanceSingleByteDoubleByteWidth /&gt;
-   &lt;w:DoNotLeaveBackslashAlone /&gt;
-   &lt;w:ULTrailSpace /&gt;
-   &lt;w:DoNotExpandShiftReturn /&gt;
-   &lt;w:AdjustLineHeightInTable /&gt;
-   &lt;w:BreakWrappedTables /&gt;
-   &lt;w:SnapToGridInCell /&gt;
-   &lt;w:WrapTextWithPunct /&gt;
-   &lt;w:UseAsianBreakRules /&gt;
-   &lt;w:DontGrowAutofit /&gt;
-   &lt;w:UseFELayout /&gt;
-  &lt;/w:Compatibility&gt;
-  &lt;w:BrowserLevel&gt;MicrosoftInternetExplorer4&lt;/w:BrowserLevel&gt;
- &lt;/w:WordDocument&gt;
-&lt;/xml&gt;&lt;![endif]--><!--  [if gte mso 9]&gt;&lt;xml&gt;
- &lt;w:LatentStyles DefLockedState="false" LatentStyleCount="156"&gt;
- &lt;/w:LatentStyles&gt;
-&lt;/xml&gt;&lt;![endif]-->
-<!--  [if gte mso 10]&gt;
-&lt;mce:style&gt;&lt;!--
- /* Style Definitions */
- table.MsoNormalTable
-	{mso-style-name:普通表格;
-	mso-tstyle-rowband-size:0;
-	mso-tstyle-colband-size:0;
-	mso-style-noshow:yes;
-	mso-style-parent:"";
-	mso-padding-alt:0cm 5.4pt 0cm 5.4pt;
-	mso-para-margin:0cm;
-	mso-para-margin-bottom:.0001pt;
-	mso-pagination:widow-orphan;
-	font-size:10.0pt;
-	font-family:"Times New Roman";
-	mso-fareast-font-family:"Times New Roman";
-	mso-ansi-language:#0400;
-	mso-fareast-language:#0400;
-	mso-bidi-language:#0400;}
--->
-<!-- [endif]--><span style='font-size: 10.5pt; font-family: "Times New Roman";' lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype id="_x0000_t75" coordsize="21600,21600"
- o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f"
- stroked="f"&gt;
- &lt;v:stroke joinstyle="miter" /&gt;
- &lt;v:formulas&gt;
-  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
-  &lt;v:f eqn="sum @0 1 0" /&gt;
-  &lt;v:f eqn="sum 0 0 @1" /&gt;
-  &lt;v:f eqn="prod @2 1 2" /&gt;
-  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
-  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
-  &lt;v:f eqn="sum @0 0 1" /&gt;
-  &lt;v:f eqn="prod @6 1 2" /&gt;
-  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
-  &lt;v:f eqn="sum @8 21600 0" /&gt;
-  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
-  &lt;v:f eqn="sum @10 21600 0" /&gt;
- &lt;/v:formulas&gt;
- &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
- &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
-&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
- height:278.25pt'&gt;
- &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
-  o:title="" /&gt;
-&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
-</p>
-<p class="MsoNormal" style="text-align: center;" align="center"><span lang="EN-US"><!--  [if gte vml 1]&gt;&lt;v:shapetype
- id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t"
- path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"&gt;
- &lt;v:stroke joinstyle="miter" /&gt;
- &lt;v:formulas&gt;
-  &lt;v:f eqn="if lineDrawn pixelLineWidth 0" /&gt;
-  &lt;v:f eqn="sum @0 1 0" /&gt;
-  &lt;v:f eqn="sum 0 0 @1" /&gt;
-  &lt;v:f eqn="prod @2 1 2" /&gt;
-  &lt;v:f eqn="prod @3 21600 pixelWidth" /&gt;
-  &lt;v:f eqn="prod @3 21600 pixelHeight" /&gt;
-  &lt;v:f eqn="sum @0 0 1" /&gt;
-  &lt;v:f eqn="prod @6 1 2" /&gt;
-  &lt;v:f eqn="prod @7 21600 pixelWidth" /&gt;
-  &lt;v:f eqn="sum @8 21600 0" /&gt;
-  &lt;v:f eqn="prod @7 21600 pixelHeight" /&gt;
-  &lt;v:f eqn="sum @10 21600 0" /&gt;
- &lt;/v:formulas&gt;
- &lt;v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect" /&gt;
- &lt;o:lock v:ext="edit" aspectratio="t" /&gt;
-&lt;/v:shapetype&gt;&lt;v:shape id="_x0000_i1025" type="#_x0000_t75" style='width:414.75pt;
- height:278.25pt'&gt;
- &lt;v:imagedata src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png" mce_src="file:///C:/DOCUME~1/jiangbo/LOCALS~1/Temp/msohtml1/01/clip_image001.png"
-  o:title="" /&gt;
-&lt;/v:shape&gt;&lt;![endif]--><!--  [if !vml]--><!--  [endif]--></span>
-</p>
-<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用</span>
-</h3>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
-<span style="font-family: 宋体;">封装了一组核心应用，包括</span>
-<span lang="EN-US">Email</span>
-<span style="font-family: 宋体;">客户端，</span>
-<span lang="EN-US">SMS</span>
-<span style="font-family: 宋体;">应用，日历，地图，浏览器，联系人和其他应用。所有的应用都是有</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">编写。</span>
-</p>
-<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">应用框架</span>
-</h3>
-<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">开发者能够访问所有核心应用所使用的框架</span>
-<span lang="EN-US">API</span>
-<span style="font-family: 宋体;">。应用架构被设计成简洁的组建复用；任何应用发布本身的兼容性，任何其他的应用都可一利用这些兼容性（遵循框架的安全原则）。这种机制使得组建可以被其它用户置换。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">应用之下是一系列服务和系统，包括：</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
-<strong><span style="font-family: 宋体;">丰富的可扩展的视图（</span>
-<span lang="EN-US">View</span>
-</strong>
-<strong><span style="font-family: 宋体;">）</span>
-</strong>
-<span style="font-family: 宋体;">集合可以被用来构建应用，包括</span>
-<span lang="EN-US">lists, grids, text
-boxes,buttons,</span>
-<span style="font-family: 宋体;">以及嵌入式浏览器</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2.</span>
-<strong><span style="font-family: 宋体;">内容提供者</span>
-<span lang="EN-US">(Content Providers)</span>
-</strong>
-<span style="font-family: 宋体;">能够是应用访问来自其他应用的数据，例如联系人（</span>
-<span lang="EN-US">Contacts</span>
-<span style="font-family: 宋体;">）</span>
-<span lang="EN-US">,</span>
-<span style="font-family: 宋体;">或者与其他应用共享数据</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">3<strong>.</strong>
-</span>
-<strong><span style="font-family: 宋体;">资源管理器（</span>
-<span lang="EN-US">Resource Manager)</span>
-</strong>
-<span style="font-family: 宋体;">，支持访问非代码资源，例如本地字符，图像，布局文件</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4.</span>
-<strong><span style="font-family: 宋体;">消息管理器（</span>
-<span lang="EN-US">Notification Manager</span>
-</strong>
-<strong><span style="font-family: 宋体;">）</span>
-</strong>
-<span style="font-family: 宋体;">使得应用能够在状态栏中显示自定义的警告</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">5<strong>.</strong>
-</span>
-<strong><span style="font-family: 宋体;">活动管理器（</span>
-<span lang="EN-US">Activity Manager)</span>
-</strong>
-<span lang="EN-US"> </span>
-<span style="font-family: 宋体;">管理应用的生命周期，提供通用的导航返回栈。</span>
-</p>
-<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
-</p>
-<h3><span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">库</span>
-</h3>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
-<span style="font-family: 宋体;">包括了一组被各个组件使用</span>
-<span lang="EN-US">C/C++</span>
-<span style="font-family: 宋体;">库。这些兼容性通过</span>
-<span lang="EN-US">Android</span>
-<span style="font-family: 宋体;">应用框架暴露给开发者。下面列出一些核心库：</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">1.</span>
-<strong><span style="font-family: 宋体;">系统</span>
-<span lang="EN-US">C</span>
-</strong>
-<strong><span style="font-family: 宋体;">库（</span>
-<span lang="EN-US">System C
-library</span>
-</strong>
-<strong><span style="font-family: 宋体;">）</span>
-</strong>
-<span lang="EN-US">-</span>
-<span style="font-family: 宋体;">一个基于</span>
-<span lang="EN-US">BSD</span>
-<span style="font-family: 宋体;">实现的标准</span>
-<span lang="EN-US">C</span>
-<span style="font-family: 宋体;">系统库（</span>
-<span lang="EN-US">libc</span>
-<span style="font-family: 宋体;">），支持嵌入式</span>
-<span lang="EN-US">linux</span>
-<span style="font-family: 宋体;">的所有设备。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">2<strong>.</strong>
-</span>
-<strong><span style="font-family: 宋体;">多媒体库（</span>
-<span lang="EN-US">Media Libraries</span>
-</strong>
-<strong><span style="font-family: 宋体;">）</span>
-</strong>
-<span lang="EN-US">-</span>
-<span style="font-family: 宋体;">基于</span>
-<span lang="EN-US">PacketVideo</span>
-<span style="font-family: 宋体;">的</span>
-<span lang="EN-US">OpenCORE</span>
-<span style="font-family: 宋体;">；这个库支持播放和录制多种流行视频和音频格式，包括静态图像格式。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.</span>
-</strong>
-<strong><span style="font-family: 宋体;">表面管理器（</span>
-<span lang="EN-US">Surface Manager</span>
-</strong>
-<strong><span style="font-family: 宋体;">）</span>
-</strong>
-<span lang="EN-US">-</span>
-<span style="font-family: 宋体;">管理访问显示子系统与多种应用的</span>
-<span lang="EN-US">2D</span>
-<span style="font-family: 宋体;">和</span>
-<span lang="EN-US">3D</span>
-<span style="font-family: 宋体;">图形层无缝连接。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">3.LibWebCore-</span>
-</strong>
-<span style="font-family: 宋体;">一个现代的</span>
-<span lang="EN-US">web</span>
-<span style="font-family: 宋体;">浏览器引擎，支持</span>
-<span lang="EN-US">Android</span>
-<span style="font-family: 宋体;">浏览器和嵌入式</span>
-<span lang="EN-US">Web</span>
-<span style="font-family: 宋体;">视图。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">4<strong>.SGL-</strong>
-</span>
-<strong><span style="font-family: 宋体;">底层的</span>
-<span lang="EN-US">2D</span>
-</strong>
-<span style="font-family: 宋体;">图形引擎。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">5.3DLibraries</span>
-</strong>
-<span lang="EN-US">-</span>
-<span style="font-family: 宋体;">基于</span>
-<span lang="EN-US">OpenGL ES1.0</span>
-<span style="font-family: 宋体;">实现的</span>
-<span lang="EN-US">API</span>
-<span style="font-family: 宋体;">；该库使用</span>
-<span lang="EN-US">3D</span>
-<span style="font-family: 宋体;">硬件加速（如果硬件支持）或这高度优化的软件渲染。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">6.FreeType</span>
-</strong>
-<span lang="EN-US">-</span>
-<span style="font-family: 宋体;">位图和向量字体渲染。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21.1pt;"><strong><span lang="EN-US">7.SQLite</span>
-</strong>
-<span lang="EN-US">-</span>
-<span style="font-family: 宋体;">一个强大的轻量级关系数据库引擎，可以被所有应用使用</span>
-</p>
-<p class="MsoNormal"><span lang="EN-US">&nbsp;</span>
-</p>
-<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Android</span>
-<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">运行时环境</span>
-</h3>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Anroid</span>
-<span style="font-family: 宋体;">包括一系列的核心库，这些库提供了绝大多数</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">核心库所需的功能。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span style="font-family: 宋体;">每个</span>
-<span lang="EN-US">Android</span>
-<span style="font-family: 宋体;">应用是一个独立运行的进程，在</span>
-<span lang="EN-US">Dalvik</span>
-<span style="font-family: 宋体;">虚拟机中有独立的例程。</span>
-<span lang="EN-US">Dalvik</span>
-<span style="font-family: 宋体;">被实现用于在一个设备上有效的运行多个虚拟机。</span>
-<span lang="EN-US">Dalvik</span>
-<span style="font-family: 宋体;">虚拟机的可执行文件</span>
-<span lang="EN-US">Dalvik Executeable(.dex)</span>
-<span style="font-family: 宋体;">被优化的占用最小的内存空间。虚拟机以注册为基础，</span>
-<span lang="EN-US">Java</span>
-<span style="font-family: 宋体;">类编译的字节码被</span>
-<span lang="EN-US">dx</span>
-<span style="font-family: 宋体;">工具优化为</span>
-<span lang="EN-US">.dex</span>
-<span style="font-family: 宋体;">文件。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Dalvik VM</span>
-<span style="font-family: 宋体;">底层依赖于</span>
-<span lang="EN-US">Linux</span>
-<span style="font-family: 宋体;">内核，</span>
-<span lang="EN-US">linux</span>
-<span style="font-family: 宋体;">内核为其提供线程和低级内存管理。</span>
-</p>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">&nbsp;</span>
-</p>
-<h3><span style="font-size: 15pt; line-height: 173%;" lang="EN-US">Linux</span>
-<span style="font-size: 15pt; line-height: 173%; font-family: 宋体;">内核</span>
-</h3>
-<p class="MsoNormal" style="text-indent: 21pt;"><span lang="EN-US">Android</span>
-<span style="font-family: 宋体;">基于</span>
-<span lang="EN-US">Linux2.6</span>
-<span style="font-family: 宋体;">内核所提供的服务，包括安全，内存管理，进程管理，网络堆栈，以及驱动模型。内核同时扮演了一个介于硬件和其余软件栈之间的一个抽象层。</span>
-</p>
+<ol>
+<li>&nbsp;&nbsp; 子类型的泛型不能赋值给父类型的泛型，即泛型不可协变。</li>
+<li>&nbsp;&nbsp; 泛型类并没有自己独有的Class类对象。比如并不存在List&lt;String&gt;.class或是List&lt;Integer&gt;.class，而只有List.class。</li>
+<li>&nbsp;&nbsp; 静态变量是被泛型类的所有实例所共享的。对于声明为MyClass&lt;T&gt;的类，访问其中的静态变量的方法仍然是 MyClass.myStaticVar。不管是通过new MyClass&lt;String&gt;还是new MyClass&lt;Integer&gt;创建的对象，都是共享一个静态变量。</li>
+<li>&nbsp;&nbsp; 泛型的类型参数不能用在Java异常处理的catch语句中。因为异常处理是由JVM在运行时刻来进行的。由于类型信息被擦除，JVM是无法区分两个异常类型MyException&lt;String&gt;和MyException&lt;Integer&gt;的。对于JVM来说，它们都是 MyException类型的。也就无法执行与异常对应的catch语句。</li>
+</ol>
+<p>&nbsp;</p>
+<h2>协变（convariant）</h2>
+<p>&nbsp;&nbsp; &nbsp; Within the type system of a programming language, covariance and contravariance refers to the ordering of types from narrower to wider and their interchangeability or equivalence in certain situations (such as parameters, generics, and return types). &nbsp; &nbsp; &mdash;&mdash;Wikipedia（偶不会翻译*A*）</p>
+<p>&nbsp;&nbsp; &nbsp; 简单来说，可协变表示子类型的引用可以赋值给父类性，不可协变则表示子类型引用不能赋值给父类型。以数组和泛型为例：</p>
+<p>&nbsp;&nbsp; &nbsp; 数组是可协变的，因为Number[] a = new Integer[]()；是成立的。</p>
+<p>&nbsp;&nbsp; &nbsp; 泛型是不可协变的，因为List&lt;Number&gt; ln = new ArrayList&lt;Integer&gt;()；编译会出错。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp; 由于数组是可协变的，而泛型不可协变，导致数组能够协变而泛型不能协变的另一个后果是，不能实例化泛型类型的数组（new List&lt;String&gt;[3]是不合法的），除非类型参数是一个未绑定的通配符（new List&lt;?&gt;[3]是合法的）。</p>
+<p>&nbsp;&nbsp; &nbsp;可是，为什么泛型不能协变呢？&mdash;&mdash;因为这样会破坏类型安全</p>
+<p>&nbsp;&nbsp; &nbsp; 假设可以协变，那么</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Integer&gt; li = new ArrayList&lt;Integer&gt;();</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Number&gt; ln = li;</p>
+<p>&nbsp;&nbsp; &nbsp; ln.add(new Float(3.14));</p>
+<p>&nbsp;&nbsp; &nbsp; 发生了什么？本来是放Integer的List里面加入了Float！。</p>
+<p>&nbsp;</p>
+<h2>类型擦除</h2>
+<p>&nbsp;&nbsp; &nbsp; &nbsp;Java中的泛型基本上都是在编译器这个层次来实现的。在生成的Java字节代码中是不包含泛型中的类型信息的。使用泛型的时候加上的类型参数，会被编译器在编译的时候去掉。这个过程就称为类型擦除。如在代码中定义的List&lt;Object&gt;和List&lt;String&gt;等类型，在编译之后都会变成List。JVM看到的只是List，而由泛型附加的类型信息对JVM来说是不可见的。Java编译器会在编译时尽可能的发现可能出错的地方，但是仍然无法避免在运行时刻出现类型转换异常的情况。</p>
+<h3>编译器如何处理泛型？</h3>
+<p>&nbsp;&nbsp; &nbsp; 通常情况下，一个编译器处理泛型有两种方式：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.Code specialization。在实例化一个泛型类或泛型方法时都产生一份新的目标代码（字节码or二进制代码）。例如，针对一个泛型list，可能需要针对string，integer，float产生三份目标代码。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.Code sharing。对每个泛型类只生成唯一的一份目标代码；该泛型类的所有实例都映射到这份目标代码上，在需要的时候执行类型检查和类型转换。</p>
+<p>&nbsp;&nbsp; &nbsp; C++中的模板（template）是典型的Code specialization实现。C++编译器会为每一个泛型类实例生成一份执行代码。执行代码中integer list和string list是两种不同的类型。这样会导致代码膨胀（code bloat），不过有经验的C＋＋程序员可以有技巧的避免代码膨胀。</p>
+<p>&nbsp;&nbsp; &nbsp; Code specialization另外一个弊端是在引用类型系统中，浪费空间，因为引用类型集合中元素本质上都是一个指针。没必要为每个类型都产生一份执行代码。而这也是Java编译器中采用Code sharing方式处理泛型的主要原因。</p>
+<p>&nbsp;&nbsp; &nbsp; Java编译器通过Code sharing方式为每个泛型类型创建唯一的字节码表示，并且将该泛型类型的实例都映射到这个唯一的字节码表示上。将多种泛型类形实例映射到唯一的字节码表示是通过类型擦除（type erasue）实现的。</p>
+<h3>什么是类型擦除？</h3>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除指的是通过类型参数合并，将泛型类型实例关联到同一份字节码上。编译器只为泛型类型生成一份字节码，并将其实例关联到这份字节码上。类型擦除的关键在于从泛型类型中清除类型参数的相关信息，并且再必要的时候添加类型检查和类型转换的方法。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除可以简单的理解为将泛型java代码转换为普通java代码，只不过编译器更直接点，将泛型java代码直接转换成普通java字节码。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除的主要过程如下：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.将所有的泛型参数用其最左边界（最顶级的父类型）类型替换。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.移除所有的类型参数。</p>
+<p>&nbsp;&nbsp; &nbsp; 如</p>
+<p><pre class="brush: java">interface Comparable &lt;A&gt; { 
+  public int compareTo( A that); 
+} 
+final class NumericValue implements Comparable &lt;NumericValue&gt; { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }    
+  public  byte getValue() { return value; }    
+  public  int compareTo( NumericValue t hat) { return this.value - that.value; } 
+} 
+－－－－－－－－－－－－－－－－－
+class Collections {  
+  public static &lt;A extends Comparable&lt;A&gt;&gt;A max(Collection &lt;A&gt; xs) { 
+    Iterator &lt;A&gt; xi = xs.iterator(); 
+    A w = xi.next(); 
+    while (xi.hasNext()) { 
+      A x = xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList &lt;NumericValue&gt; numberList = new LinkedList &lt;NumericValue&gt; (); 
+    numberList .add(new NumericValue((byte)0));  
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>经过类型擦除后的类型为</p>
+<p><pre class="brush: java">     interface Comparable { 
+  public int compareTo( Object that); 
+} 
+final class NumericValue implements Comparable { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }  
+  public  byte getValue() { return value; }  
+  public  int compareTo( NumericValue t hat)   { return this.value - that.value; } 
+  public  int compareTo(Object that) { return this.compareTo((NumericValue)that);  } } 
+－－－－－－－－－－－－－
+class Collections {  
+  public static Comparable max(Collection xs) { 
+    Iterator xi = xs.iterator(); 
+    Comparable w = (Comparable) xi.next(); 
+    while (xi.hasNext()) { 
+      Comparable x = (Comparable) xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList numberList = new LinkedList(); 
+    numberList .add(new NumericValue((byte)0));  ，
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = (NumericValue) Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>&nbsp;</p>
+<p>第一个泛型类Comparable &lt;A&gt;擦除后 A被替换为最左边界Object。Comparable&lt;NumericValue&gt;的类型参数NumericValue被擦除掉，但是这直接导致NumericValue没有实现接口Comparable的compareTo(Object that)方法，于是编译器充当好人，添加了一个桥接方法。</p>
+<p>第二个示例中限定了类型参数的边界&lt;A extends Comparable&lt;A&gt;&gt;A，A必须为Comparable&lt;A&gt;的子类，按照类型擦除的过程，先讲所有的类型参数ti换为最左边界Comparable&lt;A&gt;，然后去掉参数类型A，得到最终的擦除后结果。</p>
+<h3>类型擦除带来的问题</h3>
+<p>&nbsp;&nbsp; &nbsp; 正是由于类型擦除的隐蔽存在，直接导致了众多的泛型灵异问题。</p>
+<p><strong>Q1.用同一泛型类的实例区分方法签名？&mdash;&mdash;NO！</strong></p>
+<p>{code}</p>
+<p>import java.util.*;</p>
+<p>&nbsp;</p>
+<p>public class Erasure{</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;String&gt; ls){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Sting&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;Integer&gt; li){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Integer&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>}</p>
+<p>{code}</p>
+<p>编译该类，</p>
+<p><img src="http://hi.csdn.net/attachment/201103/10/0_12997506095504.gif" alt="" /></p>
+<p>what the f**k! 参数类型明明不一样啊，一个List&lt;String&gt;，一个是List&lt;Integer&gt;，但是，偷偷的说，type erasure之后，它就都是List了⋯⋯</p>
+<p><strong>Q2. 同时catch同一个泛型异常类的多个实例？&mdash;&mdash;NO！</strong></p>
+<p>同理，如果定义了一个泛型一场类GenericException&lt;T&gt;，千万别同时catch GenericException&lt;Integer&gt; 和GenericException&lt;String&gt;，因为他们是一样一样滴⋯⋯</p>
+<p><strong>Q3.泛型类的静态变量是共享的？&mdash;&mdash;Yes！</strong></p>
+<p>猜猜这段代码的输出是什么？</p>
+<p><pre class="brush: java">import java.util.*;
+public class StaticTest{
+    public static void main(String[] args){
+        GT&lt;Integer&gt; gti = new GT&lt;Integer&gt;();
+        gti.var=1;
+        GT&lt;String&gt; gts = new GT&lt;String&gt;();
+        gts.var=2;
+        System.out.println(gti.var);
+    }
+}
+class GT&lt;T&gt;{
+    public static int var=0;
+    public void nothing(T x){}
+}</pre>&nbsp;</p>
+<p>答案是&mdash;&mdash;2！</p>
+<p>&nbsp;</p>
+<h3>Just remember：</h3>
+<p>1.虚拟机中没有泛型，只有普通类和普通方法</p>
+<p>2.所有泛型类的类型参数在编译时都会被擦除</p>
+<p>3.创建泛型对象时请指明类型，让编译器尽早的做参数检查（Effective Java，第23条：请不要在新代码中使用原生态类型）</p>
+<p>4.不要忽略编译器的警告信息，那意味着潜在的ClassCastException等着你。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<h2>参考文档</h2>
+<p>《Java深度历险－泛型》http://www.infoq.com/cn/articles/cf-java-generics</p>
+<p>《Java Generics FAQ》http://www.angelikalanger.com/GenericsFAQ/JavaGenericsFAQ.html</p>
+<p>《Java Gotchas》http://www.ibm.com/developerworks/java/library/j-jtp01255.html</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
 <p>&nbsp;</p></div>
   
   
@@ -830,9 +581,8 @@ library</span>
 </section>
 <section>
   <h1>关于我</h1>
-  <p>一个非纯种程序员，爱代码爱产品爱旅行爱美女</p>
-  <iframe width="100%" height="550" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=550&fansRow=1&ptype=1&speed=0&skin=2&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
-
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
 </section>
 <section>
   <h1>Recent Posts</h1>
@@ -856,26 +606,6 @@ library</span>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-datanode-structure/">HDFS源码学习（12）——DataNode主要数据结构</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-namenode-safe-mode/">HDFS源码学习（9）——安全模式（SafeMode）</a>
       </li>
     
   </ul>
@@ -912,6 +642,10 @@ library</span>
 
 
 
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
 
   
 </aside>

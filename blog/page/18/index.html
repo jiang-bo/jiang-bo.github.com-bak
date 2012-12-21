@@ -1,0 +1,383 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>非纯种程序猿</title>
+  <meta name="author" content="jiang-bo">
+
+  
+  <meta name="description" content="今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /
+-DartifactId=simple /
+-DpackageName=org.sonatype.mavenbook
+结果报错Build &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://jiangbo.me/blog/page/18/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+   <link href="/stylesheets/data-table.css" media="screen, projection" rel="stylesheet" type="text/css" />
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="/javascripts/ender.js"></script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <link href="/atom.xml" rel="alternate" title="非纯种程序猿" type="application/atom+xml">
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="http://fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+
+
+  
+  <script type="text/javascript">
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-34477986-1']);
+    _gaq.push(['_trackPageview']);
+
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+</hgroup>
+
+</header>
+  <!-- <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="http://google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:jiangbo.me" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+</ul>
+
+</nav> -->
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/04/24/post/">maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-04-24T00:00:00+08:00" pubdate data-updated="true">Apr 24<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/04/24/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /</p>
+<p>-DartifactId=simple /</p>
+<p>-DpackageName=org.sonatype.mavenbook</p>
+<p>结果报错Build Error：</p>
+<p>Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar</p>
+<p>查了半天也不知道为什么，明明存在archetypes插件，却说找不到，最后决定把本地库全部都删除，然后重新创建项目，没问题了&hellip;&hellip;</p>
+<p>神奇~</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/04/07/post/">Error: No &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-04-07T00:00:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/04/07/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>今天第一次使用JBoss，解压运行时出现了如下错误：</p>
+<p>Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/server/jvm.dll&#8217;</p>
+<p>原因是JAVA_HOME设置的不对</p>
+<p>临时解决办法是重新设置下JAVA_HOME，set JAVA_HOME=&#8221;C:/Program Files/Java/jdk1.6.0_19&#8221;就行了，最好是在环境变量里添加一个。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/01/01/post/">Python简单CGI服务器os.execve(scriptfile,args,os.environ)权限错误</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-01-01T00:00:00+08:00" pubdate data-updated="true">Jan 1<span>st</span>, 2010</time>
+        
+         | <a href="/blog/2010/01/01/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>这段时间在学Python，今天开始进入到CGI编程，示例中有个简单CGI Server的例子，代码如下：</p>
+<p>webserver.py:</p>
+<p><pre class="brush: python">webdir = &quot;.&quot;    #html files directory
+port = 8000    ＃server port
+import os, sys
+from BaseHTTPServer import HTTPServer
+from CGIHTTPServer import CGIHTTPRequestHandler
+if sys.platform[:3] == &quot;win&quot;:
+    CGIHTTPRequestHandler.have_popen2 = False
+    CGIHTTPRequestHandler.have_popen3 = False
+os.chdir(webdir)
+srvraddr = (&quot;&quot;, port)
+srvrobj = HTTPServer(srvraddr, CGIHTTPRequestHandler)
+srvrobj.serve_forever()&nbsp;</pre>
+</p>
+<p>页面CGI为cgi101.py:</p>
+<p><pre class="brush: python">#!/usr/bin/python
+import cgi
+form = cgi.FieldStorage()
+print &quot;Content-type: text/html/n&quot;
+print &quot;&lt;title&gt;Reply Page&lt;/title&gt;&quot;
+if not form.has_key(&quot;username&quot;):
+    print &quot;&lt;h1&gt;Who are you?&lt;/h1&gt;&quot;
+else:
+    print &quot;&lt;h1&gt;Hello &lt;i&gt;%s&lt;/i&gt;!&lt;/h1&gt;&quot; % cgi.escape(form['username'].value)
+</pre>
+</p>
+<p>HTML页面为：</p>
+<p><pre class="brush: xhtml">&lt;html&gt;
+    &lt;title&gt;Interactive Page&lt;/title&gt;
+    &lt;body&gt;
+        &lt;form method=&quot;post&quot; action=&quot;cgi-bin/cgi101.py&quot;&gt;
+            &lt;p&gt;&lt;b&gt;Enter your name:&lt;/b&gt;&lt;/p&gt;
+            &lt;p&gt;Username:&lt;input type=&quot;text&quot; name=&quot;username&quot;/&gt;&lt;/p&gt;
+            &lt;p&gt;Password:&lt;input type=&quot;password&quot; name=&quot;pwd&quot;/&gt;&lt;/p&gt;
+            &lt;input type=&quot;submit&quot; name=&quot;submit&quot; text=&quot;submit&quot;/&gt;
+        &lt;/form&gt;
+&lt;/html&gt;
+</pre>
+</p>
+<p>先运行webserver.py（我是在Ubuntu上，用sudo python webserver.py)启动了server，然后在Firefox中访问：http://localhost:8000/cgi101.html</p>
+<p>结果Firefox中弹出下载cgi101.py脚本的对话框，而不是运行cgi返回结果，server终端中显示：</p>
+<p><pre class="brush: python">localhost - - [01/Jan/2010 17:05:32] &quot;GET /cgi-bin/cgi101.py?username=Jone HTTP/1.1&quot; 200 -
+Traceback (most recent call last):
+  File &quot;/usr/lib/python2.6/CGIHTTPServer.py&quot;, line 255, in run_cgi
+    os.execve(scriptfile, args, os.environ)
+OSError: [Errno 13] Permission denied
+</pre>
+</p>
+<p>说明os.execve权限出问题了，解决方法如下，将cgi101.py的权限设为777，如果还是不行的话，要将整个cgi目录的权限设为777(例如，本例中使用命令chmod -R 777 cgi-bin)</p>
+<p>然后就可以了。</p>
+<p>Good Luck!</p>
+<p>PS: Happy New Year !</p></div>
+  
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/page/19/">&larr; Older</a>
+    
+    <a href="archives">Blog Archives</a>
+    
+    <a class="next" href="/blog/page/17/">Newer &rarr;</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <ul id="recent_posts">
+      <li class="post">
+      <a href="http://jiangbo.me" alt="Home"><img src="/images/Home.png"></a>
+      <a href="http://jiangbo.me/archives/" alt="Archives"><img src="/images/Calendar.png"></a>
+      <a href="mailto:" alt="E-Mail"><img src="/images/Envelope.png"></a>
+      <a href="http://jiangbo.me/atom.xml" alt="subscribe feed"><img src="/images/rss.png"></a>
+      </li>
+  </ul>
+</section>
+<section>
+  <h1>关于我</h1>
+  <p>一个非纯种程序员，爱代码爱旅行爱美女</p>
+  <iframe width="100%" height="480" class="share_self"  frameborder="0" scrolling="no" src="http://widget.weibo.com/weiboshow/index.php?language=&width=0&height=480&fansRow=2&ptype=1&speed=0&skin=1&isTitle=0&noborder=1&isWeibo=1&isFans=0&uid=1892066397&verifier=8c17d4b5&dpc=1"></iframe>
+</section>
+<section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/jiang-bo">@jiang-bo</a> on GitHub
+  
+  <script type="text/javascript">
+    $.domReady(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'jiang-bo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+<section>
+  <h1>Tag Cloud</h1>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+</section>
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2012 - jiang-bo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'jiangbo';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = 'http://' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
