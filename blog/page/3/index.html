@@ -9,11 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="HDFS中DataNode主要负责维护block->stream bytes的映射关系，即实际block数据的存储。
-一个datanode的磁盘上存储目录下实际的文件部署结构如下： data/
-├── blocksBeingWritten
-├── current
-│   ├── VERSION &hellip;">
+  <meta name="description" content="main() public static void main(String args[]) { try { StringUtils.startupShutdownMessage(DataNode.class, args, LOG); DataNode datanode = &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +76,339 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-datanode-startup/">HDFS源码学习（13）——DataNode启动过程</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:57:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-datanode-startup/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>main()</h2>
+
+<pre><code>  public static void main(String args[]) {
+    try {
+      StringUtils.startupShutdownMessage(DataNode.class, args, LOG);
+      DataNode datanode = createDataNode(args, null);
+      if (datanode != null)
+        datanode.join();
+    } catch (Throwable e) {
+      LOG.error(StringUtils.stringifyException(e));
+      System.exit(-1);
+    }
+  }
+</code></pre>
+
+<h2>createDataNode()</h2>
+
+<pre><code>  public static DataNode createDataNode(String args[],
+                                 Configuration conf) throws IOException {
+    // 初始化datanode
+    DataNode dn = instantiateDataNode(args, conf);
+    // 启动datanode后台线程
+    runDatanodeDaemon(dn);
+    return dn;
+  }
+</code></pre>
+
+<h3>1.instantiateDataNode（）</h3>
+
+<pre><code>  public static DataNode instantiateDataNode(String args[],
+                                      Configuration conf) throws IOException {
+    // 处理配置
+    if (conf == null)
+      conf = new Configuration();
+    if (!parseArguments(args, conf)) {
+      printUsage();
+      return null;
+    }
+    if (conf.get("dfs.network.script") != null) {
+      LOG.error("This configuration for rack identification is not supported" +
+          " anymore. RackID resolution is handled by the NameNode.");
+      System.exit(-1);
+    }
+    // 获取data目录配置
+    String[] dataDirs = conf.getStrings("dfs.data.dir");
+    dnThreadName = "DataNode: [" +
+                        StringUtils.arrayToString(dataDirs) + "]";
+    //创建datanode实例
+    return makeInstance(dataDirs, conf);
+  }
+</code></pre>
+
+<h4>1.1. makeInfstance()</h4>
+
+<p>该方法主要用于检查给定的data目录中至少有一个可以创建，并实例化DataNode</p>
+
+<pre><code>  public static DataNode makeInstance(String[] dataDirs, Configuration conf)
+    throws IOException {
+    ArrayList&lt;File&gt; dirs = new ArrayList&lt;File&gt;();
+    for (int i = 0; i &lt; dataDirs.length; i++) {
+      File data = new File(dataDirs[i]);
+      try {
+        DiskChecker.checkDir(data);
+        dirs.add(data);
+      } catch(DiskErrorException e) {
+        LOG.warn("Invalid directory in dfs.data.dir: " + e.getMessage());
+      }
+    }
+    if (dirs.size() &gt; 0) 
+      return new DataNode(conf, dirs);
+    LOG.error("All directories in dfs.data.dir are invalid.");
+    return null;
+  }
+</code></pre>
+
+<h4>1.2 new DataNode()</h4>
+
+<pre><code>  DataNode(Configuration conf, 
+           AbstractList&lt;File&gt; dataDirs) throws IOException {
+    // 设置配置信息
+    super(conf);
+    datanodeObject = this;
+    supportAppends = conf.getBoolean("dfs.support.append", false);
+    this.conf = conf;
+    try {
+      // 启动DataNode
+      startDataNode(conf, dataDirs);
+    } catch (IOException ie) {
+      shutdown();
+      throw ie;
+    }
+  }
+</code></pre>
+
+<h5>1.2.1 startDataNode()</h5>
+
+<p>代码较长，仅列出主要步骤：</p>
+
+<ol>
+<li>设置配置信息</li>
+<li>向NameNode发起RPC请求，获取版本和StorageID信息</li>
+<li>获取启动配置</li>
+<li>初始化存储信息，构建FSDataSet</li>
+<li>获取可用的端口号</li>
+<li>调整注册信息中的机器名，加上端口号</li>
+<li>初始化DataXceiverServer</li>
+<li>设置blockReport和heartbeat各自的时间间隔</li>
+<li>初始化blockScanner</li>
+<li>初始胡并启动servlet info server，提供内容查询的http服务</li>
+<li>初始化ipc server，该ipc server主要用于完成DataNode间的block recover。</li>
+</ol>
+
+
+<h3>runDatanodeDaemon()</h3>
+
+<pre><code>  public static void runDatanodeDaemon(DataNode dn) throws IOException {
+    if (dn != null) {
+      //register datanode
+      dn.register();
+      dn.dataNodeThread = new Thread(dn, dnThreadName);
+      dn.dataNodeThread.setDaemon(true); // needed for JUnit testing
+      dn.dataNodeThread.start();
+    }
+  }
+</code></pre>
+
+<h4>2.1 向NameNode注册 —— dn.register();</h4>
+
+<pre><code>  private void register() throws IOException {
+    if (dnRegistration.getStorageID().equals("")) {
+      setNewStorageID(dnRegistration);
+    }
+    while(shouldRun) {
+      try {
+        // reset name to machineName. Mainly for web interface.
+        dnRegistration.name = machineName + ":" + dnRegistration.getPort();
+        // 通过NameProtocal向NameNode注册
+        dnRegistration = namenode.register(dnRegistration);
+        break;
+      } catch(SocketTimeoutException e) {  // namenode is busy
+        LOG.info("Problem connecting to server: " + getNameNodeAddr());
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException ie) {}
+      }
+    }
+    assert ("".equals(storage.getStorageID()) 
+            &amp;&amp; !"".equals(dnRegistration.getStorageID()))
+            || storage.getStorageID().equals(dnRegistration.getStorageID()) :
+            "New storageID can be assigned only if data-node is not formatted";
+    if (storage.getStorageID().equals("")) {
+      storage.setStorageID(dnRegistration.getStorageID());
+      storage.writeAll();
+      LOG.info("New storage id " + dnRegistration.getStorageID()
+          + " is assigned to data-node " + dnRegistration.getName());
+    }
+    if(! storage.getStorageID().equals(dnRegistration.getStorageID())) {
+      throw new IOException("Inconsistent storage IDs. Name-node returned "
+          + dnRegistration.getStorageID() 
+          + ". Expecting " + storage.getStorageID());
+    }
+
+    if (supportAppends) {
+      Block[] bbwReport = data.getBlocksBeingWrittenReport();
+      long[] blocksBeingWritten = BlockListAsLongs.convertToArrayLongs(bbwReport);
+      //如果支持append，则报告正在写入的block信息
+      namenode.blocksBeingWrittenReport(dnRegistration, blocksBeingWritten);
+    }
+    // 调整下一次的BR时间，使其在下次heartbeat时进行
+    scheduleBlockReport(initialBlockReportDelay);
+  }
+</code></pre>
+
+<h4>2.2 启动datanode线程 —— dn.dataNodeThread.start();</h4>
+
+<p>datanode线程本身非常简单，不停调用offerSevice提供服务：</p>
+
+<pre><code>  public void run() {
+    LOG.info(dnRegistration + "In DataNode.run, data = " + data);
+
+    // start dataXceiveServer
+    dataXceiverServer.start();
+    new Thread(new CrashVolumeChecker()).start();//added by wukong
+
+    while (shouldRun) {
+      try {
+        startDistributedUpgradeIfNeeded();
+        offerService();
+      } catch (Exception ex) {
+        LOG.error("Exception: " + StringUtils.stringifyException(ex));
+        if (shouldRun) {
+          try {
+            Thread.sleep(5000);
+          } catch (InterruptedException ie) {
+          }
+        }
+      }
+    }
+
+    LOG.info(dnRegistration + ":Finishing DataNode in: "+data);
+    shutdown();
+  }
+</code></pre>
+
+<h5>2.2.1 offerService()</h5>
+
+<p>offerService的核心是周期性进行heartbeat和blockReport，主要流程如下：</p>
+
+<p><img src="/images/hdfs/offerService.png" alt="offerService" /></p>
+
+<pre><code>  public void offerService() throws Exception {
+
+    LOG.info("using BLOCKREPORT_INTERVAL of " + blockReportInterval + "msec" + 
+       " Initial delay: " + initialBlockReportDelay + "msec");
+    LOG.info("using DELETEREPORT_INTERVAL of " + deletedReportInterval + "msec");
+    LOG.info("using HEARTBEAT_INTERVAL of " + heartBeatInterval + "msec");
+    LOG.info("using HEARTBEAT_EXPIRE_INTERVAL of " + heartbeatExpireInterval + "msec");
+
+    //
+    // Now loop for a long time....
+    //
+
+    while (shouldRun) {
+      try {
+        long startTime = now();
+
+        //
+        // Every so often, send heartbeat or block-report
+        //
+
+        if (startTime - lastHeartbeat &gt; heartBeatInterval /* 3 secs*/) {
+          //
+          // All heartbeat messages include following info:
+          // -- Datanode name
+          // -- data transfer port
+          // -- Total capacity
+          // -- Bytes remaining
+          //
+          lastHeartbeat = startTime;
+          DatanodeCommand[] cmds = namenode.sendHeartbeat(dnRegistration,
+                                                       data.getCapacity(),
+                                                       data.getDfsUsed(),
+                                                       data.getRemaining(),
+                                                       xmitsInProgress.get(),
+                                                       getXceiverCount());
+          myMetrics.heartbeats.inc(now() - startTime);
+          //LOG.info("Just sent heartbeat, with name " + localName);
+          if (!processCommand(cmds))
+            continue;
+        }
+
+        reportReceivedBlocks();
+
+        DatanodeCommand cmd = blockReport();
+        processCommand(cmd);
+
+        // start block scanner
+        if (blockScanner != null &amp;&amp; blockScannerThread == null &amp;&amp;
+            upgradeManager.isUpgradeCompleted()) {
+          LOG.info("Starting Periodic block scanner.");
+          blockScannerThread = new Daemon(blockScanner);
+          blockScannerThread.start();
+        }
+
+        //
+        // There is no work to do;  sleep until hearbeat timer elapses, 
+        // or work arrives, and then iterate again.
+        //
+        long waitTime = heartBeatInterval - (System.currentTimeMillis() - lastHeartbeat);
+        synchronized(receivedAndDeletedBlockList) {
+          if (waitTime &gt; 0 &amp;&amp; receivedAndDeletedBlockList.size() == 0) {
+            try {
+              receivedAndDeletedBlockList.wait(waitTime);
+            } catch (InterruptedException ie) {
+            }
+            delayBeforeBlockReceived();
+          }
+        } // synchronized
+
+      } catch(RemoteException re) {
+        String reClass = re.getClassName();
+        if (UnregisteredDatanodeException.class.getName().equals(reClass) ||
+            DisallowedDatanodeException.class.getName().equals(reClass) ||
+            IncorrectVersionException.class.getName().equals(reClass)) {
+          LOG.warn("DataNode is shutting down: " + 
+                   StringUtils.stringifyException(re));
+          shutdown();
+          return;
+        }
+        LOG.warn(StringUtils.stringifyException(re));
+      } catch (IOException e) {
+        LOG.warn(StringUtils.stringifyException(e));
+      }
+    } // while (shouldRun)
+  } // offerService
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -678,85 +1007,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:54:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>NameNode和DataNode间的通信分为四种场景：</p>
-
-<ol>
-<li>初始时DataNode注册：</li>
-<li>周期性心跳检测：</li>
-<li>周期性blockreport：</li>
-<li>完成一个副本的写入：</li>
-</ol>
-
-
-<h2>一、初始时DataNode注册</h2>
-
-<p>DataNode在启动时会向NameNode注册，注册时需要提交的信息有DatanodeRegistration表示。结构如下：</p>
-
-<p><img src="/images/hdfs/DatanodeRegistration.png" alt="DatanodeRegistration" /></p>
-
-<p>主要包括：</p>
-
-<ol>
-<li>name：机器名（主机名+服务端口号）</li>
-<li>infoPort: 状态信息服务端口好</li>
-<li>ipcPort： 提供ipc服务的端口号</li>
-</ol>
-
-
-<p>此外，该类中的storageID是该datanode在集群中的唯一id，在注册时有NameNode分配</p>
-
-<p>注册的主要流程如下：
-<img src="/images/hdfs/register.png" alt="DataNodeRegister" /></p>
-
-<h2>二、心跳检测（heartbeat）</h2>
-
-<p>DataNode通过周期性调用namenode.sendHeartbeat()来完成心跳检测.主要流程如下：</p>
-
-<p><img src="/images/hdfs/sendHeartbeat.png" alt="sendHeartbeat" /></p>
-
-<h2>三、blockReport</h2>
-
-<p>DataNode周期性向NameNode发送blockReport，告知自己最新的block信息：
-<img src="/images/hdfs/blockReport.png" alt="blockReport" /></p>
-
-<h2>四、完成副本写入</h2>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/4/">&larr; Older</a>
@@ -789,6 +1039,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -802,10 +1056,6 @@
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -844,7 +1094,7 @@
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

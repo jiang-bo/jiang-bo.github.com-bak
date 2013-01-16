@@ -9,9 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="最近资金紧张，没钱交网费，只好到机房上网了，不过又怀念自己的linux，因此在机房的机器上装了个Ubuntu。下面简要记录下如何配置上网。
-Ubuntu默认安装的是DHCP
-# The primary network interface auto eth0 iface eth0 inet dhcp &hellip;">
+  <meta name="description" content="用虚拟光驱加载Ubuntu9.04镜像，双击wubi.exe的时候没有任何反应，在网上查了查，说是因为9.04对中文的支持有问题，安装时盘符终不能有中文，可是我检查了一下，所有的盘符都是英文啊，最后发现，光驱中插了一张名为&#8221;我的光盘&#8221;的光盘，退出来之后再运行wubi. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +76,43 @@ Ubuntu默认安装的是DHCP
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/06/21/post/">关于Ubuntu9.04中wubi.exe无法运行</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2009</time>
+        
+         | <a href="/blog/2009/06/21/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>用虚拟光驱加载Ubuntu9.04镜像，双击wubi.exe的时候没有任何反应，在网上查了查，说是因为9.04对中文的支持有问题，安装时盘符终不能有中文，可是我检查了一下，所有的盘符都是英文啊，最后发现，光驱中插了一张名为&#8221;我的光盘&#8221;的光盘，退出来之后再运行wubi.exe就没什么问题了&hellip;&hellip;狂汗&amp;</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -291,46 +326,6 @@ int main(void)<br />
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/05/25/post/">关于ARM的内存重映射</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-05-25T00:00:00+08:00" pubdate data-updated="true">May 25<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/05/25/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>先说说存储器映射：<br />所谓存储器映射，是指将开发板上不同的存储器映射到开发人员可见的4GB地址空间上，例如，假设开发板上有一个32KB的片内FLASH，16KB的片内SRAM（纯属虚构，如有雷同，纯属巧合），那么，将32KBFLASH映射到地址空间的0x00000000~0x0x00008FFF上，将16KB的SRAM映射到x40000000~0x40004fff上，这样开发者在读写0x00000000~0x00008fff内的地址时，访问的就是片内FLASH，不同开发板的映射规则是开发板厂商事先设定好的。</p>
-<p><br />下面说说什么是重映射：<br />重映射分为中断向量的重映射和boot的重映射<br />首先说说中断向量重映射<br />ARM中中断向量的地址位于0x00000000~0x0000003c(每个向量占4字节，但是为了能够实现4GB范围内的任意跳转，通常在中断向量表后附加一个跳转地址空间，跳转空间占4字节，因此，总的中断向量表大小为64B,不熟悉的自己查查ARM的中断向量吧，不多说了)。注意，这里所说的0x0000000~0x0000003C指的是用户可见的4GB地址空间（也就是上面所说的存储器映射后的地址空间），真正的中断向量位于哪块存贮器的哪个地址上可不一定(不过通常都是为与片内FLASH的底部)，因此，需要将不同存储器的中断向量表映射到0x00000000~0x0000003c的地址上。另外，还有一次中断向量的映射，在用户RAM的映射模式（稍后说映射模式）下，需要将中断向量映射到静态RAM的底部(很明显，这样能够提高访问速度)。<br />下面是boot的重映射<br />这里所说的boot不是bootloader，而是厂商实现内嵌到板子中的一段代码，用于执行对FLASH的读写，擦除等任务，通常位于片内存储器上，但是不同的板子上存储器的大小不同，为了程序的兼容，通常需要将boottblock重映射到存储空间的顶端。</p>
-<p>最后说一下映射模式：<br />ARM中支持4中映射模式，由存储器控制寄存器控制<br />四种模式为：<br />1.boot装载程序模式：在任何复位操作后都会执行Boot装载程序。Bootblock中中断向量映射到存储器的底端以允许处理异常，并在Boot装载过程中使用中断。<br />2.用户FLASH模式：当在存储器中识别了一个有效的用户程序标识并且Boot装载操作未被执行时，由Boot装载程序启动。中断向量没有重新映射，位于Flash的存储器底部<br />3.用户Flash：中断向量被映射到静态RAM的底部<br />4.用户外部模式：中断向量有外部存储器映射到存储空间底部。</p>
-<p>大概就这些，该上课去了，全是个人揣摩，有错请轻拍:)</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/26/">&larr; Older</a>
@@ -363,6 +358,10 @@ int main(void)<br />
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -376,10 +375,6 @@ int main(void)<br />
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -418,7 +413,7 @@ int main(void)<br />
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

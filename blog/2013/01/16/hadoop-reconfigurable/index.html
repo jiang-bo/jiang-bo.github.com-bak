@@ -5,13 +5,11 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>Error: no &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39; - 非纯种程序猿</title>
+  <title>HADOOP动态加载配置 - 非纯种程序猿</title>
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="今天第一次使用JBoss，解压运行时出现了如下错误：
-Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/server/jvm.dll&#8217;
-原因是JAVA_HOME设置的不对 &hellip;">
+  <meta name="description" content="简介 Hadoop集群运行过程中有时会需要对配置进行修改，而通常需要重启才能生效，如该HDFS Namenode的一个配置，需要重启NN才能生效。而对于规模较大的系统，重启的成本较高。HADOOP-7001引入了一个reconfigurable机制。简述如下： HADOOP- &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -20,7 +18,7 @@ Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/serv
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://jiangbo.me/blog/2010/04/07/post/">
+  <link rel="canonical" href="http://jiangbo.me/blog/2013/01/16/hadoop-reconfigurable/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <script src="/javascripts/modernizr-2.0.js"></script>
@@ -81,7 +79,7 @@ Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/serv
   
   <header>
     
-      <h1 class="entry-title">Error: No &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;</h1>
+      <h1 class="entry-title">HADOOP动态加载配置</h1>
     
     
       <p class="meta">
@@ -97,7 +95,7 @@ Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/serv
   
 
 
-<time datetime="2010-04-07T00:00:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2010</time>
+<time datetime="2013-01-16T15:01:00+08:00" pubdate data-updated="true">Jan 16<span>th</span>, 2013</time>
         
          | <a href="#disqus_thread">Comments</a>
         
@@ -106,12 +104,104 @@ Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/serv
   </header>
 
 
-<div class="entry-content"><p>今天第一次使用JBoss，解压运行时出现了如下错误：</p>
-<p>Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/server/jvm.dll&#8217;</p>
-<p>原因是JAVA_HOME设置的不对</p>
-<p>临时解决办法是重新设置下JAVA_HOME，set JAVA_HOME=&#8221;C:/Program Files/Java/jdk1.6.0_19&#8221;就行了，最好是在环境变量里添加一个。</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p></div>
+<div class="entry-content"><h2>简介</h2>
+
+<p>Hadoop集群运行过程中有时会需要对配置进行修改，而通常需要重启才能生效，如该HDFS Namenode的一个配置，需要重启NN才能生效。而对于规模较大的系统，重启的成本较高。<a href="https://issues.apache.org/jira/browse/HADOOP-7001">HADOOP-7001</a>引入了一个reconfigurable机制。简述如下：</p>
+
+<p>HADOOP-7001提供了一个Reconfigure接口用于定义可动态配置的的行为。并提供了一个ReconfigurableBase抽象的基类实现。该基类有两个抽象方法，所有想要实现动态配置的节点，都需要实现这两个方法：</p>
+
+<pre><code>//某个可以动态配置的属性变化时需要进行的处理
+protected abstract void reconfigurePropertyImpl(String property, String newVal) 
+    throws ReconfigurationException;
+
+//定义该节点上所有可以进行动态配置的属性集合
+public abstract Collection&lt;String&gt; getReconfigurableProperties();
+</code></pre>
+
+<p>为了便于完成配置项变更，HADOOP-7001还提供了一个ReconfigurationServlet工具便于从web端变更配置。使用时只需要将该servelt加入到相应节点的httpserver中，并在context中加入conf.servlet.reconfigurable.$P的参数，值为对应的Reconfigurable实现（一般为节点自身实现），其中$P表示的是ReconfigurationServlet在httpServer中对应的path。</p>
+
+<h2>NameNode中的使用</h2>
+
+<p><a href="https://issues.apache.org/jira/browse/HDFS-1477">HDFS-1477</a>中提供了NameNode Reconfigurable的实现。概要分析如下：</p>
+
+<h3>1. 扩展ReconfigurableBase</h3>
+
+<p>首先需要扩展Reconfigurable来使NameNode支持动态配置</p>
+
+<pre><code>public class NameNode extends ReconfigurableBase implements ClientProtocol, 
+    DatanodeProtocol,NamenodeProtocol, FSConstants {
+
+      //。。。。
+      //此处省略N多无关代码
+      //        
+
+      //实现当发生配置变更时Namenode的具体处理行为
+      @Override
+      public void reconfigurePropertyImpl(String property, String newVal) 
+        throws ReconfigurationException {
+        // just pass everything to the namesystem
+        if (namesystem.isPropertyReconfigurable(property)) {
+         namesystem.reconfigureProperty(property, newVal);
+        } else if ("fs.trash.interval".equals(property)) {
+          try {
+            if (newVal == null) {
+              // set to default
+              trash.setDeleteInterval(60L * Trash.MSECS_PER_MINUTE);
+            } else {
+              trash.setDeleteInterval((long)(
+                  Float.valueOf(newVal) * Trash.MSECS_PER_MINUTE));
+            }
+            LOG.info("RECONFIGURE* changed trash deletion interval to " +
+                newVal);
+          } catch (NumberFormatException e) {
+            throw new ReconfigurationException(property, newVal,
+                getConf().get(property));
+          }
+        } else {
+          throw new ReconfigurationException(property, newVal,
+                                             getConf().get(property));
+        }
+      }
+
+      //设置NameNode上允许动态配置的属性值
+      @Override
+      public List&lt;String&gt; getReconfigurableProperties() {
+        // only allow reconfiguration of namesystem's reconfigurable properties
+        List&lt;String&gt; properties = namesystem.getReconfigurableProperties();
+        properties.add("fs.trash.interval");
+        return properties;
+      }
+</code></pre>
+
+<h3>2. 在httpserver中配置ReconfigurationServlet</h3>
+
+<p>为了便于配置，需要在httpserver中添加ReconfigurationServlet，具体代码如下</p>
+
+<pre><code>private void startHttpServer(Configuration conf) throws IOException {
+
+    //省略无关代码
+
+    //设置context属性
+    httpServer.setAttribute(ReconfigurationServlet.
+                            CONF_SERVLET_RECONFIGURABLE_PREFIX +
+                            CONF_SERVLET_PATH, NameNode.this);
+    //添加servelt， path为nnconfchange
+    httpServer.addServlet("nnconfchange", CONF_SERVLET_PATH,
+                          ReconfigurationServlet.class);
+    this.httpServer.start();
+
+    // The web-server port can be ephemeral... ensure we have the correct info
+    infoPort = this.httpServer.getPort();
+    this.httpAddress = new InetSocketAddress(infoHost, infoPort);
+    conf.set("dfs.http.address", infoHost + ":" + infoPort);
+    LOG.info("Web-server up at: " + infoHost + ":" + infoPort);
+  }
+</code></pre>
+
+<h3>3.具体使用</h3>
+
+<p>可以通过web访问 http://hdfsnn:port/nnconfchange来查看配置项，通过http://hdfsnn:port/nnconfchange?property=newVal的方式提交新的配置项，如果配置项变更出错会返回500.</p>
+</div>
 
 
   <footer>
@@ -133,8 +223,14 @@ Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/serv
   
 
 
-<time datetime="2010-04-07T00:00:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2010</time>
+<time datetime="2013-01-16T15:01:00+08:00" pubdate data-updated="true">Jan 16<span>th</span>, 2013</time>
       
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hdfs/'>HDFS</a>, <a class='category' href='/blog/categories/hadoop/'>Hadoop</a>
+  
+</span>
 
 
     </p>
@@ -148,14 +244,18 @@ Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/serv
     
     <p class="meta">
       
-        <a class="basic-alignment left" href="/blog/2010/01/01/post/" title="Previous Post: Python简单CGI服务器os.execve(scriptfile,args,os.environ)权限错误">&laquo; Python简单CGI服务器os.execve(scriptfile,args,os.environ)权限错误</a>
+        <a class="basic-alignment left" href="/blog/2012/12/21/hdfs-raid/" title="Previous Post: HDFS RAID">&laquo; HDFS RAID</a>
       
-      
-        <a class="basic-alignment right" href="/blog/2010/04/24/post/" title="Next Post: maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar">maven报错Requested org.apache.maven.archetypes:maven-archetype-quickstart:jar &raquo;</a>
       
     </p>
   </footer>
 </article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
 
 </div>
 
@@ -257,7 +357,10 @@ Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/serv
       var disqus_shortname = 'jiangbo';
       
         
-        var disqus_script = 'count.js';
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://jiangbo.me/blog/2013/01/16/hadoop-reconfigurable/';
+        var disqus_url = 'http://jiangbo.me/blog/2013/01/16/hadoop-reconfigurable/';
+        var disqus_script = 'embed.js';
       
     (function () {
       var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;

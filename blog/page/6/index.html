@@ -9,9 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="NameNode存在三种运行模式： Normal： NameNode正常服务的状态
-Safe mode：NameNode重启时进入Safe mode，该模式下整个系统是只读的，以便于NameNode手机DataNode信息
-Backup mode：备份NameNode处于Backup mode， &hellip;">
+  <meta name="description" content="HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下： class HeartbeatMonitor implements Runnable { /** */ public void run() { while (fsRunning &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +76,396 @@ Backup mode：备份NameNode处于Backup mode， &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-heartbeat/">HDFS源码学习(4)——DataNode心跳检测（HeartBeat）</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:38:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-heartbeat/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下：</p>
+
+<pre><code>  class HeartbeatMonitor implements Runnable {
+    /**
+     */
+    public void run() {
+      while (fsRunning) {
+        try {
+          heartbeatCheck();
+        } catch (Exception e) {
+          FSNamesystem.LOG.error(StringUtils.stringifyException(e));
+        }
+        try {
+          Thread.sleep(heartbeatRecheckInterval);
+        } catch (InterruptedException ie) {
+        }
+      }
+    }
+  }
+</code></pre>
+
+<p>代码很简单，心跳检测线程周期性调用heartbeatCheck()。</p>
+
+<h2>一、心跳检查——heartbeatCheck()</h2>
+
+<p>该方法主要用于检测是否有过期的心跳检测，如有，检测其上的block是否已经进行过重新备份。该线程每次只处理一个datanode。</p>
+
+<pre><code>  void heartbeatCheck() {
+    if (isInSafeMode()) {
+      // 安全模式下不做心跳检测
+      return;
+    }
+    boolean allAlive = false;
+    while (!allAlive) {
+      boolean foundDead = false;
+      DatanodeID nodeID = null;
+
+      // 获取第一个dead datanode
+      synchronized(heartbeats) {
+        for (Iterator&lt;DatanodeDescriptor&gt; it = heartbeats.iterator();
+             it.hasNext();) {
+          DatanodeDescriptor nodeInfo = it.next();
+          if (isDatanodeDead(nodeInfo)) {
+            foundDead = true;
+            nodeID = nodeInfo;
+            break;
+          }
+        }
+      }
+
+      // 申请fsnamesystem锁，删除dead datanode
+      if (foundDead) {
+        writeLock();
+        try {
+          synchronized(heartbeats) {
+            synchronized (datanodeMap) {
+              DatanodeDescriptor nodeInfo = null;
+              try {
+                nodeInfo = getDatanode(nodeID);
+              } catch (IOException e) {
+                nodeInfo = null;
+              }
+              if (nodeInfo != null &amp;&amp; isDatanodeDead(nodeInfo)) {
+                NameNode.stateChangeLog.info("BLOCK* NameSystem.heartbeatCheck: "
+                                             + "lost heartbeat from " + nodeInfo.getName());
+                removeDatanode(nodeInfo);
+              }
+            }
+          }
+        } finally {
+          writeUnlock();
+        }
+      }
+      allAlive = !foundDead;
+    }
+  }
+</code></pre>
+
+<h3>1.1 判断是否已死 —— isDatanodeDead（）</h3>
+
+<p>判断一个datanode是否已经dead的标准很简单，当前距该节点最后的更新时间差是否已经超过心跳检测的过期时间限制</p>
+
+<pre><code>private boolean isDatanodeDead(DatanodeDescriptor node) {
+    return (node.getLastUpdate() &lt;
+            (now() - heartbeatExpireInterval));
+  }
+</code></pre>
+
+<h3>1.2 删除datanode —— removeDatanode（）</h3>
+
+<pre><code>  private void removeDatanode(DatanodeDescriptor nodeInfo) {
+    synchronized (heartbeats) {
+      if (nodeInfo.isAlive) {
+        updateStats(nodeInfo, false);
+        //从heartbeats中移除
+        heartbeats.remove(nodeInfo);
+        //更新datanode状态
+        nodeInfo.isAlive = false;
+      }
+    }
+
+    nodeInfo.hasInitialBlockReport = false;
+    for (Iterator&lt;Block&gt; it = nodeInfo.getBlockIterator(); it.hasNext();) {
+      //移除该节点上的block
+      removeStoredBlock(it.next(), nodeInfo);
+    }
+    unprotectedRemoveDatanode(nodeInfo);
+    clusterMap.remove(nodeInfo);
+  }
+</code></pre>
+
+<h4>1.2.1 removeStoredBlock（）</h4>
+
+<p>该方法更新block->datanode的映射(blocksMap)，如果block还有效，有可能导致block备份发生</p>
+
+<pre><code>  void removeStoredBlock(Block block, DatanodeDescriptor node) {
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                    +block + " from "+node.getName());
+    }
+    assert (hasWriteLock());
+    if (!blocksMap.removeNode(block, node)) {
+      if (NameNode.stateChangeLog.isDebugEnabled()) {
+        NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+                                      +block+" has already been removed from node "+node);
+      }
+      return;
+    }
+
+    //
+    //检查是否需要备份删除的block
+    INode fileINode = blocksMap.getINode(block);
+    if (fileINode != null) {
+      //减小当前系统中安全block（备份数满足最小值的block）数量
+      decrementSafeBlockCount(block);
+      //更新需要备份的block数量
+      updateNeededReplications(block, -1, 0);
+    }
+
+    //
+    // 从excessblocks中删除改block，并从excessReplicateMap删除改datanode
+    Collection&lt;Block&gt; excessBlocks = excessReplicateMap.get(node.getStorageID());
+    if (excessBlocks != null) {
+      if (excessBlocks.remove(block)) {
+        excessBlocksCount--;
+        if (NameNode.stateChangeLog.isDebugEnabled()) {
+          NameNode.stateChangeLog.debug("BLOCK* NameSystem.removeStoredBlock: "
+              +block+" is removed from excessBlocks");
+        }
+        if (excessBlocks.size() == 0) {
+          excessReplicateMap.remove(node.getStorageID());
+        }
+      }
+    }
+
+    // 从corruptReplicas中移除该block
+    corruptReplicas.removeFromCorruptReplicasMap(block, node);
+  }
+</code></pre>
+
+<h5>1.2.1.1  BlocksMap.removeNode（）</h5>
+
+<p>其中BlocksMap.removeNode()方法如下：</p>
+
+<pre><code>  boolean removeNode(Block b, DatanodeDescriptor node) {
+    BlockInfo info = blocks.get(b);
+    if (info == null)
+      return false;
+
+    // 从datanode 的blocklist中移除block，并从block的datalist中移除datanode
+    boolean removed = node.removeBlock(info);
+
+    if (info.getDatanode(0) == null     // no datanodes left
+              &amp;&amp; info.inode == null) {  // does not belong to a file
+      //从blocksmap中移除该block
+      blocks.remove(b);  // remove block from the map
+    }
+    return removed;
+  }
+</code></pre>
+
+<h5>1.2.1.2 减小当前安全的block数 —— decrementSafeBlockCount()</h5>
+
+<p>减小当前副本数安全的的block数，此举有可能触发系统进入安全模式（safemode）</p>
+
+<pre><code>  void decrementSafeBlockCount(Block b) {
+    if (safeMode == null) // mostly true
+      return;
+
+    safeMode.decrementSafeBlockCount((short)countNodes(b).liveReplicas());
+  }
+</code></pre>
+
+<p>其中safeMode.decrementSafeBlockCount()代码如下：</p>
+
+<pre><code>synchronized void decrementSafeBlockCount(short replication) {
+
+  if (replication == safeReplication-1) {
+    //安全的block数减一
+    this.blockSafe--;
+    //检查是否需要进入到safemode
+    checkMode();
+  }
+}
+</code></pre>
+
+<p>SafeModeInfo.checkMode()代码如下：</p>
+
+<pre><code>    private void checkMode() {
+      //当安全的block数比例降至安全值以下，进入安全模式
+      if (needEnter()) {
+        enter();
+        // check if we are ready to initialize replication queues
+        if (canInitializeReplQueues() &amp;&amp; !isPopulatingReplQueues()) {
+          //初始化副本队列
+          initializeReplQueues();
+        }
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 如果安全模式已经关闭或者门槛小于0，则跳出安全模式
+      if (!isOn() ||                           // safe mode is off
+          extension &lt;= 0 || threshold &lt;= 0) {  // don't need to wait
+        this.leave(true); // leave safe mode
+        return;
+      }
+
+      //之前已经进入安全模式，直接返回
+      if (reached &gt; 0) {  // threshold has already been reached before
+        reportStatus("STATE* Safe mode ON.", false);
+        return;
+      }
+      // 启动SafeModeMonitor线程
+      reached = now();
+      smmthread = new Daemon(new SafeModeMonitor());
+      smmthread.start();
+      reportStatus("STATE* Safe mode extension entered.", true);
+    }
+</code></pre>
+
+<h5>1.2.1.3 更新需要备份的列表 —— updateNeededReplications（）</h5>
+
+<pre><code>  /* updates a block in under replication queue */
+  void updateNeededReplications(Block block,
+                        int curReplicasDelta, int expectedReplicasDelta) {
+    writeLock();
+    try {
+    //计算当前副本数
+    NumberReplicas repl = countNodes(block);
+    //期望的副本数
+    int curExpectedReplicas = getReplication(block);
+    //将该block更新到需要备份的列表中（neededReplications）
+    neededReplications.update(block, 
+                              repl.liveReplicas(), 
+                              repl.decommissionedReplicas(),
+                              curExpectedReplicas,
+                              curReplicasDelta, expectedReplicasDelta);
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h4>1.2.2 移除datanode —— unprotectedRemoveDatanode</h4>
+
+<pre><code>  void unprotectedRemoveDatanode(DatanodeDescriptor nodeDescr) {
+    //重置清空datanode中block信息
+    nodeDescr.resetBlocks();
+    //从invlidateSet中移除datanode
+    removeFromInvalidates(nodeDescr.getStorageID());
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug(
+                                    "BLOCK* NameSystem.unprotectedRemoveDatanode: "
+                                    + nodeDescr.getName() + " is out of service now.");
+    }
+  }
+</code></pre>
+
+<h5>1.2.2.1 removeFromInvalidates()</h5>
+
+<pre><code>  private void removeFromInvalidates(String storageID) {
+    //从recentInvalidateSet中移除该datanode
+    Collection&lt;Block&gt; blocks = recentInvalidateSets.remove(storageID);
+    if (blocks != null) {
+      //从正在删除的block总数中减去当前节点上的block总数
+      pendingDeletionBlocksCount -= blocks.size();
+    }
+  }
+</code></pre>
+
+<h2>二、 处理心跳检测请求 —— handleHeartbeat()</h2>
+
+<p>NameNode只负责创建一个HeartbeatMonitor来通过每个datanode的最新更新时间周期性检查是否有过期的datanode，而每个datanode是否的最新更新时间是由datanode主动向namenode报告的，namenode通过handleHeartbeat()处理心跳请求。</p>
+
+<pre><code>  DatanodeCommand[] handleHeartbeat(DatanodeRegistration nodeReg,
+      long capacity, long dfsUsed, long remaining,
+      int xceiverCount, int xmitsInProgress) throws IOException {
+    DatanodeCommand cmd = null;
+    synchronized (heartbeats) {
+      synchronized (datanodeMap) {
+        DatanodeDescriptor nodeinfo = null;
+        try {
+          nodeinfo = getDatanode(nodeReg);
+        } catch(UnregisteredDatanodeException e) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        // 检查该datanode是否需要被关闭，可以通过设置datanode的adminState为DECOMMISSIONED来关闭一个datanode
+        if (nodeinfo != null &amp;&amp; shouldNodeShutdown(nodeinfo)) {
+          setDatanodeDead(nodeinfo);
+          throw new DisallowedDatanodeException(nodeinfo);
+        }
+
+        if (nodeinfo == null || !nodeinfo.isAlive) {
+          return new DatanodeCommand[]{DatanodeCommand.REGISTER};
+        }
+
+        updateStats(nodeinfo, false);
+        nodeinfo.updateHeartbeat(capacity, dfsUsed, remaining, xceiverCount);
+        updateStats(nodeinfo, true);
+
+        //检查租约恢复状态
+        cmd = nodeinfo.getLeaseRecoveryCommand(Integer.MAX_VALUE);
+        if (cmd != null) {
+          return new DatanodeCommand[] {cmd};
+        }
+
+        ArrayList&lt;DatanodeCommand&gt; cmds = new ArrayList&lt;DatanodeCommand&gt;(2);
+        //检查正在备份中的副本
+        cmd = nodeinfo.getReplicationCommand(
+              maxReplicationStreams - xmitsInProgress);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        //检查无效的block
+        cmd = nodeinfo.getInvalidateBlocks(blockInvalidateLimit);
+        if (cmd != null) {
+          cmds.add(cmd);
+        }
+        if (!cmds.isEmpty()) {
+          return cmds.toArray(new DatanodeCommand[cmds.size()]);
+        }
+      }
+    }
+
+    //检查是否需要升级系统
+    cmd = getDistributedUpgradeCommand();
+    if (cmd != null) {
+      return new DatanodeCommand[] {cmd};
+    }
+    return null;
+  }
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -518,217 +906,6 @@ Backup mode：备份NameNode处于Backup mode， &hellip;">
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-datastructure/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>FSNameSystem</h2>
-
-<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
-
-<ol>
-<li>fsname->block列表的映射</li>
-<li>所有有效blocks集合</li>
-<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
-<li>每个datanode与其上的blocklist的映射</li>
-<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
-</ol>
-
-
-<h3>FSDirectory</h3>
-
-<p>FSDirectory用于维护当前系统中的文件树。</p>
-
-<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
-
-<h4>INode</h4>
-
-<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
-
-<p><img src="/images/hdfs/INode.png" alt="INode" /></p>
-
-<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
-
-<h3>BlocksMap</h3>
-
-<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
-<img src="/images/hdfs/BlocksMap.png" alt="BlocksMap" />
-BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
-
-<h4>Block</h4>
-
-<p>Block是HDFS中的基本读写单元，主要包括：</p>
-
-<ol>
-<li>blockId: 一个long类型的块id</li>
-<li>numBytes: 块大小</li>
-<li>generationStamp: 块更新的时间戳</li>
-</ol>
-
-
-<h4>BlockInfo</h4>
-
-<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
-
-<p><img src="/images/hdfs/triplets.png" alt="triplets" /></p>
-
-<ol>
-<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
-<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
-<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
-</ol>
-
-
-<p>DN2,DN3的prev-blk和next-blk类似。
-HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
-
-<h4>FSImage</h4>
-
-<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
-HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
-FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
-
-<p><img src="/images/hdfs/FSImage.png" alt="FSImage" /></p>
-
-<h5>FSImage头部信息</h5>
-
-<ol>
-<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
-<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
-<li>numberItemOfTree(long): 系统中的文件总数</li>
-<li>generationTimeStamp: 生成image的时间戳</li>
-</ol>
-
-
-<h5>INode信息</h5>
-
-<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
-
-<p><strong>INode头</strong></p>
-
-<ol>
-<li>nameLen(short): 文件名长度</li>
-<li>filename(String): 文件名</li>
-<li>replication(short): 备份数量</li>
-<li>modificationTime(long): 最近修改时间</li>
-<li>accessTime(long): 最近访问时间</li>
-<li>preferedBlockSize(long): 块大小（目录为0）</li>
-<li>block num(int): 块数量（目录为-1）</li>
-</ol>
-
-
-<p><strong>Blocks区</strong></p>
-
-<ol>
-<li>blockId(long)</li>
-<li>numBytes(long,block大小)</li>
-<li>generationTimeStamp(long, 更新时间戳）</li>
-</ol>
-
-
-<p><strong>文件权限</strong></p>
-
-<ol>
-<li>username(String): 文件用户名</li>
-<li>group(String): 所属组</li>
-<li>fileperm(short): 文件权限</li>
-</ol>
-
-
-<h5>underconstructionFile区</h5>
-
-<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
-
-<p><strong>client信息</strong></p>
-
-<ol>
-<li>clientName：client明</li>
-<li>clientMachine： client机器名</li>
-</ol>
-
-
-<p><strong>已分配的datanode信息</strong></p>
-
-<ol>
-<li>ipcport： 服务端口</li>
-<li>capacity: 容量</li>
-<li>dfsuse： 已使用的空间</li>
-<li>remaining： 剩余空间</li>
-<li>lastupdate： 最新更新时间</li>
-<li>xceiverCount</li>
-<li>location： datanode位置</li>
-<li>hostName：主机名</li>
-<li>state： admin管理状态</li>
-</ol>
-
-
-<h2>其他结构</h2>
-
-<h3>CorruptReplicasMap</h3>
-
-<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
-
-<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
-
-<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
-
-<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
-
-<p>datanodeMap用于维护datanode->block的映射</p>
-
-<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
-
-<p>维护多有当前活着的节点</p>
-
-<h3>UnderReplicatedBlocks neededReplications</h3>
-
-<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
-
-<h3>PendingReplicationBlocks pendingReplications;</h3>
-
-<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
-<img src="/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
-
-<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
-
-<p>当前需要检查是否备份过多的block集合</p>
-
-<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
-
-<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/7/">&larr; Older</a>
@@ -761,6 +938,10 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -774,10 +955,6 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -816,7 +993,7 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

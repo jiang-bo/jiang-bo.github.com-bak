@@ -9,11 +9,11 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="引子 一个使用缓存进行并发控制的讨论，让我学习到成本与收益间的平衡，以及何为真正的可用性&#8230;&#8230;
-防止并发有多种方式，本文只涉及使用缓存memcached控制。
-并发场景：
-&nbsp;&nbsp; &nbsp; 用例：SNS系统中具有高级会员资格的人发起活动。
-&nbsp;& &hellip;">
+  <meta name="description" content="&nbsp;
+一、Basic FAQ：
+1. What are Java Generics?
+&nbsp;&nbsp; &nbsp; Java泛型是什么？
+&nbsp;&nbsp; &nbsp; Java Generics ara language feature that allows for &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +80,218 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/03/10/post/">Java基础（1）－泛型</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-10T00:00:00+08:00" pubdate data-updated="true">Mar 10<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/03/10/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>&nbsp;</p>
+<h2>一、Basic FAQ：</h2>
+<p><strong>1. What are Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics ara language feature that allows for definition and use of generic types and methods.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型指的是一种允许定义通用类型和方法的语言特性。</em></p>
+<p><strong>2. What is the primary purpose of Java Generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初的目的是什么？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Java Generics are invented primarily for implementation of generic collection.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初是为了实现通用集合类设计的。</em></p>
+<p><strong>3.What is the benefit of using Java generics?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>使用Java泛型的好处？？？</em></p>
+<p>&nbsp;&nbsp; &nbsp; Early error detection at compile time.</p>
+<p>&nbsp;&nbsp; &nbsp; <em>能够在编译期检查类型错误。</em></p>
+<p><strong>4.What does type-safe mean?</strong></p>
+<p>&nbsp;&nbsp; &nbsp; <em>什么叫做类型安全</em>？</p>
+<p>&nbsp;&nbsp; &nbsp; In Java, a program is considered type-safe if it compiles without errors and warnings and does not raise any unexpected ClassCastException at runtime.</p>
+<p><em>&nbsp;&nbsp; &nbsp; 在Java里，类型安全指的是：如果一个程序编译期未发现Error或Warning，那么在运行时就不会报ClassCastException。</em></p>
+<p>&nbsp;</p>
+<h2>奇怪的特性</h2>
+<p>&nbsp;&nbsp; &nbsp; 泛型有些特性，令人困扰，如下：</p>
+<p>&nbsp;</p>
+<ol>
+<li>&nbsp;&nbsp; 子类型的泛型不能赋值给父类型的泛型，即泛型不可协变。</li>
+<li>&nbsp;&nbsp; 泛型类并没有自己独有的Class类对象。比如并不存在List&lt;String&gt;.class或是List&lt;Integer&gt;.class，而只有List.class。</li>
+<li>&nbsp;&nbsp; 静态变量是被泛型类的所有实例所共享的。对于声明为MyClass&lt;T&gt;的类，访问其中的静态变量的方法仍然是 MyClass.myStaticVar。不管是通过new MyClass&lt;String&gt;还是new MyClass&lt;Integer&gt;创建的对象，都是共享一个静态变量。</li>
+<li>&nbsp;&nbsp; 泛型的类型参数不能用在Java异常处理的catch语句中。因为异常处理是由JVM在运行时刻来进行的。由于类型信息被擦除，JVM是无法区分两个异常类型MyException&lt;String&gt;和MyException&lt;Integer&gt;的。对于JVM来说，它们都是 MyException类型的。也就无法执行与异常对应的catch语句。</li>
+</ol>
+<p>&nbsp;</p>
+<h2>协变（convariant）</h2>
+<p>&nbsp;&nbsp; &nbsp; Within the type system of a programming language, covariance and contravariance refers to the ordering of types from narrower to wider and their interchangeability or equivalence in certain situations (such as parameters, generics, and return types). &nbsp; &nbsp; &mdash;&mdash;Wikipedia（偶不会翻译*A*）</p>
+<p>&nbsp;&nbsp; &nbsp; 简单来说，可协变表示子类型的引用可以赋值给父类性，不可协变则表示子类型引用不能赋值给父类型。以数组和泛型为例：</p>
+<p>&nbsp;&nbsp; &nbsp; 数组是可协变的，因为Number[] a = new Integer[]()；是成立的。</p>
+<p>&nbsp;&nbsp; &nbsp; 泛型是不可协变的，因为List&lt;Number&gt; ln = new ArrayList&lt;Integer&gt;()；编译会出错。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp; 由于数组是可协变的，而泛型不可协变，导致数组能够协变而泛型不能协变的另一个后果是，不能实例化泛型类型的数组（new List&lt;String&gt;[3]是不合法的），除非类型参数是一个未绑定的通配符（new List&lt;?&gt;[3]是合法的）。</p>
+<p>&nbsp;&nbsp; &nbsp;可是，为什么泛型不能协变呢？&mdash;&mdash;因为这样会破坏类型安全</p>
+<p>&nbsp;&nbsp; &nbsp; 假设可以协变，那么</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Integer&gt; li = new ArrayList&lt;Integer&gt;();</p>
+<p>&nbsp;&nbsp; &nbsp; List&lt;Number&gt; ln = li;</p>
+<p>&nbsp;&nbsp; &nbsp; ln.add(new Float(3.14));</p>
+<p>&nbsp;&nbsp; &nbsp; 发生了什么？本来是放Integer的List里面加入了Float！。</p>
+<p>&nbsp;</p>
+<h2>类型擦除</h2>
+<p>&nbsp;&nbsp; &nbsp; &nbsp;Java中的泛型基本上都是在编译器这个层次来实现的。在生成的Java字节代码中是不包含泛型中的类型信息的。使用泛型的时候加上的类型参数，会被编译器在编译的时候去掉。这个过程就称为类型擦除。如在代码中定义的List&lt;Object&gt;和List&lt;String&gt;等类型，在编译之后都会变成List。JVM看到的只是List，而由泛型附加的类型信息对JVM来说是不可见的。Java编译器会在编译时尽可能的发现可能出错的地方，但是仍然无法避免在运行时刻出现类型转换异常的情况。</p>
+<h3>编译器如何处理泛型？</h3>
+<p>&nbsp;&nbsp; &nbsp; 通常情况下，一个编译器处理泛型有两种方式：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.Code specialization。在实例化一个泛型类或泛型方法时都产生一份新的目标代码（字节码or二进制代码）。例如，针对一个泛型list，可能需要针对string，integer，float产生三份目标代码。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.Code sharing。对每个泛型类只生成唯一的一份目标代码；该泛型类的所有实例都映射到这份目标代码上，在需要的时候执行类型检查和类型转换。</p>
+<p>&nbsp;&nbsp; &nbsp; C++中的模板（template）是典型的Code specialization实现。C++编译器会为每一个泛型类实例生成一份执行代码。执行代码中integer list和string list是两种不同的类型。这样会导致代码膨胀（code bloat），不过有经验的C＋＋程序员可以有技巧的避免代码膨胀。</p>
+<p>&nbsp;&nbsp; &nbsp; Code specialization另外一个弊端是在引用类型系统中，浪费空间，因为引用类型集合中元素本质上都是一个指针。没必要为每个类型都产生一份执行代码。而这也是Java编译器中采用Code sharing方式处理泛型的主要原因。</p>
+<p>&nbsp;&nbsp; &nbsp; Java编译器通过Code sharing方式为每个泛型类型创建唯一的字节码表示，并且将该泛型类型的实例都映射到这个唯一的字节码表示上。将多种泛型类形实例映射到唯一的字节码表示是通过类型擦除（type erasue）实现的。</p>
+<h3>什么是类型擦除？</h3>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除指的是通过类型参数合并，将泛型类型实例关联到同一份字节码上。编译器只为泛型类型生成一份字节码，并将其实例关联到这份字节码上。类型擦除的关键在于从泛型类型中清除类型参数的相关信息，并且再必要的时候添加类型检查和类型转换的方法。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除可以简单的理解为将泛型java代码转换为普通java代码，只不过编译器更直接点，将泛型java代码直接转换成普通java字节码。</p>
+<p>&nbsp;&nbsp; &nbsp; 类型擦除的主要过程如下：</p>
+<p>&nbsp;&nbsp; &nbsp; 1.将所有的泛型参数用其最左边界（最顶级的父类型）类型替换。</p>
+<p>&nbsp;&nbsp; &nbsp; 2.移除所有的类型参数。</p>
+<p>&nbsp;&nbsp; &nbsp; 如</p>
+<p><pre class="brush: java">interface Comparable &lt;A&gt; { 
+  public int compareTo( A that); 
+} 
+final class NumericValue implements Comparable &lt;NumericValue&gt; { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }    
+  public  byte getValue() { return value; }    
+  public  int compareTo( NumericValue t hat) { return this.value - that.value; } 
+} 
+－－－－－－－－－－－－－－－－－
+class Collections {  
+  public static &lt;A extends Comparable&lt;A&gt;&gt;A max(Collection &lt;A&gt; xs) { 
+    Iterator &lt;A&gt; xi = xs.iterator(); 
+    A w = xi.next(); 
+    while (xi.hasNext()) { 
+      A x = xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList &lt;NumericValue&gt; numberList = new LinkedList &lt;NumericValue&gt; (); 
+    numberList .add(new NumericValue((byte)0));  
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>经过类型擦除后的类型为</p>
+<p><pre class="brush: java">     interface Comparable { 
+  public int compareTo( Object that); 
+} 
+final class NumericValue implements Comparable { 
+  priva te byte value;  
+  public  NumericValue (byte value) { this.value = value; }  
+  public  byte getValue() { return value; }  
+  public  int compareTo( NumericValue t hat)   { return this.value - that.value; } 
+  public  int compareTo(Object that) { return this.compareTo((NumericValue)that);  } } 
+－－－－－－－－－－－－－
+class Collections {  
+  public static Comparable max(Collection xs) { 
+    Iterator xi = xs.iterator(); 
+    Comparable w = (Comparable) xi.next(); 
+    while (xi.hasNext()) { 
+      Comparable x = (Comparable) xi.next(); 
+      if (w.compareTo(x) &lt; 0) w = x; 
+    } 
+    return w; 
+  } 
+} 
+final class Test { 
+  public static void main (String[ ] args) { 
+    LinkedList numberList = new LinkedList(); 
+    numberList .add(new NumericValue((byte)0));  ，
+    numberList .add(new NumericValue((byte)1));  
+    NumericValue y = (NumericValue) Collections.max( numberList );  
+  } 
+}</pre>&nbsp;</p>
+<p>&nbsp;</p>
+<p>第一个泛型类Comparable &lt;A&gt;擦除后 A被替换为最左边界Object。Comparable&lt;NumericValue&gt;的类型参数NumericValue被擦除掉，但是这直接导致NumericValue没有实现接口Comparable的compareTo(Object that)方法，于是编译器充当好人，添加了一个桥接方法。</p>
+<p>第二个示例中限定了类型参数的边界&lt;A extends Comparable&lt;A&gt;&gt;A，A必须为Comparable&lt;A&gt;的子类，按照类型擦除的过程，先讲所有的类型参数ti换为最左边界Comparable&lt;A&gt;，然后去掉参数类型A，得到最终的擦除后结果。</p>
+<h3>类型擦除带来的问题</h3>
+<p>&nbsp;&nbsp; &nbsp; 正是由于类型擦除的隐蔽存在，直接导致了众多的泛型灵异问题。</p>
+<p><strong>Q1.用同一泛型类的实例区分方法签名？&mdash;&mdash;NO！</strong></p>
+<p>{code}</p>
+<p>import java.util.*;</p>
+<p>&nbsp;</p>
+<p>public class Erasure{</p>
+<p>&nbsp;</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;String&gt; ls){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Sting&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;Integer&gt; li){</p>
+<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Integer&#8221;);</p>
+<p>&nbsp;&nbsp; &nbsp;}</p>
+<p>}</p>
+<p>{code}</p>
+<p>编译该类，</p>
+<p><img src="http://hi.csdn.net/attachment/201103/10/0_12997506095504.gif" alt="" /></p>
+<p>what the f**k! 参数类型明明不一样啊，一个List&lt;String&gt;，一个是List&lt;Integer&gt;，但是，偷偷的说，type erasure之后，它就都是List了⋯⋯</p>
+<p><strong>Q2. 同时catch同一个泛型异常类的多个实例？&mdash;&mdash;NO！</strong></p>
+<p>同理，如果定义了一个泛型一场类GenericException&lt;T&gt;，千万别同时catch GenericException&lt;Integer&gt; 和GenericException&lt;String&gt;，因为他们是一样一样滴⋯⋯</p>
+<p><strong>Q3.泛型类的静态变量是共享的？&mdash;&mdash;Yes！</strong></p>
+<p>猜猜这段代码的输出是什么？</p>
+<p><pre class="brush: java">import java.util.*;
+public class StaticTest{
+    public static void main(String[] args){
+        GT&lt;Integer&gt; gti = new GT&lt;Integer&gt;();
+        gti.var=1;
+        GT&lt;String&gt; gts = new GT&lt;String&gt;();
+        gts.var=2;
+        System.out.println(gti.var);
+    }
+}
+class GT&lt;T&gt;{
+    public static int var=0;
+    public void nothing(T x){}
+}</pre>&nbsp;</p>
+<p>答案是&mdash;&mdash;2！</p>
+<p>&nbsp;</p>
+<h3>Just remember：</h3>
+<p>1.虚拟机中没有泛型，只有普通类和普通方法</p>
+<p>2.所有泛型类的类型参数在编译时都会被擦除</p>
+<p>3.创建泛型对象时请指明类型，让编译器尽早的做参数检查（Effective Java，第23条：请不要在新代码中使用原生态类型）</p>
+<p>4.不要忽略编译器的警告信息，那意味着潜在的ClassCastException等着你。</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<h2>参考文档</h2>
+<p>《Java深度历险－泛型》http://www.infoq.com/cn/articles/cf-java-generics</p>
+<p>《Java Generics FAQ》http://www.angelikalanger.com/GenericsFAQ/JavaGenericsFAQ.html</p>
+<p>《Java Gotchas》http://www.ibm.com/developerworks/java/library/j-jtp01255.html</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -213,51 +425,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/12/13/post/">AWK学习笔记</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-12-13T00:00:00+08:00" pubdate data-updated="true">Dec 13<span>th</span>, 2010</time>
-        
-         | <a href="/blog/2010/12/13/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>
-</p><p><em>by BoBo</em></p>
-<p><em></em><br /><strong><span>一点历史</span></strong><br />&nbsp;&nbsp;&nbsp; AWK上世纪70年代诞生于传奇的Bell实验室，名字取于它的三位发明人，Alfred Aho, Peter Weinberger和 Brian Kernighan名字的首字母。发音类似《The AWK Programing Language》封面上的海雀（一种海鸟）的英文发音(auck[ɔ:k])。AWK最早出现在Unix V7中，Linux诞生后，AWK被LSB纳入其中，这意味者所有的Linux发行版都会提供awk的实现。目前linux上广发使用的是GNU实现的gawk，此外还有nawk，mawk，pgawk等版本。这些实现在AWK的语言规范基础上，扩展了一些其他功能，本文只关心最基础最通用的AWK规范，不探究相关实现的具体实现区别，欲知详情，请查看相关实现的手册。<br />以下是其中一位创始人Alfred V.Aho对AWK的描述。<br />&nbsp;&nbsp;&nbsp;&nbsp;<em>AWK is a language for processing files of text. A file is treated as a sequence of records, and by default each line is a record. Each line is broken up into a sequence of fields, so we can think of the first word in a line as the first field, the second word as the second field, and so on. An AWK program is of a sequence of pattern-action statements. AWK reads the input a line at a time. A line is scanned for each pattern in the program, and for each pattern that matches, the associated action is executed.&amp;quot; - Alfred V.Aho</em><br />尊重原文，不翻译。<br /><br /><strong><span>瞟一眼</span></strong><br />准备一份数据文件datafile<br /><br />Nike	green	X	10	10.00<br />Nike	blue	XL	10	10.00<br />Nike	red	 L	10	12.00<br />Adiddas	yellow	L	10	10.00<br />Adiddas	brown	M	10	10.00<br />Adiddas	gray	M	20	8.00<br /><br />打开终端，执行<br /><br /><span><span><strong>awk &#8216;/Nike/ {print $2}&#8217; datafile</strong><br /></span></span><br />输出<br /><br />green<br />blue<br />red<br /><br />解释下:<br />awk表示AWK解析器命令<br />两个&#8217;之间的部分表示这次执行的命令行脚本,其中/Nike/叫模式pattern,{print $2}叫操作action，print表示打印，$2表示每一记录中的第2个域。<br />datafile表示输入文件。<br />整个命令的意思表示：<br />对datafile中所有匹配Nike的行，执行print $2操作，打印含有Nike行中的第二个被空白符隔开的字段。<br />晕了么？来看点概念的解释吧:)<br /><br /><strong><span>一些枯燥的概念</span></strong><br /><strong>输入文件：</strong>待处理的数据文件datafile，每个输入文件为多个记录的集合<br /><strong>记录分割符：</strong>将输入文件划分为多个记录的符号，默认为&#8217;/n&#8217;<br /><strong>记录：</strong>默认数据文件中的每一行，如&amp;quot;Nike&nbsp;&nbsp;&nbsp; green&nbsp;&nbsp; X&nbsp;&nbsp; 10&nbsp; 10.00&amp;quot;，每个记录是多个域的集合<br /><strong>域分隔符：</strong>将每个记录划分为多个域的符号，默认为空白符<br /><strong>域：</strong>记录被域分割符划分后的单元，每个输入文件中的最小处理单元。如Nike， green，X，10，10.00分别为第一个记录的第1，2，3，4，5个域（注意，这里不是从0开始计数的）<br /><strong>Buffer：</strong>AWK中支持两种Buffer，域buffer和记录buffer<br />record buffer:表示整条记录，可以通过$0获取<br />field buffer:当前记录中的每一个field，可以通过$1,$2,$3获取。<br /><strong>内置变量：</strong><br />FS:Field separator，域分隔符，默认为空白符<br />RS:Record Separator，记录分隔符，默认为换行符<br />NF:Number of Fields in current record，当前记录中的域数<br />NR:Number of the current Record，当前的记录数<br />OFS:Output Field Separator，输出域分隔符，默认为空白符<br />ORS:Output Record Separator，输出记录分隔符，默认为换行符<br />FILENAME: Current filename，当前输入文件名<br /><br />针对一个awk命令行</p>
-<p><span><span><strong>awk &#8216;pattern {action}&#8217; datafile</strong></span></span><br />awk的执行流程：<br />1.读取：awk会按行读取输入文件(Line by Line)<br />2.切分：将输入行划分为多个域<br />3.匹配：根据pattern匹配<br />4.执行：对匹配的行执行action<br /><br /><strong><span>命令行</span></strong><br />AWK的命令行语法有两种形式</p>
-<p><br />awk [options] -f program-file file&#8230;<br />awk [options] &#8216;program-text&#8217; file&#8230;</p>
-<p><br />前者通过-f参数指定使用后面的名为program-file的文件作为AWK脚本处理输入文件file<br />后者表示 program-text是一段AWK命令行脚本，用于处理输入文件file.<br />options表示参数可选项，具体参数列表请参考相关手册。<br />基本语法：<br />当通过awk [options] &#8216;program-text&#8217; file&#8230;方式执行awk时，program-text表示一段脚本。AWK的命令行脚本由模式和操作两部分组成：<br />pattern {action}，表示对输入文件中所有匹配pattern的行，执行action操作。<br />缺少pattern时，默认对输入文件中所有行执行action<br />缺少action时，默认向标准输出打印所有匹配pattern的行<br />两者都没有时，不进行任何操作。</p>
-<p><br /><strong><span>例子：</span></strong><br />awk &#8216;/for/ {print $1}&#8217;<strong>&nbsp;&nbsp; &nbsp;</strong>datafile 表示打印datafile中所有匹配含有for的行的第一个域（关于域，请看下文）<br />awk &#8216;/for/&#8217; &nbsp; &nbsp;datafile 表示打印datafile中所有包含for的行<br />awk &#8216;{print}&#8217; &nbsp; &nbsp;datafile 表示打印datafile中所有行<br /><br /><strong><span>模式pattern:</span></strong></p>
-<p><strong></strong>pattern分为Simple pattern和Range pattern两大类。<br /><strong><span>Simple Pattern</span></strong>包括：<br />a.BEGIN:标示对输入文件进行处理之前<br />b.END:标示对输入文件完成处理之后<br />c.EXPRESSION:表达式，包括正则表达式，算数表达式，逻辑表达式<br />d.NOTHING:什么都没有，表示无pattern，默认匹配所有行<br /><strong>Expression Pattern：</strong><br />正则表达式/regx/：<br />通过两个/标记的pattern为正则表达式，如/^bi/匹配所有以bi开始的记录，正则表达式语法与grep语法类似，不再赘述，请查看相关手册。<br />需要注意的是 ~/regx/表示不匹配，如~/^bi/表示不是以bi开始的所有记录。<br />算数表达式：<br />模式$3*$4&amp;gt;100 表示匹配所有$3与$4的积大于100的记录，类似的算数操作符还包括：<br />逻辑表达式：<br />模式 $NR&amp;gt;2 &amp;amp;&amp;amp; /^bi/ 表示匹配所有行数大于2以bi开头的的行， &amp;amp;&amp;amp;表示逻辑与<br /><br /><strong><span>Range Pattern</span></strong><br />Range Pattern用于匹配输入行中一个连续的区域，其语法由两个Simple Pattern构成：<br />pattern1, pattern2 {action}<br />pattern1表示从第一个匹配pattern1的行开始，执行action操作。<br />pattern2表示从第一个匹配pattern2的行开始，停止执行action操作。<br /><strong><span>例子：</span></strong><br /><br /><span>awk &#8216;/blue/,/yellow/ {print}&#8217; datafile</span></p>
-<p><br />表示从datafile中第一匹配blue的行开始执行print操作，打印整行，到第一个匹配yellow的行为止，停止打印。<br /><br /><span>awk &#8216;$NR==2, $NR==10 {print}&#8217; datafile</span><br /><br />表示打印datafile中的第2～10行。<br /><br /><strong><span>操作Action</span></strong><br />Action语句分为：表达式，输出，判断，循环，和控制语句。<br /><strong><span>表达式</span></strong><br />作为一门编程语言，AWK与其他语言一样，有变量，运算符，可以进行表达式计算。<br /><strong><span>变量</span></strong><br />AWK是弱类型的，变量无须声明，且第一次引用后就一直存在。所有的变量都被初始化为空字符串。变量名必须以字母开头，可以包含字母，数字和下划线。AWK支持三类变量，数字，字符串，数组。<br />需要特殊说明的是数组，数组只支持一维，且索引可以是数字也可以是字符串（因此我更倾向于它是个map）。可以通过<br /><br />delete arr[index]<br /><br />删除数组arr中index元素<br /><br /><strong><span>赋值操作符</span></strong><br />=	 assign result of right-hand-side expression to left-hand-side variable<br />++	Add 1 to variable<br />&#8211;	 Subtract 1 from variable<br />+=	Assign result of addition<br />-=	 Assign result of subtraction<br />*=	 Assign result of multiplication<br />/=	 Assign result of division<br />%=	Assign result of modulo<br />^=	 Assign result of exponentiation<br /><strong><span>输出语句</span></strong><br />AWK中有三种用于输出的内置函数：<br />print	 直接输出到终端<br />printf	 格式化输出到终端（与C中的printf类似）<br />sprintf	 格式化字符串（与C中不同的是，通过返回值方式返回新的字符串）<br />可以通过输出重定向将输出打印到其他地方：<br />&amp;gt; &amp;quot;file&amp;quot;	清空file，并打印输出到file<br />&amp;gt;&amp;gt; &amp;quot;file&amp;quot;	将输出追加到file末尾<br />| &amp;quot;command&amp;quot;	管道符，将输出作为command命令的输入。<br /><br /><strong><span>条件判断</span></strong><br /><strong>if-else语法：</strong><br /><br />if (条件语句)<br />执行语句1<br />else<br />执行语句2<br /><br /><strong>例子:</strong><br /><br /><span>if(NR&lt;3)<br />print $2<br />else<br />print $3</span><br /><br /><span>循环</span><br /><strong><span>for循环</span></strong><br /><strong>语法<br /></strong><br />for(初始条件;限制条件;条件更新)<br />执行语句<br /><br /><strong>例子</strong><br /><br /><span>for(i=1; i&lt;NR; i++)<br />{<br />total +=$i;<br />count++<br />}</span><br /><br /><span><strong>do-while循环</strong></span><br /><strong>语法</strong><br /><br />do<br />执行语句<br />while(条件)<br /><br /><strong>例子</strong><br /><br /><span>i=1<br />do {<br />print $0<br />i++<br />} while (i&lt;=10)</span><br /><br />AWK同样支持break,continue两个循环控制语句。<br /><br /><span><strong>脚本编程</strong></span><br />上文主要讲述了命令行下，AWK可以进行操作的基本知识，事实上，AWK作为一种编程语言，可以独立写成脚本文件，采用<br /><br /><span>awk [options] -f script-file inputfile&#8230;</span><br /><br />的方式执行。<br />通常一个awk包含三段式基本结构<br /><br />&#8212;&#8212;&#8211;BEGIN区&#8212;&#8212;&#8212;-<br />|	BEGIN {初始化操作 } |<br />&#8212;&#8212;&#8211;命令执行&#8212;&#8212;&#8212;-<br />|	pattern	{action} &nbsp; &nbsp; &nbsp; |<br />|	&#8230;<br />|	pattern	{action} &nbsp; &nbsp; &nbsp; |<br />&#8212;&#8212;&#8212;END区&#8212;&#8212;&#8212;&#8211;<br />|	EDN &nbsp;{结尾操作} &nbsp; &nbsp; &nbsp; |<br />&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-<br />BEGIN语句进行文件处理前的初始化操作，如定义FS，定义变量值等。该语句在一次文件处理过程中只在处理前执行一次<br />中间的命令执行是对每一个输入记录都进行的操作，语法与上述的基础语法一样<br />END区只在文件处理完成后执行一次。<br />例子<br /><br /><span><span>BEGIN { FS=: }<br />/for/ {print $2}<br />END {print &#8220;this is end!&#8221; }</span><br /></span><br />先定义域分隔符为&#8221;:&#8221;，然后对所有匹配for的记录，打印第2个域，文件处理完后打印&#8221;this is end!&#8221;<br /><br /><span><span><strong>内置函数</strong></span></span><br />AWK提供一些内置函数。<br />字符串内置函数：<br />sub (regex, substr), 使用substr替换匹配自左向右做大匹配regex的部分。<br />gsub (regex,substr), 与sub类似，只是在全文中进行替换<br />length(string), 获取string字符串的长度<br />toupper(string), 将string转换为大写<br />tolower(string), 将string转换为小写<br />split(string, array, field separator), 将string以field separator为分隔符分割为数组存储到array中。<br />以上只是常用的一些内置函数，其他请参考相关手册<br /><br /><span><strong>示例</strong></span><br />分析日志，现有一份日志pic.log，格式如下，需要提取出其中的url链接<br /><br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://fb.images22.51img1.com/6000/hw3255311/bfe077567231f7d8efae4a1ac1b19477.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br /><br /><strong><span>脚本</span></strong><br /><br /><span>awk -F &#8220;[&#8221; &#8216;{split($3, url, &#8220;]&#8221;);print url[1]}&#8217; pic.log</span><br /><br />通过 -F &#8220;:&#8221;定义域分隔符为&#8221;[&#8220;,这样每行数据会被划分为三个域<br /><br />INFO 10/18/2010 00:00:05&#8211;offerId=	&#8211;[&#8211; 836952303]. url=	&#8211;[&#8211; http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br /><br />所需要提取的url位于第三个域中，通过内置函数<br /><br /><span>split($3, url, &#8220;]&#8221;)</span><br /><br />将第三个域以&#8221;]&#8221;分割，存储到url数组中，url数组为[&#8220;http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg&#8221;, &#8220;.&#8221;]<br />url[1]即为所需的url<br /><br /><strong><span>参考资料</span></strong><br />a. man awk<br />b. AWK wiki，http://en.wikipedia.org/wiki/AWK<br />c.《AWK学习笔记》http://man.lupaworld.com/content/manage/ringkee/awk.htm</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/16/">&larr; Older</a>
@@ -290,6 +457,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -303,10 +474,6 @@
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -345,7 +512,7 @@
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

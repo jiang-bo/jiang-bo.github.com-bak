@@ -9,10 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="今天重新安装maven，打包创建项目，mvn archetype:create -DgroupId=org.sonatype.mavenbook.ch03 /
--DartifactId=simple /
--DpackageName=org.sonatype.mavenbook
-结果报错Build &hellip;">
+  <meta name="description" content="泡论坛时发现的小问题，自己做了下，记录如下：
+问题：如何查询服务器的外网IP并发送到指定邮箱？
+解决办法： 1 #!/bin/sh 2 3 4 ip=`curl -s 'http://checkip.dyndns.org' | sed 's/.*Current IP Address: /([0- &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +78,68 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/06/21/post/">查询外网IP并发送邮件的脚本</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-06-21T00:00:00+08:00" pubdate data-updated="true">Jun 21<span>st</span>, 2010</time>
+        
+         | <a href="/blog/2010/06/21/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>泡论坛时发现的小问题，自己做了下，记录如下：</p>
+<p>问题：如何查询服务器的外网IP并发送到指定邮箱？</p>
+<p>解决办法：</p>
+<p><pre class="brush: c-sharp">  1 #!/bin/sh
+  2 
+  3 
+  4 ip=`curl -s 'http://checkip.dyndns.org' | sed 's/.*Current IP Address: /([0-    9/.]*/).*//1/g'`
+  5 echo &quot;Sending ip $ip...&quot;
+  6 
+  7 to=&quot;yourmail@yourdomain.com&quot;
+  8 subject=&quot;IP&quot;
+  9 message=&quot;IP is $ip&quot;
+ 10 headers=&quot;From:server@serverdomain&quot;
+ 11 echo $message | mail -s $subject $to -- -f $headers
+ 12 echo &quot;Send OK!&quot;
+</pre></p>
+<p>&nbsp;</p>
+<p>大概思路：</p>
+<p>首先通过查询&nbsp; http://checkip.dyndns.org获取外网IP，得到一个HTML页，sed过滤道多余的HTML标签，获得准确的IP</p>
+<p>然后通过sendmail发送邮件到指定邮箱</p>
+<p>需要安装curl和sendmail</p>
+<p>&nbsp;</p>
+<p><pre class="brush: c-sharp:nogutter">sudo apt-get install curl
+sudo apt-get install sendmail</pre>
+</p>
+<p>sendmail的配置比较复杂，不过可以使用默认的配置也能够发送邮件。</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -165,95 +226,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/01/01/post/">Python简单CGI服务器os.execve(scriptfile,args,os.environ)权限错误</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-01-01T00:00:00+08:00" pubdate data-updated="true">Jan 1<span>st</span>, 2010</time>
-        
-         | <a href="/blog/2010/01/01/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>这段时间在学Python，今天开始进入到CGI编程，示例中有个简单CGI Server的例子，代码如下：</p>
-<p>webserver.py:</p>
-<p><pre class="brush: python">webdir = &quot;.&quot;    #html files directory
-port = 8000    ＃server port
-import os, sys
-from BaseHTTPServer import HTTPServer
-from CGIHTTPServer import CGIHTTPRequestHandler
-if sys.platform[:3] == &quot;win&quot;:
-    CGIHTTPRequestHandler.have_popen2 = False
-    CGIHTTPRequestHandler.have_popen3 = False
-os.chdir(webdir)
-srvraddr = (&quot;&quot;, port)
-srvrobj = HTTPServer(srvraddr, CGIHTTPRequestHandler)
-srvrobj.serve_forever()&nbsp;</pre>
-</p>
-<p>页面CGI为cgi101.py:</p>
-<p><pre class="brush: python">#!/usr/bin/python
-import cgi
-form = cgi.FieldStorage()
-print &quot;Content-type: text/html/n&quot;
-print &quot;&lt;title&gt;Reply Page&lt;/title&gt;&quot;
-if not form.has_key(&quot;username&quot;):
-    print &quot;&lt;h1&gt;Who are you?&lt;/h1&gt;&quot;
-else:
-    print &quot;&lt;h1&gt;Hello &lt;i&gt;%s&lt;/i&gt;!&lt;/h1&gt;&quot; % cgi.escape(form['username'].value)
-</pre>
-</p>
-<p>HTML页面为：</p>
-<p><pre class="brush: xhtml">&lt;html&gt;
-    &lt;title&gt;Interactive Page&lt;/title&gt;
-    &lt;body&gt;
-        &lt;form method=&quot;post&quot; action=&quot;cgi-bin/cgi101.py&quot;&gt;
-            &lt;p&gt;&lt;b&gt;Enter your name:&lt;/b&gt;&lt;/p&gt;
-            &lt;p&gt;Username:&lt;input type=&quot;text&quot; name=&quot;username&quot;/&gt;&lt;/p&gt;
-            &lt;p&gt;Password:&lt;input type=&quot;password&quot; name=&quot;pwd&quot;/&gt;&lt;/p&gt;
-            &lt;input type=&quot;submit&quot; name=&quot;submit&quot; text=&quot;submit&quot;/&gt;
-        &lt;/form&gt;
-&lt;/html&gt;
-</pre>
-</p>
-<p>先运行webserver.py（我是在Ubuntu上，用sudo python webserver.py)启动了server，然后在Firefox中访问：http://localhost:8000/cgi101.html</p>
-<p>结果Firefox中弹出下载cgi101.py脚本的对话框，而不是运行cgi返回结果，server终端中显示：</p>
-<p><pre class="brush: python">localhost - - [01/Jan/2010 17:05:32] &quot;GET /cgi-bin/cgi101.py?username=Jone HTTP/1.1&quot; 200 -
-Traceback (most recent call last):
-  File &quot;/usr/lib/python2.6/CGIHTTPServer.py&quot;, line 255, in run_cgi
-    os.execve(scriptfile, args, os.environ)
-OSError: [Errno 13] Permission denied
-</pre>
-</p>
-<p>说明os.execve权限出问题了，解决方法如下，将cgi101.py的权限设为777，如果还是不行的话，要将整个cgi目录的权限设为777(例如，本例中使用命令chmod -R 777 cgi-bin)</p>
-<p>然后就可以了。</p>
-<p>Good Luck!</p>
-<p>PS: Happy New Year !</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/19/">&larr; Older</a>
@@ -286,6 +258,10 @@ OSError: [Errno 13] Permission denied
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -299,10 +275,6 @@ OSError: [Errno 13] Permission denied
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -341,7 +313,7 @@ OSError: [Errno 13] Permission denied
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

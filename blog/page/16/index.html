@@ -9,8 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="史前时代：BIOS-计算机的启动过程 加电 电源加电，主板芯片组像CPU发粗RESET信号，使CPU恢复到初始状态。当芯片组检测到电源开始稳定供电时会撤去RESET信号（松开重启建类似），
-这是CPU从0xfff0除开始执行指令。该地址位于BIOS寻址范围内。BIOS厂商通常在该地址放一条跳转指令 &hellip;">
+  <meta name="description" content="by BoBo
+一点历史&nbsp;&nbsp;&nbsp; AWK上世纪70年代诞生于传奇的Bell实验室，名字取于它的三位发明人，Alfred Aho, Peter Weinberger和 Brian Kernighan名字的首字母。发音类似《The AWK Programing &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -77,6 +77,51 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/12/13/post/">AWK学习笔记</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-12-13T00:00:00+08:00" pubdate data-updated="true">Dec 13<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/12/13/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>
+</p><p><em>by BoBo</em></p>
+<p><em></em><br /><strong><span>一点历史</span></strong><br />&nbsp;&nbsp;&nbsp; AWK上世纪70年代诞生于传奇的Bell实验室，名字取于它的三位发明人，Alfred Aho, Peter Weinberger和 Brian Kernighan名字的首字母。发音类似《The AWK Programing Language》封面上的海雀（一种海鸟）的英文发音(auck[ɔ:k])。AWK最早出现在Unix V7中，Linux诞生后，AWK被LSB纳入其中，这意味者所有的Linux发行版都会提供awk的实现。目前linux上广发使用的是GNU实现的gawk，此外还有nawk，mawk，pgawk等版本。这些实现在AWK的语言规范基础上，扩展了一些其他功能，本文只关心最基础最通用的AWK规范，不探究相关实现的具体实现区别，欲知详情，请查看相关实现的手册。<br />以下是其中一位创始人Alfred V.Aho对AWK的描述。<br />&nbsp;&nbsp;&nbsp;&nbsp;<em>AWK is a language for processing files of text. A file is treated as a sequence of records, and by default each line is a record. Each line is broken up into a sequence of fields, so we can think of the first word in a line as the first field, the second word as the second field, and so on. An AWK program is of a sequence of pattern-action statements. AWK reads the input a line at a time. A line is scanned for each pattern in the program, and for each pattern that matches, the associated action is executed.&amp;quot; - Alfred V.Aho</em><br />尊重原文，不翻译。<br /><br /><strong><span>瞟一眼</span></strong><br />准备一份数据文件datafile<br /><br />Nike	green	X	10	10.00<br />Nike	blue	XL	10	10.00<br />Nike	red	 L	10	12.00<br />Adiddas	yellow	L	10	10.00<br />Adiddas	brown	M	10	10.00<br />Adiddas	gray	M	20	8.00<br /><br />打开终端，执行<br /><br /><span><span><strong>awk &#8216;/Nike/ {print $2}&#8217; datafile</strong><br /></span></span><br />输出<br /><br />green<br />blue<br />red<br /><br />解释下:<br />awk表示AWK解析器命令<br />两个&#8217;之间的部分表示这次执行的命令行脚本,其中/Nike/叫模式pattern,{print $2}叫操作action，print表示打印，$2表示每一记录中的第2个域。<br />datafile表示输入文件。<br />整个命令的意思表示：<br />对datafile中所有匹配Nike的行，执行print $2操作，打印含有Nike行中的第二个被空白符隔开的字段。<br />晕了么？来看点概念的解释吧:)<br /><br /><strong><span>一些枯燥的概念</span></strong><br /><strong>输入文件：</strong>待处理的数据文件datafile，每个输入文件为多个记录的集合<br /><strong>记录分割符：</strong>将输入文件划分为多个记录的符号，默认为&#8217;/n&#8217;<br /><strong>记录：</strong>默认数据文件中的每一行，如&amp;quot;Nike&nbsp;&nbsp;&nbsp; green&nbsp;&nbsp; X&nbsp;&nbsp; 10&nbsp; 10.00&amp;quot;，每个记录是多个域的集合<br /><strong>域分隔符：</strong>将每个记录划分为多个域的符号，默认为空白符<br /><strong>域：</strong>记录被域分割符划分后的单元，每个输入文件中的最小处理单元。如Nike， green，X，10，10.00分别为第一个记录的第1，2，3，4，5个域（注意，这里不是从0开始计数的）<br /><strong>Buffer：</strong>AWK中支持两种Buffer，域buffer和记录buffer<br />record buffer:表示整条记录，可以通过$0获取<br />field buffer:当前记录中的每一个field，可以通过$1,$2,$3获取。<br /><strong>内置变量：</strong><br />FS:Field separator，域分隔符，默认为空白符<br />RS:Record Separator，记录分隔符，默认为换行符<br />NF:Number of Fields in current record，当前记录中的域数<br />NR:Number of the current Record，当前的记录数<br />OFS:Output Field Separator，输出域分隔符，默认为空白符<br />ORS:Output Record Separator，输出记录分隔符，默认为换行符<br />FILENAME: Current filename，当前输入文件名<br /><br />针对一个awk命令行</p>
+<p><span><span><strong>awk &#8216;pattern {action}&#8217; datafile</strong></span></span><br />awk的执行流程：<br />1.读取：awk会按行读取输入文件(Line by Line)<br />2.切分：将输入行划分为多个域<br />3.匹配：根据pattern匹配<br />4.执行：对匹配的行执行action<br /><br /><strong><span>命令行</span></strong><br />AWK的命令行语法有两种形式</p>
+<p><br />awk [options] -f program-file file&#8230;<br />awk [options] &#8216;program-text&#8217; file&#8230;</p>
+<p><br />前者通过-f参数指定使用后面的名为program-file的文件作为AWK脚本处理输入文件file<br />后者表示 program-text是一段AWK命令行脚本，用于处理输入文件file.<br />options表示参数可选项，具体参数列表请参考相关手册。<br />基本语法：<br />当通过awk [options] &#8216;program-text&#8217; file&#8230;方式执行awk时，program-text表示一段脚本。AWK的命令行脚本由模式和操作两部分组成：<br />pattern {action}，表示对输入文件中所有匹配pattern的行，执行action操作。<br />缺少pattern时，默认对输入文件中所有行执行action<br />缺少action时，默认向标准输出打印所有匹配pattern的行<br />两者都没有时，不进行任何操作。</p>
+<p><br /><strong><span>例子：</span></strong><br />awk &#8216;/for/ {print $1}&#8217;<strong>&nbsp;&nbsp; &nbsp;</strong>datafile 表示打印datafile中所有匹配含有for的行的第一个域（关于域，请看下文）<br />awk &#8216;/for/&#8217; &nbsp; &nbsp;datafile 表示打印datafile中所有包含for的行<br />awk &#8216;{print}&#8217; &nbsp; &nbsp;datafile 表示打印datafile中所有行<br /><br /><strong><span>模式pattern:</span></strong></p>
+<p><strong></strong>pattern分为Simple pattern和Range pattern两大类。<br /><strong><span>Simple Pattern</span></strong>包括：<br />a.BEGIN:标示对输入文件进行处理之前<br />b.END:标示对输入文件完成处理之后<br />c.EXPRESSION:表达式，包括正则表达式，算数表达式，逻辑表达式<br />d.NOTHING:什么都没有，表示无pattern，默认匹配所有行<br /><strong>Expression Pattern：</strong><br />正则表达式/regx/：<br />通过两个/标记的pattern为正则表达式，如/^bi/匹配所有以bi开始的记录，正则表达式语法与grep语法类似，不再赘述，请查看相关手册。<br />需要注意的是 ~/regx/表示不匹配，如~/^bi/表示不是以bi开始的所有记录。<br />算数表达式：<br />模式$3*$4&amp;gt;100 表示匹配所有$3与$4的积大于100的记录，类似的算数操作符还包括：<br />逻辑表达式：<br />模式 $NR&amp;gt;2 &amp;amp;&amp;amp; /^bi/ 表示匹配所有行数大于2以bi开头的的行， &amp;amp;&amp;amp;表示逻辑与<br /><br /><strong><span>Range Pattern</span></strong><br />Range Pattern用于匹配输入行中一个连续的区域，其语法由两个Simple Pattern构成：<br />pattern1, pattern2 {action}<br />pattern1表示从第一个匹配pattern1的行开始，执行action操作。<br />pattern2表示从第一个匹配pattern2的行开始，停止执行action操作。<br /><strong><span>例子：</span></strong><br /><br /><span>awk &#8216;/blue/,/yellow/ {print}&#8217; datafile</span></p>
+<p><br />表示从datafile中第一匹配blue的行开始执行print操作，打印整行，到第一个匹配yellow的行为止，停止打印。<br /><br /><span>awk &#8216;$NR==2, $NR==10 {print}&#8217; datafile</span><br /><br />表示打印datafile中的第2～10行。<br /><br /><strong><span>操作Action</span></strong><br />Action语句分为：表达式，输出，判断，循环，和控制语句。<br /><strong><span>表达式</span></strong><br />作为一门编程语言，AWK与其他语言一样，有变量，运算符，可以进行表达式计算。<br /><strong><span>变量</span></strong><br />AWK是弱类型的，变量无须声明，且第一次引用后就一直存在。所有的变量都被初始化为空字符串。变量名必须以字母开头，可以包含字母，数字和下划线。AWK支持三类变量，数字，字符串，数组。<br />需要特殊说明的是数组，数组只支持一维，且索引可以是数字也可以是字符串（因此我更倾向于它是个map）。可以通过<br /><br />delete arr[index]<br /><br />删除数组arr中index元素<br /><br /><strong><span>赋值操作符</span></strong><br />=	 assign result of right-hand-side expression to left-hand-side variable<br />++	Add 1 to variable<br />&#8211;	 Subtract 1 from variable<br />+=	Assign result of addition<br />-=	 Assign result of subtraction<br />*=	 Assign result of multiplication<br />/=	 Assign result of division<br />%=	Assign result of modulo<br />^=	 Assign result of exponentiation<br /><strong><span>输出语句</span></strong><br />AWK中有三种用于输出的内置函数：<br />print	 直接输出到终端<br />printf	 格式化输出到终端（与C中的printf类似）<br />sprintf	 格式化字符串（与C中不同的是，通过返回值方式返回新的字符串）<br />可以通过输出重定向将输出打印到其他地方：<br />&amp;gt; &amp;quot;file&amp;quot;	清空file，并打印输出到file<br />&amp;gt;&amp;gt; &amp;quot;file&amp;quot;	将输出追加到file末尾<br />| &amp;quot;command&amp;quot;	管道符，将输出作为command命令的输入。<br /><br /><strong><span>条件判断</span></strong><br /><strong>if-else语法：</strong><br /><br />if (条件语句)<br />执行语句1<br />else<br />执行语句2<br /><br /><strong>例子:</strong><br /><br /><span>if(NR&lt;3)<br />print $2<br />else<br />print $3</span><br /><br /><span>循环</span><br /><strong><span>for循环</span></strong><br /><strong>语法<br /></strong><br />for(初始条件;限制条件;条件更新)<br />执行语句<br /><br /><strong>例子</strong><br /><br /><span>for(i=1; i&lt;NR; i++)<br />{<br />total +=$i;<br />count++<br />}</span><br /><br /><span><strong>do-while循环</strong></span><br /><strong>语法</strong><br /><br />do<br />执行语句<br />while(条件)<br /><br /><strong>例子</strong><br /><br /><span>i=1<br />do {<br />print $0<br />i++<br />} while (i&lt;=10)</span><br /><br />AWK同样支持break,continue两个循环控制语句。<br /><br /><span><strong>脚本编程</strong></span><br />上文主要讲述了命令行下，AWK可以进行操作的基本知识，事实上，AWK作为一种编程语言，可以独立写成脚本文件，采用<br /><br /><span>awk [options] -f script-file inputfile&#8230;</span><br /><br />的方式执行。<br />通常一个awk包含三段式基本结构<br /><br />&#8212;&#8212;&#8211;BEGIN区&#8212;&#8212;&#8212;-<br />|	BEGIN {初始化操作 } |<br />&#8212;&#8212;&#8211;命令执行&#8212;&#8212;&#8212;-<br />|	pattern	{action} &nbsp; &nbsp; &nbsp; |<br />|	&#8230;<br />|	pattern	{action} &nbsp; &nbsp; &nbsp; |<br />&#8212;&#8212;&#8212;END区&#8212;&#8212;&#8212;&#8211;<br />|	EDN &nbsp;{结尾操作} &nbsp; &nbsp; &nbsp; |<br />&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;-<br />BEGIN语句进行文件处理前的初始化操作，如定义FS，定义变量值等。该语句在一次文件处理过程中只在处理前执行一次<br />中间的命令执行是对每一个输入记录都进行的操作，语法与上述的基础语法一样<br />END区只在文件处理完成后执行一次。<br />例子<br /><br /><span><span>BEGIN { FS=: }<br />/for/ {print $2}<br />END {print &#8220;this is end!&#8221; }</span><br /></span><br />先定义域分隔符为&#8221;:&#8221;，然后对所有匹配for的记录，打印第2个域，文件处理完后打印&#8221;this is end!&#8221;<br /><br /><span><span><strong>内置函数</strong></span></span><br />AWK提供一些内置函数。<br />字符串内置函数：<br />sub (regex, substr), 使用substr替换匹配自左向右做大匹配regex的部分。<br />gsub (regex,substr), 与sub类似，只是在全文中进行替换<br />length(string), 获取string字符串的长度<br />toupper(string), 将string转换为大写<br />tolower(string), 将string转换为小写<br />split(string, array, field separator), 将string以field separator为分隔符分割为数组存储到array中。<br />以上只是常用的一些内置函数，其他请参考相关手册<br /><br /><span><strong>示例</strong></span><br />分析日志，现有一份日志pic.log，格式如下，需要提取出其中的url链接<br /><br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://fb.images22.51img1.com/6000/hw3255311/bfe077567231f7d8efae4a1ac1b19477.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br />INFO 10/18/2010 00:00:05&#8211;offerId=[836952303]. url=[http://f6.images22.51img1.com/6000/hw3255311/6106d6366351d32c68e3f8a332b52da9.jpg].<br /><br /><strong><span>脚本</span></strong><br /><br /><span>awk -F &#8220;[&#8221; &#8216;{split($3, url, &#8220;]&#8221;);print url[1]}&#8217; pic.log</span><br /><br />通过 -F &#8220;:&#8221;定义域分隔符为&#8221;[&#8220;,这样每行数据会被划分为三个域<br /><br />INFO 10/18/2010 00:00:05&#8211;offerId=	&#8211;[&#8211; 836952303]. url=	&#8211;[&#8211; http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg].<br /><br />所需要提取的url位于第三个域中，通过内置函数<br /><br /><span>split($3, url, &#8220;]&#8221;)</span><br /><br />将第三个域以&#8221;]&#8221;分割，存储到url数组中，url数组为[&#8220;http://f7.images22.51img1.com/6000/hw3255311/7205a450f1ea2751f31aa8c3ad1dd2be.jpg&#8221;, &#8220;.&#8221;]<br />url[1]即为所需的url<br /><br /><strong><span>参考资料</span></strong><br />a. man awk<br />b. AWK wiki，http://en.wikipedia.org/wiki/AWK<br />c.《AWK学习笔记》http://man.lupaworld.com/content/manage/ringkee/awk.htm</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -470,343 +515,6 @@ MethodInvokingJobDetailFactoryBean，可以通过设置concurrent=&quot;false&qu
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/09/06/post/">DBunit入门</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-09-06T00:00:00+08:00" pubdate data-updated="true">Sep 6<span>th</span>, 2010</time>
-        
-         | <a href="/blog/2010/09/06/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>&nbsp;</p>
-<h3></h3>
-<h3><a name="createtest">使用DBTestCase子类设置数据库</a></h3>
-<p><a name="createtest"></a> <a name="createdataset"></a></p>
-<h4><a name="createdataset">第1步：创建你的数据集文件</a></h4>
-<p><a name="createdataset"> </a></p>
-<p>你的测试需要一些数据来辅助。也就是说你必须创建一个数据集。在大多数情况下你会使用XML数据集。你可以手动从头创建一个<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">flat XML数据集</a>或从你的数据库中<a href="http://www.dbunit.org/components.html#FlatXmlDataSet">导出</a>一些数据。</p>
-<h4>第2步：扩展类的DBTestCase</h4>
-<p>现在您需要创建一个测试类。最简单的使用DBUnit的方法是是你的测试类继承DBTestCase。DBTestCase扩展了JUnit TestCase类。一个getDataSet()模板方法必须被实现，该方法返回步骤1中创建的数据集。<a class="code">DBTestCase依赖IDatabaseTester来完成工作，默认配置使用PropertiesBasedJdbcDatabaseTester，它通过系统属性来定位DriverManager的配置。</a><a class="code">最简单的配置方法是通过测试类的构造函数来配置。</a><a class="code">你可以通过使用你自己的或其他3个系统提供的IDatabaseTester实现重载getDatabaseTester()来改变该行为。</a></p>
-<p>你还可以使用如下所述其他的DBTestCase子类：</p>
-<table class="bodyTable" border="0">
-<tbody>
-<tr class="a">
-<td><a class="code">JdbcBasedDBTestCase</a></td>
-<td>使用一个DriverManager创建连接（在JdbcDatabaseTester的辅助之下）。</td>
-</tr>
-<tr class="b">
-<td><a class="code">DataSourceBasedDBTestCase</a></td>
-<td>使用javax.sql.DataSource创建连接（在DataSourceDatabaseTester的辅助之下）。</td>
-</tr>
-<tr class="a">
-<td><a class="code">JndiBasedDBTestCase</a></td>
-<td>使用javax.sql.DataSource通过JNDI定位（在JndiDatabaseTester的辅助之下）。</td>
-</tr>
-</tbody>
-</table>
-<p>&nbsp;</p>
-<p>以下是一个示例实现，返回一个Hypersonic数据库连接和一个XML数据集：</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    public SampleTest(String name)
-    {
-        super( name );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_DRIVER_CLASS, "org.hsqldb.jdbcDriver" );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_CONNECTION_URL, "jdbc:hsqldb:sample" );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_USERNAME, "sa" );
-        System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_PASSWORD, "" );
-	// System.setProperty( PropertiesBasedJdbcDatabaseTester.DBUNIT_SCHEMA, "" );
-    }
-
-    protected IDataSet getDataSet() throws Exception
-    {
-        return new FlatXmlDataSetBuilder().build(new FileInputStream("dataset.xml"));
-    }
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>第3步：（可选）实现getSetUpOperation（）和getTearDownOperation（）方法</h4>
-<p>默认情况下，DBUnit的执行每个测试之前回进行<a href="http://www.dbunit.org/components.html#cleanInsert">CLEAN_INSERT</a>操作并且在之后没有清除操作。你可以通过重载getSetUpOperation（）和getTearDownOperation（）来改变这一行为。</p>
-<p>下面的示例展现了你可以很简单的重载测试前后的操作</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    ...
-    protected DatabaseOperation getSetUpOperation() throws Exception
-    {
-        return DatabaseOperation.REFRESH;
-    }
-
-    protected DatabaseOperation getTearDownOperation() throws Exception
-    {
-        return DatabaseOperation.NONE;
-    }
-    ...
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>第4步：（可选）重载方法setUpDatabaseConfig(DatabaseConfig congfig)</h4>
-<p>使用如下方法来改变DBUnit的DatabaseConfi中g某些配置设置。</p>
-<p>下面的示例演示如何你可以轻松地重写此方法：</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    ...
-    /**
-     * Override method to set custom properties/features
-     */
-    protected void setUpDatabaseConfig(DatabaseConfig config) {
-        config.setProperty(DatabaseConfig.PROPERTY_BATCH_SIZE, new Integer(97));
-        config.setFeature(DatabaseConfig.FEATURE_BATCHED_STATEMENTS, true);
-    }
-    ...
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>第5步：实现你的testXXX（）方法</h4>
-<p>像正常使用JUnit一样实现你的测试方法。现在你的数据库将按照你之前几步所做设置那样在每个测试方法之前进行初始化并在之后进行清除操作。</p>
-<p> <a name="noextend"></a></p>
-<h3><a name="noextend">用你自己的TestCase子类来是设置数据库</a></h3>
-<p><a name="noextend"></a></p>
-<p>使用Dbunit并不严格要求继承DBTestCase。你可以重写标准的JUnit的setUp()方法并在数据库上执行所需的操作。如果您需要执行清理还可以做一些类似tearDwon()的操作。</p>
-<p>例如：</p>
-<div class="source">
-<pre><pre class="brush: c-sharp">public class SampleTest extends TestCase
-{
-    public SampleTest(String name)
-    {
-        super(name);
-    }
-
-    protected void setUp() throws Exception
-    {
-        super.setUp();
-
-        // initialize your database connection here
-        IDatabaseConnection connection = null;
-        // ...
-
-        // initialize your dataset here
-        IDataSet dataSet = null;
-        // ...
-
-        try1
-        {
-            DatabaseOperation.CLEAN_INSERT.execute(connection, dataSet);
-        }
-        finally
-        {
-            connection.close();
-        }
-    }
-    ...
-}
-</pre> 
-
-
-</pre>
-</div>
-<p>&nbsp;</p>
-<p>自2.2版你可以使用新的IDatabaseTester来完成相同的壮举。如前所述，DBTestCase使用IDatabaseTester在内部进行工作，你的测试类也可以使用此方法来操纵数据集。目前有4个已有的实现：<br />
-<table class="bodyTable" border="0">
-<tbody>
-<tr class="b">
-<td><a class="code">JdbcDatabaseTester</a></td>
-<td>使用一个DriverManager来创建连接。</td>
-</tr>
-<tr class="a">
-<td><a class="code">PropertiesBasedJdbcDatabaseTester</a></td>
-<td>同样使用DriverManager，但配置是采取从系统性能。<br />DBTestCase的默认实现。</td>
-</tr>
-<tr class="b">
-<td><a class="code">DataSourceDatabaseTester</a></td>
-<td>使用javax.sql.DataSource创建连接。</td>
-</tr>
-<tr class="a">
-<td><a class="code">JndiDatabaseTester</a></td>
-<td>使用javax.sql.DataSource通过JNDI定位的。</td>
-</tr>
-</tbody>
-</table>
-<br />你也可以自己实现IDatabaseTester接口。建议以AbstractDatabaseTester作为出发点。</p>
-<p>示例：</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends TestCase
-{
-    private IDatabaseTester databaseTester;
-
-    public SampleTest(String name)
-    {
-        super(name);
-    }
-
-    protected void setUp() throws Exception
-    {
-        databaseTester = new JdbcDatabaseTester("org.hsqldb.jdbcDriver",
-            "jdbc:hsqldb:sample", "sa", "");
-
-        // initialize your dataset here
-        IDataSet dataSet = null;
-        // ...
-
-        databaseTester.setDataSet( dataSet );
-	// will call default setUpOperation
-        databaseTester.onSetUp();
-    }
-
-    protected void tearDown() throws Exception
-    {
-	// will call default tearDownOperation
-        databaseTester.onTearDown();
-    }
-    ...
-}
-</pre> 
-
-
-
-</pre>
-</div>
-<p>&nbsp;</p>
-<p> <a name="assertdata"></a></p>
-<h3><a name="assertdata">数据库数据检查</a></h3>
-<p><a name="assertdata"></a></p>
-<p>DBUnit支持校验两个表或者数据集中包含的数据是否相同。以下两种方法可以用来验证在测试用例执行期间你的数据库是否包含预期的数据。</p>
-<div class="source">
-<pre><pre class="brush: java">public class Assertion
-{
-    public static void assertEquals(ITable expected, ITable actual)
-    public static void assertEquals(IDataSet expected, IDataSet actual)
-}</pre> </pre>
-</div>
-<p>&nbsp;</p>
-<h4>示例</h4>
-<p>下面的示例，说明如何对数据库表的快照和XML数据表进行比较</p>
-<div class="source">
-<pre><pre class="brush: java">public class SampleTest extends DBTestCase
-{
-    public SampleTest(String name)
-    {
-        super(name);
-    }
-
-    // Implements required setup methods here
-    ...
-
-    public void testMe() throws Exception
-    {
-        // Execute the tested code that modify the database here
-        ...
-
-
-        // Fetch database data after executing your code
-        IDataSet databaseDataSet = getConnection().createDataSet();
-        ITable actualTable = databaseDataSet.getTable("TABLE_NAME");
-
-        // Load expected data from an XML dataset
-        IDataSet expectedDataSet = new FlatXmlDataSetBuilder().build(new File("expectedDataSet.xml"));
-        ITable expectedTable = expectedDataSet.getTable("TABLE_NAME");
-
-        // Assert actual database table match expected table
-        Assertion.assertEquals(expectedTable, actualTable);
-    }
-}
-</pre> 
-
-
-
-</pre>
-</div>
-<p>&nbsp;</p>
-<p>实际数据集是一个你要与预期的数据集进行比较的数据库快照。正如其名称表明，预期数据集包含的期望数据值。</p>
-<p>预期的数据集必须与你用来设置你的数据库的数据集不同。因此，你需要两个数据集，一在测试之前设置数据库，另一个是在测试过程中提供预期的数据。</p>
-<p> <a name="assertquery"></a></p>
-<h4><a name="assertquery">使用查询获取数据库快照</a></h4>
-<p><a name="assertquery"> </a></p>
-<p>你也可以验证一个查询的结果是否与预期的数据集相等。查询可以用来查询单个表的一个子集或多个表的级联查询。</p>
-<div class="source">
-<pre>ITable actualJoinData = getConnection().createQueryTable("RESULT_NAME",
-                "SELECT * FROM TABLE1, TABLE2 WHERE ..."); ;</pre>
-</div>
-<p>&nbsp;</p>
-<p> <a name="compareignorecolumns"></a></p>
-<h4><a name="compareignorecolumns">在比较中忽略一些列</a></h4>
-<p><a name="compareignorecolumns"> </a></p>
-<p>有时需要忽略一些列来进行比较;特别是主键，日期或时间值等根据测试代码生成的字段。一个解决方法是在期望的数据表中声明不需要的字段。然后，您可以筛选实际的数据库表只暴露预期的字段。<br />下面的代码片断显示了如何筛选实际的数据表。为了能够运行，实际的表必须至少包含所有预期表中的字段列。实际表中可以包含期望表中没有的额外字段。</p>
-<div class="source">
-<pre>        
-<pre class="brush: java">ITable filteredTable = DefaultColumnFilter.includedColumnsTable(actual, 
-            expected.getTableMetaData().getColumns());
-    Assertion.assertEquals(expected, filteredTable); </pre> </pre>
-</div>
-<p>&nbsp;</p>
-<p>该技术的一个主要限制是你不能使用你的预期持平的XML数据集的DTD。有了你需要过滤的DTD列从预期的和实际的表。参见常见问题解答有关<a href="http://www.dbunit.org/faq.html#columnfilter">在运行时不包括一些表列</a> 。</p>
-<p> <a name="roworder"></a></p>
-<h4><a name="roworder">排序</a></h4>
-<p><a name="roworder"> </a></p>
-<p>默认情况下，DBUnit是按照主键排序来对获取数据库表的快照的。如果表没有主键或主键是数据库自动生成的，行的顺序是无法预测的，此时<code>assertEquals</code>将失败。</p>
-<p>必须通过使用ORDER BY条件手动设置IDatabaseConnection.createQueryTable来获取排序的数据库表快照或者可以使用<code>SortedTable</code>装饰类：</p>
-<div class="source">
-<pre>Assertion.assertEquals(new SortedTable(expected),
-                new SortedTable(actual, expected.getTableMetaData()));      </pre>
-</div>
-<p>请注意，默认情况下SortedTable使用每一列的字符串值来排序因此，如果排序的是数字类型，排列顺序应该是如<em>1，10，11，12，2，3，4。</em>如果您想使用列的数据类型进行排序，如<em>1，2，3，4，10，12），</em>，可以如下操作：</p>
-<div class="source">
-<pre><pre class="brush: c-sharp">SortedTable sortedTable1 = new SortedTable(table1, new String[]{"COLUMN1"});
-          sortedTable1.setUseComparable(true); // must be invoked immediately after the constructor
-          SortedTable sortedTable2 = new SortedTable(table2, new String[]{"COLUMN1"});
-          sortedTable2.setUseComparable(true); // must be invoked immediately after the constructor
-          Assertion.assertEquals(sortedTable1, sortedTable2);</pre> 
-      </pre>
-</div>
-<p>参数目前不放在构造方法中原因是这样会使SortedTable的构造方法由4个变为8个，太多了。<em>未来还需不断探索如何能更好地实现该功能</em></p>
-<p>&nbsp;</p>
-<p> <a name="assert-collect-diff"></a></p>
-<h4><a name="assert-collect-diff">断言和收集差异</a></h4>
-<p><a name="assert-collect-diff"> </a></p>
-<p>默认情况下，DBUnit发现第一个不一致数据时立即失败从DBunit2.4开始，可以通过注册一个定制的FailHandler来指定什么样的异常会被抛出，以及发现数据不一致时如何处理。使用<a href="http://www.dbunit.org/apidocs/org/dbunit/assertion/DiffCollectingFailureHandler.html">DiffCollectingFailureHandler</a>可以避免数据不匹配是抛出异常，使你可以在事后比对所有的结果集。</p>
-<p>&nbsp;</p>
-<div class="source">
-<pre><pre class="brush: java">IDataSet dataSet = getDataSet();
-DiffCollectingFailureHandler myHandler = new DiffCollectingFailureHandler();
-//invoke the assertion with the custom handler
-assertion.assertEquals(dataSet.getTable("TEST_TABLE"),
-                       dataSet.getTable("TEST_TABLE_WITH_WRONG_VALUE"),
-                       myHandler);
-// Evaluate the results and throw an failure if you wish
-List diffList = myHandler.getDiffList();
-Difference diff = (Difference)diffList.get(0);</pre> </pre>
-</div>
-<p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/17/">&larr; Older</a>
@@ -839,6 +547,10 @@ Difference diff = (Difference)diffList.get(0);</pre> </pre>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -852,10 +564,6 @@ Difference diff = (Difference)diffList.get(0);</pre> </pre>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -894,7 +602,7 @@ Difference diff = (Difference)diffList.get(0);</pre> </pre>
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

@@ -9,9 +9,11 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="web开发经常要做各种host绑定的切换，firefox下有个DNS Flusher插件，但没有chrome版本，其实在chrome下清除DNS缓存非常简单：
-1、用chrome打开：chrome://net-internals/#dns
-2、点击上面的“clean host cache” &hellip;">
+  <meta name="description" content="Rails中常见错误总结
+NoMothedError
+NoMethodError通常表示引用了错误的方法，比如link_to写成了lunk_to。根据页面上的错误提示很容易能够定位到错误代码位于哪一行。
+NameError
+NameError常见于引用了错误的变量，比如变量不存在等 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +80,54 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/12/17/rails-common-error/">Rails中常见的错误</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-12-17T00:00:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/12/17/rails-common-error/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><h1>Rails中常见错误总结</h1>
+<h3>NoMothedError</h3>
+NoMethodError通常表示引用了错误的方法，比如link_to写成了lunk_to。根据页面上的错误提示很容易能够定位到错误代码位于哪一行。
+<h3>NameError</h3>
+NameError常见于引用了错误的变量，比如变量不存在等
+<h3>SyntaxError: unexpected $end</h3>
+SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少了end关键字。def和do必须要有对应的end。不过通常错误提示无法定位具体哪一行缺少了end，需要自己审查代码逻辑。
+<h3>invalid multibyte char(US-ASCII)</h3>
+如果使用的是Ruby1.9，出现:invalid multibyte char(US-ASCII)的时候，通常表示代码源文件中有UTF-8字符，比如中文，根据Ruby1.9规范，必须在源文件的头部加上编码注解<br />
+#encoding: utf-8<br />
+并且代码的源文件格式必须时utf-8的。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -210,54 +260,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/09/08/vim_gbk/">vim支持GBK编码</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-09-08T00:00:00+08:00" pubdate data-updated="true">Sep 8<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/09/08/vim_gbk/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><h2><strong>一、让ubuntu支持GBK编码</strong></h2>
-Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。</p>
-
-<p>首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件，在文件中添加如下内容：<br />
-zh_CN.UTF- 8 UTF- 8<br />
-en_US.UTF- 8 UTF- 8<br />
-zh_CN.GBK GBK<br />
-zh_CN.GB2312 GB2312<br />
-接着用sudo dpkg-reconfigure &#8211;force locales强制更新设置
-<h2><strong>二、设置Vimrc支持GBK</strong></h2>
-set fileencodings=utf-8,gbk,gb2312</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/12/">&larr; Older</a>
@@ -290,6 +292,10 @@ set fileencodings=utf-8,gbk,gb2312</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -303,10 +309,6 @@ set fileencodings=utf-8,gbk,gb2312</p>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -345,7 +347,7 @@ set fileencodings=utf-8,gbk,gb2312</p>
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

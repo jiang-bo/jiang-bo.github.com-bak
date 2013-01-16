@@ -9,7 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、简介 一个实际的应用系统难免会出现问题。JVM能够实时的记录系统发生问题时JVM内部的运行状态，并将起存储在堆转储（Heap dump）文件中，dump文件为系统分析提供了重要依据。但是原始dump文件纯文本方式，难于理解，为了降低dump文件分析的复杂度，MAT（Eclipse Memory &hellip;">
+  <meta name="description" content="1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包
+3 &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -76,6 +77,54 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/03/mac-osx-install-memcached/">Mac OSX 安装memcached</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-03T00:00:00+08:00" pubdate data-updated="true">Aug 3<span>rd</span>, 2011</time>
+        
+         | <a href="/blog/2011/08/03/mac-osx-install-memcached/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包<br />
+3.执行下载的脚本，
+<pre class="brush:shell">$ chmod +x install-memcached.sh
+$ sudo ./install-memchaced.sh</pre>
+4.在环境变量里添加EVENT_NOKQUEUE=1<br />
+5.验证是否成功， $memcached -h，应该产生帮助提示
+<a href="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png"><img class="aligncenter size-full wp-image-35" title="Screen shot 2011-08-03 at 11.12.50 AM" src="/images/uploads/2011/07/Screen-shot-2011-08-03-at-11.12.50-AM.png" alt="" width="607" height="423" /></a>
+6.启动memcached,
+<pre class="brush:shell">$memcached -m 32 -p 11211 -d</pre>
+参考文档<br />
+http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -346,218 +395,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/03/10/post/">Java基础（1）－泛型</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-03-10T00:00:00+08:00" pubdate data-updated="true">Mar 10<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/03/10/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>&nbsp;</p>
-<h2>一、Basic FAQ：</h2>
-<p><strong>1. What are Java Generics?</strong></p>
-<p>&nbsp;&nbsp; &nbsp; <em>Java泛型是什么？</em></p>
-<p>&nbsp;&nbsp; &nbsp; Java Generics ara language feature that allows for definition and use of generic types and methods.</p>
-<p>&nbsp;&nbsp; &nbsp; <em>Java泛型指的是一种允许定义通用类型和方法的语言特性。</em></p>
-<p><strong>2. What is the primary purpose of Java Generics?</strong></p>
-<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初的目的是什么？</em></p>
-<p>&nbsp;&nbsp; &nbsp; Java Generics are invented primarily for implementation of generic collection.</p>
-<p>&nbsp;&nbsp; &nbsp; <em>Java泛型最初是为了实现通用集合类设计的。</em></p>
-<p><strong>3.What is the benefit of using Java generics?</strong></p>
-<p>&nbsp;&nbsp; &nbsp; <em>使用Java泛型的好处？？？</em></p>
-<p>&nbsp;&nbsp; &nbsp; Early error detection at compile time.</p>
-<p>&nbsp;&nbsp; &nbsp; <em>能够在编译期检查类型错误。</em></p>
-<p><strong>4.What does type-safe mean?</strong></p>
-<p>&nbsp;&nbsp; &nbsp; <em>什么叫做类型安全</em>？</p>
-<p>&nbsp;&nbsp; &nbsp; In Java, a program is considered type-safe if it compiles without errors and warnings and does not raise any unexpected ClassCastException at runtime.</p>
-<p><em>&nbsp;&nbsp; &nbsp; 在Java里，类型安全指的是：如果一个程序编译期未发现Error或Warning，那么在运行时就不会报ClassCastException。</em></p>
-<p>&nbsp;</p>
-<h2>奇怪的特性</h2>
-<p>&nbsp;&nbsp; &nbsp; 泛型有些特性，令人困扰，如下：</p>
-<p>&nbsp;</p>
-<ol>
-<li>&nbsp;&nbsp; 子类型的泛型不能赋值给父类型的泛型，即泛型不可协变。</li>
-<li>&nbsp;&nbsp; 泛型类并没有自己独有的Class类对象。比如并不存在List&lt;String&gt;.class或是List&lt;Integer&gt;.class，而只有List.class。</li>
-<li>&nbsp;&nbsp; 静态变量是被泛型类的所有实例所共享的。对于声明为MyClass&lt;T&gt;的类，访问其中的静态变量的方法仍然是 MyClass.myStaticVar。不管是通过new MyClass&lt;String&gt;还是new MyClass&lt;Integer&gt;创建的对象，都是共享一个静态变量。</li>
-<li>&nbsp;&nbsp; 泛型的类型参数不能用在Java异常处理的catch语句中。因为异常处理是由JVM在运行时刻来进行的。由于类型信息被擦除，JVM是无法区分两个异常类型MyException&lt;String&gt;和MyException&lt;Integer&gt;的。对于JVM来说，它们都是 MyException类型的。也就无法执行与异常对应的catch语句。</li>
-</ol>
-<p>&nbsp;</p>
-<h2>协变（convariant）</h2>
-<p>&nbsp;&nbsp; &nbsp; Within the type system of a programming language, covariance and contravariance refers to the ordering of types from narrower to wider and their interchangeability or equivalence in certain situations (such as parameters, generics, and return types). &nbsp; &nbsp; &mdash;&mdash;Wikipedia（偶不会翻译*A*）</p>
-<p>&nbsp;&nbsp; &nbsp; 简单来说，可协变表示子类型的引用可以赋值给父类性，不可协变则表示子类型引用不能赋值给父类型。以数组和泛型为例：</p>
-<p>&nbsp;&nbsp; &nbsp; 数组是可协变的，因为Number[] a = new Integer[]()；是成立的。</p>
-<p>&nbsp;&nbsp; &nbsp; 泛型是不可协变的，因为List&lt;Number&gt; ln = new ArrayList&lt;Integer&gt;()；编译会出错。</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;&nbsp; &nbsp; 由于数组是可协变的，而泛型不可协变，导致数组能够协变而泛型不能协变的另一个后果是，不能实例化泛型类型的数组（new List&lt;String&gt;[3]是不合法的），除非类型参数是一个未绑定的通配符（new List&lt;?&gt;[3]是合法的）。</p>
-<p>&nbsp;&nbsp; &nbsp;可是，为什么泛型不能协变呢？&mdash;&mdash;因为这样会破坏类型安全</p>
-<p>&nbsp;&nbsp; &nbsp; 假设可以协变，那么</p>
-<p>&nbsp;&nbsp; &nbsp; List&lt;Integer&gt; li = new ArrayList&lt;Integer&gt;();</p>
-<p>&nbsp;&nbsp; &nbsp; List&lt;Number&gt; ln = li;</p>
-<p>&nbsp;&nbsp; &nbsp; ln.add(new Float(3.14));</p>
-<p>&nbsp;&nbsp; &nbsp; 发生了什么？本来是放Integer的List里面加入了Float！。</p>
-<p>&nbsp;</p>
-<h2>类型擦除</h2>
-<p>&nbsp;&nbsp; &nbsp; &nbsp;Java中的泛型基本上都是在编译器这个层次来实现的。在生成的Java字节代码中是不包含泛型中的类型信息的。使用泛型的时候加上的类型参数，会被编译器在编译的时候去掉。这个过程就称为类型擦除。如在代码中定义的List&lt;Object&gt;和List&lt;String&gt;等类型，在编译之后都会变成List。JVM看到的只是List，而由泛型附加的类型信息对JVM来说是不可见的。Java编译器会在编译时尽可能的发现可能出错的地方，但是仍然无法避免在运行时刻出现类型转换异常的情况。</p>
-<h3>编译器如何处理泛型？</h3>
-<p>&nbsp;&nbsp; &nbsp; 通常情况下，一个编译器处理泛型有两种方式：</p>
-<p>&nbsp;&nbsp; &nbsp; 1.Code specialization。在实例化一个泛型类或泛型方法时都产生一份新的目标代码（字节码or二进制代码）。例如，针对一个泛型list，可能需要针对string，integer，float产生三份目标代码。</p>
-<p>&nbsp;&nbsp; &nbsp; 2.Code sharing。对每个泛型类只生成唯一的一份目标代码；该泛型类的所有实例都映射到这份目标代码上，在需要的时候执行类型检查和类型转换。</p>
-<p>&nbsp;&nbsp; &nbsp; C++中的模板（template）是典型的Code specialization实现。C++编译器会为每一个泛型类实例生成一份执行代码。执行代码中integer list和string list是两种不同的类型。这样会导致代码膨胀（code bloat），不过有经验的C＋＋程序员可以有技巧的避免代码膨胀。</p>
-<p>&nbsp;&nbsp; &nbsp; Code specialization另外一个弊端是在引用类型系统中，浪费空间，因为引用类型集合中元素本质上都是一个指针。没必要为每个类型都产生一份执行代码。而这也是Java编译器中采用Code sharing方式处理泛型的主要原因。</p>
-<p>&nbsp;&nbsp; &nbsp; Java编译器通过Code sharing方式为每个泛型类型创建唯一的字节码表示，并且将该泛型类型的实例都映射到这个唯一的字节码表示上。将多种泛型类形实例映射到唯一的字节码表示是通过类型擦除（type erasue）实现的。</p>
-<h3>什么是类型擦除？</h3>
-<p>&nbsp;&nbsp; &nbsp; 类型擦除指的是通过类型参数合并，将泛型类型实例关联到同一份字节码上。编译器只为泛型类型生成一份字节码，并将其实例关联到这份字节码上。类型擦除的关键在于从泛型类型中清除类型参数的相关信息，并且再必要的时候添加类型检查和类型转换的方法。</p>
-<p>&nbsp;&nbsp; &nbsp; 类型擦除可以简单的理解为将泛型java代码转换为普通java代码，只不过编译器更直接点，将泛型java代码直接转换成普通java字节码。</p>
-<p>&nbsp;&nbsp; &nbsp; 类型擦除的主要过程如下：</p>
-<p>&nbsp;&nbsp; &nbsp; 1.将所有的泛型参数用其最左边界（最顶级的父类型）类型替换。</p>
-<p>&nbsp;&nbsp; &nbsp; 2.移除所有的类型参数。</p>
-<p>&nbsp;&nbsp; &nbsp; 如</p>
-<p><pre class="brush: java">interface Comparable &lt;A&gt; { 
-  public int compareTo( A that); 
-} 
-final class NumericValue implements Comparable &lt;NumericValue&gt; { 
-  priva te byte value;  
-  public  NumericValue (byte value) { this.value = value; }    
-  public  byte getValue() { return value; }    
-  public  int compareTo( NumericValue t hat) { return this.value - that.value; } 
-} 
-－－－－－－－－－－－－－－－－－
-class Collections {  
-  public static &lt;A extends Comparable&lt;A&gt;&gt;A max(Collection &lt;A&gt; xs) { 
-    Iterator &lt;A&gt; xi = xs.iterator(); 
-    A w = xi.next(); 
-    while (xi.hasNext()) { 
-      A x = xi.next(); 
-      if (w.compareTo(x) &lt; 0) w = x; 
-    } 
-    return w; 
-  } 
-} 
-final class Test { 
-  public static void main (String[ ] args) { 
-    LinkedList &lt;NumericValue&gt; numberList = new LinkedList &lt;NumericValue&gt; (); 
-    numberList .add(new NumericValue((byte)0));  
-    numberList .add(new NumericValue((byte)1));  
-    NumericValue y = Collections.max( numberList );  
-  } 
-}</pre>&nbsp;</p>
-<p>经过类型擦除后的类型为</p>
-<p><pre class="brush: java">     interface Comparable { 
-  public int compareTo( Object that); 
-} 
-final class NumericValue implements Comparable { 
-  priva te byte value;  
-  public  NumericValue (byte value) { this.value = value; }  
-  public  byte getValue() { return value; }  
-  public  int compareTo( NumericValue t hat)   { return this.value - that.value; } 
-  public  int compareTo(Object that) { return this.compareTo((NumericValue)that);  } } 
-－－－－－－－－－－－－－
-class Collections {  
-  public static Comparable max(Collection xs) { 
-    Iterator xi = xs.iterator(); 
-    Comparable w = (Comparable) xi.next(); 
-    while (xi.hasNext()) { 
-      Comparable x = (Comparable) xi.next(); 
-      if (w.compareTo(x) &lt; 0) w = x; 
-    } 
-    return w; 
-  } 
-} 
-final class Test { 
-  public static void main (String[ ] args) { 
-    LinkedList numberList = new LinkedList(); 
-    numberList .add(new NumericValue((byte)0));  ，
-    numberList .add(new NumericValue((byte)1));  
-    NumericValue y = (NumericValue) Collections.max( numberList );  
-  } 
-}</pre>&nbsp;</p>
-<p>&nbsp;</p>
-<p>第一个泛型类Comparable &lt;A&gt;擦除后 A被替换为最左边界Object。Comparable&lt;NumericValue&gt;的类型参数NumericValue被擦除掉，但是这直接导致NumericValue没有实现接口Comparable的compareTo(Object that)方法，于是编译器充当好人，添加了一个桥接方法。</p>
-<p>第二个示例中限定了类型参数的边界&lt;A extends Comparable&lt;A&gt;&gt;A，A必须为Comparable&lt;A&gt;的子类，按照类型擦除的过程，先讲所有的类型参数ti换为最左边界Comparable&lt;A&gt;，然后去掉参数类型A，得到最终的擦除后结果。</p>
-<h3>类型擦除带来的问题</h3>
-<p>&nbsp;&nbsp; &nbsp; 正是由于类型擦除的隐蔽存在，直接导致了众多的泛型灵异问题。</p>
-<p><strong>Q1.用同一泛型类的实例区分方法签名？&mdash;&mdash;NO！</strong></p>
-<p>{code}</p>
-<p>import java.util.*;</p>
-<p>&nbsp;</p>
-<p>public class Erasure{</p>
-<p>&nbsp;</p>
-<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;String&gt; ls){</p>
-<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Sting&#8221;);</p>
-<p>&nbsp;&nbsp; &nbsp;}</p>
-<p>&nbsp;&nbsp; &nbsp;public void test(List&lt;Integer&gt; li){</p>
-<p>&nbsp;&nbsp; &nbsp; &nbsp; &nbsp;System.out.println(&#8220;Integer&#8221;);</p>
-<p>&nbsp;&nbsp; &nbsp;}</p>
-<p>}</p>
-<p>{code}</p>
-<p>编译该类，</p>
-<p><img src="http://hi.csdn.net/attachment/201103/10/0_12997506095504.gif" alt="" /></p>
-<p>what the f**k! 参数类型明明不一样啊，一个List&lt;String&gt;，一个是List&lt;Integer&gt;，但是，偷偷的说，type erasure之后，它就都是List了⋯⋯</p>
-<p><strong>Q2. 同时catch同一个泛型异常类的多个实例？&mdash;&mdash;NO！</strong></p>
-<p>同理，如果定义了一个泛型一场类GenericException&lt;T&gt;，千万别同时catch GenericException&lt;Integer&gt; 和GenericException&lt;String&gt;，因为他们是一样一样滴⋯⋯</p>
-<p><strong>Q3.泛型类的静态变量是共享的？&mdash;&mdash;Yes！</strong></p>
-<p>猜猜这段代码的输出是什么？</p>
-<p><pre class="brush: java">import java.util.*;
-public class StaticTest{
-    public static void main(String[] args){
-        GT&lt;Integer&gt; gti = new GT&lt;Integer&gt;();
-        gti.var=1;
-        GT&lt;String&gt; gts = new GT&lt;String&gt;();
-        gts.var=2;
-        System.out.println(gti.var);
-    }
-}
-class GT&lt;T&gt;{
-    public static int var=0;
-    public void nothing(T x){}
-}</pre>&nbsp;</p>
-<p>答案是&mdash;&mdash;2！</p>
-<p>&nbsp;</p>
-<h3>Just remember：</h3>
-<p>1.虚拟机中没有泛型，只有普通类和普通方法</p>
-<p>2.所有泛型类的类型参数在编译时都会被擦除</p>
-<p>3.创建泛型对象时请指明类型，让编译器尽早的做参数检查（Effective Java，第23条：请不要在新代码中使用原生态类型）</p>
-<p>4.不要忽略编译器的警告信息，那意味着潜在的ClassCastException等着你。</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<h2>参考文档</h2>
-<p>《Java深度历险－泛型》http://www.infoq.com/cn/articles/cf-java-generics</p>
-<p>《Java Generics FAQ》http://www.angelikalanger.com/GenericsFAQ/JavaGenericsFAQ.html</p>
-<p>《Java Gotchas》http://www.ibm.com/developerworks/java/library/j-jtp01255.html</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/15/">&larr; Older</a>
@@ -590,6 +427,10 @@ class GT&lt;T&gt;{
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -603,10 +444,6 @@ class GT&lt;T&gt;{
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -645,7 +482,7 @@ class GT&lt;T&gt;{
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

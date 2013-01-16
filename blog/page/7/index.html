@@ -9,8 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="Git源码 git clone git://git.apache.org/hadoop-common.git 视网速不通，略慢 编译 cd hadoop-common
-mvn install -DskipTests 抛异常： [ERROR] Failed to execute goal org. &hellip;">
+  <meta name="description" content="FSNameSystem FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系： fsname->block列表的映射
+所有有效blocks集合
+block与其所属的datanodes之间的映射（该映射是通过block &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -77,6 +78,217 @@ mvn install -DskipTests 抛异常： [ERROR] Failed to execute goal org. &hellip
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-datastructure/">HDFS源码学习（1）——NameNode主要数据结构</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T11:04:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-datastructure/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>FSNameSystem</h2>
+
+<p>FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系：</p>
+
+<ol>
+<li>fsname->block列表的映射</li>
+<li>所有有效blocks集合</li>
+<li>block与其所属的datanodes之间的映射（该映射是通过block reports动态构建的，维护在namenode的内存中。每个datanode在启动时向namenode报告其自身node上的block）</li>
+<li>每个datanode与其上的blocklist的映射</li>
+<li>采用心跳检测根据LRU算法更新的机器（datanode）列表</li>
+</ol>
+
+
+<h3>FSDirectory</h3>
+
+<p>FSDirectory用于维护当前系统中的文件树。</p>
+
+<p>其内部主要组成结构包括一个INodeDirectoryWithQuota作为根目录(rootDir)和一个FSImage来持久化文件树的修改操作。</p>
+
+<h4>INode</h4>
+
+<p>HDFS中文件树用类似VFS中INode的方式构建，整个HDFS中文件被表示为INodeFile，目录被表示为INodeDirectory。INodeDiretoryWithQuota是INodeDirectory的扩展类，即带配额的文件目录</p>
+
+<p><img src="/images/hdfs/INode.png" alt="INode" /></p>
+
+<p>INodeFile表示INode书中的一个文件，扩展自INode，除了名字(name)，父节点(parent)等之外，一个主要元素是blocks，一个BlockInfo数组，表示该文件对应的block信息。</p>
+
+<h3>BlocksMap</h3>
+
+<p>BlocksMap用于维护Block -> { INode, datanodes, self ref } 的映射
+<img src="/images/hdfs/BlocksMap.png" alt="BlocksMap" />
+BlocksMap结构比较简单，实际上就是一个Block到BlockInfo的映射。</p>
+
+<h4>Block</h4>
+
+<p>Block是HDFS中的基本读写单元，主要包括：</p>
+
+<ol>
+<li>blockId: 一个long类型的块id</li>
+<li>numBytes: 块大小</li>
+<li>generationStamp: 块更新的时间戳</li>
+</ol>
+
+
+<h4>BlockInfo</h4>
+
+<p>BlockInfo扩展自Block，除基本信息外还包括一个inode引用，表示该block所属的文件；以及一个神奇的三元组数组Object[] triplets，用来表示保存该block的datanode信息，假设系统中的备份数量为3。那么这个数组结构如下：</p>
+
+<p><img src="/images/hdfs/triplets.png" alt="triplets" /></p>
+
+<ol>
+<li>DN1，DN2，DN3分别表示存有改block的三个datanode的引用(DataNodeDescriptor）</li>
+<li>DN1-prev-blk表示在DN1上block列表中当前block的前置block引用</li>
+<li>DN1-next-blk表示在DN1上block列表中当前block的后置block引用</li>
+</ol>
+
+
+<p>DN2,DN3的prev-blk和next-blk类似。
+HDFS采用这种结构存放block->datanode list的信息主要是为了节省内存空间，block->datanodelist之间的映射关系需要占用大量内存，如果同样还要将datanode->blockslist的信息保存在内存中，同样要占用大量内存。采用三元组这种方式能够从其中一个block获得到改block所属的datanode上的所有block列表。</p>
+
+<h4>FSImage</h4>
+
+<p>FSImage用于持久化文件树的变更以及系统启动时加载持久化数据。
+HDFS启动时通过FSImage来加载磁盘中原有的文件树，系统Standby之后，通过FSEditlog来保存在文件树上的修改，FSEditLog定期将保存的修改信息刷到FSImage中进行持久化存储。
+FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方法）</p>
+
+<p><img src="/images/hdfs/FSImage.png" alt="FSImage" /></p>
+
+<h5>FSImage头部信息</h5>
+
+<ol>
+<li>layoutVersion(int):image layout版本号，0.19版本的hdfs中为-18</li>
+<li>namespaceId(int): 命名空间ID，系统初始化时生成，在一个namenode生命周期内保持不变，datanode想namenode注册是返回改id作为registerId，以后每次datanode与namenode通信时都携带该id，不认识的id的请求将被拒绝。</li>
+<li>numberItemOfTree(long): 系统中的文件总数</li>
+<li>generationTimeStamp: 生成image的时间戳</li>
+</ol>
+
+
+<h5>INode信息</h5>
+
+<p>FSImage头之后是numberItemOfTree个INode信息，INode信息分为文件(INodeFile)和文件目录(INodeDirectory)两类，两者大体一致，分为INode头，Blocks区（目录没有blocks）和文件权限。</p>
+
+<p><strong>INode头</strong></p>
+
+<ol>
+<li>nameLen(short): 文件名长度</li>
+<li>filename(String): 文件名</li>
+<li>replication(short): 备份数量</li>
+<li>modificationTime(long): 最近修改时间</li>
+<li>accessTime(long): 最近访问时间</li>
+<li>preferedBlockSize(long): 块大小（目录为0）</li>
+<li>block num(int): 块数量（目录为-1）</li>
+</ol>
+
+
+<p><strong>Blocks区</strong></p>
+
+<ol>
+<li>blockId(long)</li>
+<li>numBytes(long,block大小)</li>
+<li>generationTimeStamp(long, 更新时间戳）</li>
+</ol>
+
+
+<p><strong>文件权限</strong></p>
+
+<ol>
+<li>username(String): 文件用户名</li>
+<li>group(String): 所属组</li>
+<li>fileperm(short): 文件权限</li>
+</ol>
+
+
+<h5>underconstructionFile区</h5>
+
+<p>layoutverion&lt;-18版本的fsimage还包括正在构建的文件区。与普通Inode信息类似，均有inode头和blocks区以及文件权限，除此之外，underConstructionFile还包括：</p>
+
+<p><strong>client信息</strong></p>
+
+<ol>
+<li>clientName：client明</li>
+<li>clientMachine： client机器名</li>
+</ol>
+
+
+<p><strong>已分配的datanode信息</strong></p>
+
+<ol>
+<li>ipcport： 服务端口</li>
+<li>capacity: 容量</li>
+<li>dfsuse： 已使用的空间</li>
+<li>remaining： 剩余空间</li>
+<li>lastupdate： 最新更新时间</li>
+<li>xceiverCount</li>
+<li>location： datanode位置</li>
+<li>hostName：主机名</li>
+<li>state： admin管理状态</li>
+</ol>
+
+
+<h2>其他结构</h2>
+
+<h3>CorruptReplicasMap</h3>
+
+<p>CorruptReplicasMap通过一个TreeMap维护corrupt状态block的blocks&#8211;>datanodedescriptor(s)映射。一个block备份在多个datanode中，当其中的一个或多个datanode上的block损坏时，会将该datanode加到treeMap中该block对应的datanodeDescriptor集合中。FSNameSystem通过该Map来维护所有损坏的block与其对应datanode的关系。</p>
+
+<h3>Map&lt;String, LightWeightHashSet<Block>> recentInvalidateSets</h3>
+
+<p>维护最近失效的block集合，map中为storageId->ArrayList<Block>，当某个block的一个datanode上副本失效时会将改block和对应的datanode的storeageId添加到recentInvalidateSet中，当datanode想namenode进行heartbeat时，namenode会检查该datanode中是否有损坏的block，如有，则通知datanode删除改block。</p>
+
+<h3>NavigableMap&lt;String, DatanodeDescriptor>  datanodeMap</h3>
+
+<p>datanodeMap用于维护datanode->block的映射</p>
+
+<h3>ArrayList<DatanodeDescriptor> heartbeats</h3>
+
+<p>维护多有当前活着的节点</p>
+
+<h3>UnderReplicatedBlocks neededReplications</h3>
+
+<p>通过一个优先级队列来维护当前需要备份的block集合，副本数越少的block优先级越高，0为最高级，表示当前只有一个副本。</p>
+
+<h3>PendingReplicationBlocks pendingReplications;</h3>
+
+<p>维护当前正在备份的block集合，并且进行备份请求的时间统计，并通过一个后台线程（PendingReplicationMonitor）来周期性（默认为5分钟）的统计超时的备份请求，当发生超时时，会将这个block重新添加到neededReplications列表中。
+<img src="/images/hdfs/PendingReplicationBlocks.png" alt="PendingReplicationBlocks" /></p>
+
+<h3>LightWeightLinkedSet<Block> overReplicatedBlocks</h3>
+
+<p>当前需要检查是否备份过多的block集合</p>
+
+<h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
+
+<p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -426,164 +638,6 @@ make install
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/">使用方法链和静态工厂构造流畅接口</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-04-08T11:23:00+08:00" pubdate data-updated="true">Apr 8<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/04/08/build-fluent-interface-with-method-chain-and-static-factory/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h3>问题现象</h3>
-
-<p>现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例：</p>
-
-<pre><code>public class VasViewVO {
-
-    private String description;
-
-    private Date gmtOpen;
-
-    private Date gmtClose;
-
-    private CreditVasType serviceType;
-
-    private CreditVasMemberStatus creditVasMemberStatus;
-    ...//此处省略getter和setter方法
-}
-</code></pre>
-
-<p>通常按照如下方式构造一个VasViewVO实例：</p>
-
-<pre><code>    VasViewVO vasViewVO = new VasViewVO();
-    vasViewVO.setCreditVasMemberStatus(CreditVasMemberStatus.OPEN);
-    vasViewVO.setGmtOpen(new Date());
-    vasViewVO.setServiceType(CreditVasType.fastpay);
-    vasViewVO.setDescription("open fastpay");
-    //do something with vasViewVO
-</code></pre>
-
-<p>如此构造VasViewVO的实例并非有严重的逻辑错误或者其他的问题，只是不够简洁易懂（贴近自然语言）。
-最近学习过jQuery的都知道，jQuery中可以按如下方式连续调用api</p>
-
-<pre><code>    $("p").hide().fadeIn("slow").slideUp("slow").slideDown("slow");
-</code></pre>
-
-<p>如果Java程序中也可以使用类似的方式将会简洁许多。</p>
-
-<h3>解决方法</h3>
-
-<h4>使用方法链</h4>
-
-<p>jQuery中之所以能够连续调用api，主要是因为每个方法返回的都是一个jQuery对象。Java本身也可这样做，即返回一个this(自身引用)，也就是常说的<a href="http://en.wikipedia.org/wiki/Method_chaining">方法链</a>。
-方法链的实现非常简单，通常的setter方法返回void，方法链返回的是this引用，如下：</p>
-
-<pre><code>    public VasViewVO description(String description) {
-        this.description = description;
-        return this;
-    }
-
-    public VasViewVO gmtOpen(Date gmtOpen) {
-        this.gmtOpen = gmtOpen;
-        return this;
-    }
-
-    public VasViewVO gmtClose(Date gmtClose) {
-        this.gmtClose = gmtClose;
-        return this;
-    }
-
-    public VasViewVO serviceType(CreditVasType serviceType) {
-        this.serviceType = serviceType;
-        return this;
-    }
-</code></pre>
-
-<p>如此一来在调用时只需要新建一个对象，连续调用赋值方法即可：</p>
-
-<pre><code>    VasViewVO vasView = new VasViewVO();
-    vasView.creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
-            .description("Commoent cxxx").gmtClose(new Date())
-            .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
-</code></pre>
-
-<p>如此相比连续调用5次setter方法简洁的多。</p>
-
-<h4>使用静态工厂和static import优化</h4>
-
-<p>使用方法链之后简化了setter调用，但是每次还必须要先new一个实例，略显繁琐。这个问题可以通过Effectvie Java的第一条静态工厂来解决，即在VasViewVO内部实现一个静态工厂方法。</p>
-
-<pre><code>    public static VasViewVO with() {
-        return new VasViewVO();
-    }
-</code></pre>
-
-<p>这个with的方法名与一般的静态工厂所用的getInstance，newInstance不同，主要时为了更加贴近自然语言。
-如此，构造一个VasViewVO实例就可简化为</p>
-
-<pre><code>    VasViewVO vasViewVO = VasViewVO.with()
-                .creditVasMemberStatus(CreditVasMemberStatus.CLOSE)
-                .description("Commoent cxxx").gmtClose(new Date())
-                .gmtOpen(new Date()).serviceType(CreditVasType.fastpay);
-</code></pre>
-
-<p>代码已经很简洁，不过每次都是用枚举类长长的类名，感觉很是不雅，可以通过static import解决，最终的到的简化后构造一个VasViewVO实例的代码如下：</p>
-
-<pre><code>import static  com.alibaba.china.credit.common.constants.CreditVasType.*;
-import static com.alibaba.china.credit.vas.dal.constant.CreditVasMemberStatus.*;
-public class Test{
-    public static void main(String[] args) {
-        . . .
-
-        VasViewVO vasViewVO = VasViewVO.with()
-            .creditVasMemberStatus(CLOSE)
-            .description("Commoent cxxx").gmtClose(new Date())
-            .gmtOpen(new Date()).serviceType(fastpay);
-        . . .
-    }
-}
-</code></pre>
-
-<h3>进阶总结</h3>
-
-<p>程序设计要解决的是讲现实世界中的问题描述转化为计算机可识别的计算机语言（二进制码），因此编程语言必须为这一转化过程提供有效的抽像机制。现有编程语言提供的抽象机制侧重各有不同，在C，C++，JAVA等通用语言中更关注语言的基本语义，离实际的问题域描述较远；SQL，CSS等特定领域语言更关注特定问题域问题的抽象，更贴近实际的问题描述。</p>
-
-<p>站在人的角度，语言越是贴近实际问题的描述越是容易理解，对问题的描述也更加准确。但现有的特定领域语言又不具备通用变成语言解决问题的的通用性，因此我们更希望能够在通用语言上进行更高层次的抽象，使其更加贴近具体的问题域。某种程度上讲语言提供的API或者方法库就是对基本问题的更高层次抽象，但离具体的问题域还是太远，有时我们更渴望更加贴近具体问题的语言来解决问题并兼具通用语言的通用性，因此诞生了通用语言的内部DSL。
-<a href="http://www.martinfowler.com/bliki/FluentInterface.html">流畅接口（Fluent Interface）</a>是实现内部DSL的重要手段，<a href="http://en.wikipedia.org/wiki/Fluent_interface">wikipedia上如此描述</a>Fluent Interface：</p>
-
-<pre><code>A fluent interface (as first coined by Eric Evans and Martin Fowler) is an implementation of an object oriented API that aims to provide for more readable code. A fluent interface is normally implemented by using method chaining to relay the instruction context of a subsequent call (but a fluent interface entails more than just method chaining)。
-</code></pre>
-
-<p>方法链（method chain）是实现Fluent Interface的重要手段（注意，method chain!= Fluent Interface!=DSL）。但仅仅有方法链是不足够构建有效的DSL的，除此之外还需要一些且他编程技巧，比如static factory和static import等，具体请参见<a href="http://www.infoq.com/articles/internal-dsls-java">《An Approach to Internal Domain－Specific Languages in Java》</a></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/8/">&larr; Older</a>
@@ -616,6 +670,10 @@ public class Test{
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -629,10 +687,6 @@ public class Test{
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -671,7 +725,7 @@ public class Test{
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

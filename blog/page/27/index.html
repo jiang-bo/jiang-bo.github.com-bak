@@ -9,7 +9,9 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="很久没有写Java程序了，最近课程设计，要做个搜索引擎，用Eclipse开发java，结果抓来的网页数据在Eclipse 中全是乱码，另外，程序中如果有中文，编译不能通过，提示cp1252编码错误，晕，头一次听说这个编码，在网上搜了搜，得到了简单的解决方案：（其实是基本常识，哈哈~）1. &hellip;">
+  <meta name="description" content="&nbsp;
+今天在机房尝试了一下Android SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去http://developer.android.com/sdk/1.5_r1/index.html上自己看吧。
+下面说个小问题，之前版本的SDK，你写个HelloWorld， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -76,6 +78,62 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/05/05/post/">Android SDK1.5开发体验</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-05T00:00:00+08:00" pubdate data-updated="true">May 5<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/05/05/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>&nbsp;</p>
+<p>今天在机房尝试了一下<a onclick="tagshow(event, 'Android');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>Android</strong></span></a> SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去<a href="http://developer.android.com/sdk/1.5_r1/index.html">http://developer.android.com/sdk/1.5_r1/index.html</a>上自己看吧。</p>
+<p>下面说个小问题，之前版本的SDK，你写个HelloWorld，按照<a onclick="tagshow(event, 'google');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>google</strong></span></a>网站上说的，run的时候，会出现</p>
+<p>[2009-05-05 16:18:13 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:18:13 - HelloWorld] Android Launch!<br />[2009-05-05 16:18:13 - HelloWorld] adb is running normally.<br />[2009-05-05 16:18:13 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:18:13 - HelloWorld] Failed to find an <a onclick="tagshow(event, 'AVD');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>AVD</strong></span></a> compatible with target &#8216;Android 1.1&#8217;. Launch aborted.</p>
+<p>针对这个问题官方的解释在</p>
+<p><a href="http://developer.android.com/guide/developing/eclipse-adt.html#Running">http://developer.android.com/guide/developing/eclipse-adt.html#Running</a></p>
+<p>看懂了之后其实很容易，就是在运行模拟器之前必须要自己创建一个AVD（Android Virtual Device，Android虚拟设备），相当于配置你要模拟的目标平台一样，方法如下：</p>
+<p>1.打开CMD，输入命令android list targets，查看所有可用的目标平台（如果出现android命令无法找到，是因为你的PATH变量没配置，这就不用我多说了），显示结果为</p>
+<p>Available Android targets:</p>
+<p>id: 1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.1<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
+<p>id: 2<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Android 1.5<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Platform<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />API level: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: HVGA (default), HVGA-L, HVGA-P, QVGA-L, QVGA-P</p>
+<p>id: 3<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Name: Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Type: Add-On<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Vendor: Google Inc.<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Description: Android + Google APIs<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Based on Android 1.5 (API level 3)<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Libraries:<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />* com.google.android.maps (maps.jar)<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br />API for Google Maps<br />&nbsp;&nbsp;&nbsp;&nbsp;<br />Skins: QVGA-P, HVGA-L, HVGA (default), QVGA-L, HVGA-P</p>
+<p>2.创建一个你想要的AVD，使用如下<a onclick="tagshow(event, '%C3%FC%C1%EE');" href="javascript:;" target="_self"><span style="text-decoration: underline;"><strong>命令</strong></span></a>：</p>
+<p>android create avd &#8211;name<em>&lt;your_avd_name&gt;</em>&#8211;target<em>&lt;targetID&gt;</em></p>
+<p>例如：andorid create avd &#8211;name adt15 &#8211;target 2命令，创建了一个名为adt15的2号（Android1.5）平台的AVD。</p>
+<p>3.然后会询问是否配置硬件设备，我没有硬件，就没配置，默认是NO，如果你想配置的话，输入yes就行。</p>
+<p>4.回到Eclipse里，继续RUN，这是就能搞定了。</p>
+<p>PS一下：模拟器编译装载实在是太慢了，一个HelloWorld要用7分钟，才能运行，不过好歹是能运行了，一下是Eclipse里的输出：</p>
+<p>[2009-05-05 16:35:26 - HelloWorld] &#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;&#8212;<br />[2009-05-05 16:35:26 - HelloWorld] Android Launch!<br />[2009-05-05 16:35:26 - HelloWorld] adb is running normally.<br />[2009-05-05 16:35:26 - HelloWorld] Performing com.jiang.android.HelloWorld activity launch<br />[2009-05-05 16:35:26 - HelloWorld] Automatic Target Mode: launching new emulator with compatible AVD &#8216;android15r1&#8217;<br />[2009-05-05 16:35:26 - HelloWorld] Launching a new emulator with Virtual Device &#8216;android15r1&#8217;<br />[2009-05-05 16:35:30 - HelloWorld] New emulator found: emulator-5554<br />[2009-05-05 16:35:30 - HelloWorld] Waiting for HOME (&#8216;android.process.acore&#8217;) to be launched&#8230;<br />[2009-05-05 16:40:28 - HelloWorld] HOME is up on device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:28 - HelloWorld] Uploading HelloWorld.apk onto device &#8216;emulator-5554&#8217;<br />[2009-05-05 16:40:29 - HelloWorld] Installing HelloWorld.apk&#8230;<br />[2009-05-05 16:42:11 - HelloWorld] Success!<br />[2009-05-05 16:42:11 - HelloWorld] Starting activity com.jiang.android.HelloWorld on device<br />[2009-05-05 16:42:51 - HelloWorld] ActivityManager: Starting: Intent { comp={com.jiang.android/com.jiang.android.HelloWorld} }</p>
+<p>这时你在模拟器里就能看到Helloworld了，注意，一定要耐心等待。</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -205,6 +263,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -218,10 +280,6 @@
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -260,7 +318,7 @@
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

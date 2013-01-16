@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、 目的： 将一个类的接口转换成客户希望的另一个接口。Adapter 模式使原本由于接口不兼容而不能一起工作的那些类可以一起工作。 ——GoF 《Design Pattern 》 二、 描述： 其实个人觉得Adapter模式在所有的模式当中算是比较简单的那种，也比较容易理解， &hellip;">
+  <meta name="description" content="目的： 保证一个类仅有一个实例，并为该实例提供也个安全的全局访问点 用途： 在很多时候，系统中需要某个类只有一个实例，例如连接数据库时的驱动程序注册，加载属性文件等。 实现的核心是要有一个私有的构造方法，静态实例变量，以及返回该静态变量的公有静态方法作为全局访问接口。 一个最基本的实现： &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -76,6 +76,115 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/08/28/singleton-desgin-pattern/">设计模式学习笔记(1)——单例模式</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-08-28T16:48:00+08:00" pubdate data-updated="true">Aug 28<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/08/28/singleton-desgin-pattern/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h4>目的：</h4>
+
+<p>保证一个类仅有一个实例，并为该实例提供也个安全的全局访问点</p>
+
+<h4>用途：</h4>
+
+<p>在很多时候，系统中需要某个类只有一个实例，例如连接数据库时的驱动程序注册，加载属性文件等。</p>
+
+<p>实现的核心是要有一个私有的构造方法，静态实例变量，以及返回该静态变量的公有静态方法作为全局访问接口。</p>
+
+<p>一个最基本的实现：</p>
+
+<pre><code>public class Singleton { 
+    private static Singleton instance = null; // 静态实例变量
+
+    private Singleton() { // 私有的构造方法 
+    }
+
+    public static Singleton getInstance() { // 公有的全局访问接口 
+       if (instance == null) { // 检查是否已经实例化，以保证只有一个实例 
+            instance = new Singleton(); 
+        } 
+        return instance; 
+    } 
+}
+</code></pre>
+
+<p>这种实现在单线程环境下是没有什么问题的，但是在多线程环境下就会出现问题，例如现在有两个线程A，B，当A执行完红色的判断语句后切换到线程B，假设此时instance尚未实例化，B执行判断，条件为真，进行实例化instance，返回，当再次切换到线程A时，继续上一次的执行，实例化instance，这是系统中就存在了两个实例。</p>
+
+<p>最简单的改进方法就是在对getInstance方法进行同步限制，也就是</p>
+
+<pre><code>public static synchronized Singleton getInstance() {…}
+</code></pre>
+
+<p>但是这样synchronized的效率很差，存在更好的改进方法</p>
+
+<h4>1.直接加载</h4>
+
+<p>通常使用的都是晚加载（Lazy mode），需要时在实例化，但是，有时能够确定系统中肯定要存在一个该类的实例，直接加载是一种简单的实现方式</p>
+
+<pre><code>public class SingletonEagerInstantiation { 
+    private static SingletonEagerInstantiation instance = new SingletonEagerInstantiation(); //直接静态实例化
+
+    private SingletonEagerInstantiation() { 
+    }
+
+    public static SingletonEagerInstantiation getInstance() { 
+        return instance;//直接返回 
+    } 
+}
+</code></pre>
+
+<h4>2.双重检查</h4>
+
+<p>刚才使用synchronized关键字时，出现了效率差的现象，是因为无论instance是否已经实例化了都要进行同步，synchronized效率很差，而使用双重检查，先判断instance是否已经实例化，如果为空在进行同步，这样就提高了效率，而且这种实现方式也提供了晚加载的能力，但是注意volatile关键字限制了该种实现方式只能用于jdk1.5以上版本</p>
+
+<pre><code>public class SingletonDoubleCheck { 
+    private static volatile SingletonDoubleCheck instance = null; 
+    private SingletonDoubleCheck() { 
+    } 
+    public static SingletonDoubleCheck getInstance() { 
+        if (instance == null) {//先判断 
+            synchronized (SingletonDoubleCheck.class) {//如果没有实例化，同步 
+                if (instance == null) {//再次判断 
+                    instance = new SingletonDoubleCheck();//实例化 
+                } 
+            } 
+        } 
+        return instance; 
+    } 
+}
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -289,54 +398,6 @@ WildTurkey gobble</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/08/24/post/">Ubuntu9.04安装Oracle XE</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-08-24T00:00:00+08:00" pubdate data-updated="true">Aug 24<span>th</span>, 2009</time>
-        
-         | <a href="/blog/2009/08/24/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>&nbsp;</p>
-<p>一直听说Ubuntu上安装Oracle相当麻烦，今天体验了一把，可能比较幸运，没出什么问题，简单记录一下，先声明，我装的是Oracle XE版，也就是官网上所说的快捷版，企业版的安装要麻烦的多，而且好想也不支持Ubuntu。</p>
-<p>简单来说步骤如下：</p>
-<p>1.将http://oss.oracle.com/debian unstable non-free添加到软件源中</p>
-<p>2.添加密钥 sudo apt-key add RPM-GPG-KEY-oracle（不过我安装时提示密钥无效，但最后也装上了，不了解）</p>
-<p>3.sudo apt-get update更新（不过我添加后立即更新没能什么都没有，没什么反应，过了几个小时自动更新里提示安装）</p>
-<p>4.正常的话会自动安装</p>
-<p>5.配置数据库 sudo /etc/init.d/oracle-xe configure，这里包括监听端口号，http端口，以及帐户密码等选项，默认安装就可以了，当然，密码要自己设。</p>
-<p>6.安装完成后，网上很多人提示说是要配置环境变量，但是我发现安装过程自己配置了，可以通过echo $ORACLE_HOME等方法查看一下，没设自己设一下把</p>
-<p>6.正常在GNOME环境中会在应用程序栏中添加Oracle菜单栏，选择转至数据库主页，正常的话就能够打开数据库主页，地址为：http://127.0.0.1:8080/apex，(8080是你在配置时设置的端口号，我的默认就是8080),然后输入用户名密码登录就OK了</p>
-<p>～～～看似简单，哈～希望大家也想我一样顺利哈～继续学习中～</p>
-<p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/23/">&larr; Older</a>
@@ -369,6 +430,10 @@ WildTurkey gobble</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -382,10 +447,6 @@ WildTurkey gobble</p>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -424,7 +485,7 @@ WildTurkey gobble</p>
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

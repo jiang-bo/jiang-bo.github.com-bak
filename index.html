@@ -9,8 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、背景 HDFS是构建在普通机器上的分布式文件系统，而这类系统需要解决的一个首要问题就是容错，允许部分节点失效。而为了解决数据的可靠性，HDFS采用了副本策略。默认会为所有的block存放三个副本（具体参见HDFS设计文档）。
-副本机制能够有效解决部分节点失效导致数据丢失的问题， &hellip;">
+  <meta name="description" content="简介 Hadoop集群运行过程中有时会需要对配置进行修改，而通常需要重启才能生效，如该HDFS Namenode的一个配置，需要重启NN才能生效。而对于规模较大的系统，重启的成本较高。HADOOP-7001引入了一个reconfigurable机制。简述如下： HADOOP- &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -77,6 +76,140 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2013-01-16T15:01:00+08:00" pubdate data-updated="true">Jan 16<span>th</span>, 2013</time>
+        
+         | <a href="/blog/2013/01/16/hadoop-reconfigurable/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>简介</h2>
+
+<p>Hadoop集群运行过程中有时会需要对配置进行修改，而通常需要重启才能生效，如该HDFS Namenode的一个配置，需要重启NN才能生效。而对于规模较大的系统，重启的成本较高。<a href="https://issues.apache.org/jira/browse/HADOOP-7001">HADOOP-7001</a>引入了一个reconfigurable机制。简述如下：</p>
+
+<p>HADOOP-7001提供了一个Reconfigure接口用于定义可动态配置的的行为。并提供了一个ReconfigurableBase抽象的基类实现。该基类有两个抽象方法，所有想要实现动态配置的节点，都需要实现这两个方法：</p>
+
+<pre><code>//某个可以动态配置的属性变化时需要进行的处理
+protected abstract void reconfigurePropertyImpl(String property, String newVal) 
+    throws ReconfigurationException;
+
+//定义该节点上所有可以进行动态配置的属性集合
+public abstract Collection&lt;String&gt; getReconfigurableProperties();
+</code></pre>
+
+<p>为了便于完成配置项变更，HADOOP-7001还提供了一个ReconfigurationServlet工具便于从web端变更配置。使用时只需要将该servelt加入到相应节点的httpserver中，并在context中加入conf.servlet.reconfigurable.$P的参数，值为对应的Reconfigurable实现（一般为节点自身实现），其中$P表示的是ReconfigurationServlet在httpServer中对应的path。</p>
+
+<h2>NameNode中的使用</h2>
+
+<p><a href="https://issues.apache.org/jira/browse/HDFS-1477">HDFS-1477</a>中提供了NameNode Reconfigurable的实现。概要分析如下：</p>
+
+<h3>1. 扩展ReconfigurableBase</h3>
+
+<p>首先需要扩展Reconfigurable来使NameNode支持动态配置</p>
+
+<pre><code>public class NameNode extends ReconfigurableBase implements ClientProtocol, 
+    DatanodeProtocol,NamenodeProtocol, FSConstants {
+
+      //。。。。
+      //此处省略N多无关代码
+      //        
+
+      //实现当发生配置变更时Namenode的具体处理行为
+      @Override
+      public void reconfigurePropertyImpl(String property, String newVal) 
+        throws ReconfigurationException {
+        // just pass everything to the namesystem
+        if (namesystem.isPropertyReconfigurable(property)) {
+         namesystem.reconfigureProperty(property, newVal);
+        } else if ("fs.trash.interval".equals(property)) {
+          try {
+            if (newVal == null) {
+              // set to default
+              trash.setDeleteInterval(60L * Trash.MSECS_PER_MINUTE);
+            } else {
+              trash.setDeleteInterval((long)(
+                  Float.valueOf(newVal) * Trash.MSECS_PER_MINUTE));
+            }
+            LOG.info("RECONFIGURE* changed trash deletion interval to " +
+                newVal);
+          } catch (NumberFormatException e) {
+            throw new ReconfigurationException(property, newVal,
+                getConf().get(property));
+          }
+        } else {
+          throw new ReconfigurationException(property, newVal,
+                                             getConf().get(property));
+        }
+      }
+
+      //设置NameNode上允许动态配置的属性值
+      @Override
+      public List&lt;String&gt; getReconfigurableProperties() {
+        // only allow reconfiguration of namesystem's reconfigurable properties
+        List&lt;String&gt; properties = namesystem.getReconfigurableProperties();
+        properties.add("fs.trash.interval");
+        return properties;
+      }
+</code></pre>
+
+<h3>2. 在httpserver中配置ReconfigurationServlet</h3>
+
+<p>为了便于配置，需要在httpserver中添加ReconfigurationServlet，具体代码如下</p>
+
+<pre><code>private void startHttpServer(Configuration conf) throws IOException {
+
+    //省略无关代码
+
+    //设置context属性
+    httpServer.setAttribute(ReconfigurationServlet.
+                            CONF_SERVLET_RECONFIGURABLE_PREFIX +
+                            CONF_SERVLET_PATH, NameNode.this);
+    //添加servelt， path为nnconfchange
+    httpServer.addServlet("nnconfchange", CONF_SERVLET_PATH,
+                          ReconfigurationServlet.class);
+    this.httpServer.start();
+
+    // The web-server port can be ephemeral... ensure we have the correct info
+    infoPort = this.httpServer.getPort();
+    this.httpAddress = new InetSocketAddress(infoHost, infoPort);
+    conf.set("dfs.http.address", infoHost + ":" + infoPort);
+    LOG.info("Web-server up at: " + infoHost + ":" + infoPort);
+  }
+</code></pre>
+
+<h3>3.具体使用</h3>
+
+<p>可以通过web访问 http://hdfsnn:port/nnconfchange来查看配置项，通过http://hdfsnn:port/nnconfchange?property=newVal的方式提交新的配置项，如果配置项变更出错会返回500.</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -546,166 +679,6 @@ Iteration 20 took 129145
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS Mount HDFS</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-23T10:24:00+08:00" pubdate data-updated="true">Oct 23<span>rd</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>介绍</h2>
-
-<p>Hadooop源码中自带了contrib/fuse-dfs模块，用于实现通过libhdfs和fuse将HDFS mount到*inux的本地。</p>
-
-<h2>编译</h2>
-
-<h3>环境</h3>
-
-<ol>
-<li>Linux: 2.6.18-164.el5 x86_64</li>
-<li>JDK: 1.6.0_23 64bit</li>
-<li>Hadoop: 0.19.1 下面假设源码目录为$HADOOP_SRC_HOME</li>
-<li>Ant: 1.8.4</li>
-<li>GCC: 4.1.2(系统默认)</li>
-</ol>
-
-
-<h3>编译libhdfs</h3>
-
-<h4>修改configure执行权限</h4>
-
-<pre><code>$chmod +x $HADOOP_SRC_HOME/src/c++/pipes/configure
-$chmod +x $HADOOP_SRC_HOME/src/c++/utils/configure
-</code></pre>
-
-<h4>修改Makefile，调整编译模式</h4>
-
-<p>64位机中，需要修改libhdfs的Makefile，将GCC编译的输出模式由32(-m32)位改为64(-m64)位</p>
-
-<pre><code>CC = gcc
-LD = gcc
-CFLAGS =  -g -Wall -O2 -fPIC
-LDFLAGS = -L$(JAVA_HOME)/jre/lib/$(OS_ARCH)/server -ljvm -shared -m64(这里) -Wl,-x
-PLATFORM = $(shell echo $$OS_NAME | tr [A-Z] [a-z])
-CPPFLAGS = -m64(还有这里) -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(PLATFORM)
-</code></pre>
-
-<h4>编译</h4>
-
-<p>在$HADOOP_HOME目录下执行</p>
-
-<pre><code>$ ant compile -Dcompile.c++=true -Dlibhdfs=true
-</code></pre>
-
-<p>编译结果将生成libhdfs库，位于$HADOOP_SRC_HOME/build/libhdfs目录下</p>
-
-<h3>编译fuse-dfs</h3>
-
-<h4>安装fuse库</h4>
-
-<p>fuse-dfs依赖fuse库，可通过</p>
-
-<pre><code>sudo lsmod|grep fuse
-</code></pre>
-
-<p>检查是否已经安装，如没有，可通过：</p>
-
-<pre><code>yum -y install fuse fuse-devel fuse-libs
-</code></pre>
-
-<p>安装相关依赖库。</p>
-
-<h4>设置编译库路径</h4>
-
-<p>设置编译库路径，将libhdfs的库加入到编译路径中</p>
-
-<pre><code>export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$HADOOP_SRC_HOME/build/c++/Linux-amd64-64/lib:$JAVA_HOME/jre/lib/amd64/server
-</code></pre>
-
-<h4>编译</h4>
-
-<p>编译contrib/fuse-dfs模块：</p>
-
-<pre><code>ant compile-contrib -Dlibhdfs=1 -Dfusedfs=1
-</code></pre>
-
-<p>编译完成将会生成$HADOOP_HOME/build/contrib/fuse-dfs/目录，内有：</p>
-
-<pre><code>fuse-dfs]$ ls
-fuse_dfs  fuse_dfs_wrapper.sh  test
-</code></pre>
-
-<p>其中fuse_dfs是可执行程序，fuse_dfs_wrapper.sh是包含一些环境变量设置的脚本，不过其中大部分需要修改:(</p>
-
-<h4>修改fuse_dfs_warpper.sh</h4>
-
-<pre><code>#Hadoop安装目录
-export HADOOP_HOME=/home/bo.jiangb/yunti-trunk/build/hadoop-0.19.1-dc
-#将fuse_dfs加入到PATH
-export PATH=$HADOOP_HOME/contrib/fuse_dfs:$PATH
-#将hadoop的jar加入到CLASSPATH
-for f in ls $HADOOP_HOME/lib/*.jar $HADOOP_HOME/*.jar ; do
-export  CLASSPATH=$CLASSPATH:$f
-done
-#设置机器模式
-export OS_ARCH=amd64
-#设置JAVA_HOME
-export  JAVA_HOME=/home/admin/tools/jdk1.6
-#将libhdfs加入到链接库路径中
-export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/$OS_ARCH/server:/home/bo.jiangb/yunti-trunk/build/libhdfs:/usr/local/lib
-./fuse_dfs $@
-</code></pre>
-
-<h2>使用</h2>
-
-<h3>mount</h3>
-
-<ol>
-<li><p>新建一个空目录</p>
-
-<p> $mkdir /tmp/dfs</p></li>
-<li><p>挂载dfs
-$./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
--d表示debug模式，如果正常，可以将-d参数去掉。</p></li>
-</ol>
-
-
-<h3>unmount</h3>
-
-<p>卸载可通过：</p>
-
-<pre><code>fusermount -u /tmp/dfs
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/2/">&larr; Older</a>
@@ -736,6 +709,10 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -749,10 +726,6 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -791,7 +764,7 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

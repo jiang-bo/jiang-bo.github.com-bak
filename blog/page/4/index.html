@@ -9,8 +9,10 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、SafeModeInfo SafeModeInfo维护了系统安全模式下的状态信息，每当系统进入安全模式时都会创建一个SafeModeInfo实例维护状态信息，离开时会销毁这个实例。
-该类结构如下 其中threshold和extension为可配置项： &hellip;">
+  <meta name="description" content="NameNode和DataNode间的通信分为四种场景： 初始时DataNode注册：
+周期性心跳检测：
+周期性blockreport：
+完成一个副本的写入： 一、初始时DataNode注册 DataNode在启动时会向NameNode注册， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -77,6 +79,85 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/">HDFS源码学习（10）——NameNode与DataNode间的通信</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:54:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-and-datanode-communication/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>NameNode和DataNode间的通信分为四种场景：</p>
+
+<ol>
+<li>初始时DataNode注册：</li>
+<li>周期性心跳检测：</li>
+<li>周期性blockreport：</li>
+<li>完成一个副本的写入：</li>
+</ol>
+
+
+<h2>一、初始时DataNode注册</h2>
+
+<p>DataNode在启动时会向NameNode注册，注册时需要提交的信息有DatanodeRegistration表示。结构如下：</p>
+
+<p><img src="/images/hdfs/DatanodeRegistration.png" alt="DatanodeRegistration" /></p>
+
+<p>主要包括：</p>
+
+<ol>
+<li>name：机器名（主机名+服务端口号）</li>
+<li>infoPort: 状态信息服务端口好</li>
+<li>ipcPort： 提供ipc服务的端口号</li>
+</ol>
+
+
+<p>此外，该类中的storageID是该datanode在集群中的唯一id，在注册时有NameNode分配</p>
+
+<p>注册的主要流程如下：
+<img src="/images/hdfs/register.png" alt="DataNodeRegister" /></p>
+
+<h2>二、心跳检测（heartbeat）</h2>
+
+<p>DataNode通过周期性调用namenode.sendHeartbeat()来完成心跳检测.主要流程如下：</p>
+
+<p><img src="/images/hdfs/sendHeartbeat.png" alt="sendHeartbeat" /></p>
+
+<h2>三、blockReport</h2>
+
+<p>DataNode周期性向NameNode发送blockReport，告知自己最新的block信息：
+<img src="/images/hdfs/blockReport.png" alt="blockReport" /></p>
+
+<h2>四、完成副本写入</h2>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -568,89 +649,6 @@ EditLog能够记录如下17中操作：</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-block-management/">HDFS源码学习（7）——Block管理</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:46:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-block-management/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>HDFS通过一个BlockManager管理集群中所有的block信息</p>
-
-<h2>主要数据结构</h2>
-
-<h3>Block</h3>
-
-<p>Block是HDFS读写的基本单元，集群中每个block通过一个long id来唯一标示。</p>
-
-<h3>BlockInfo</h3>
-
-<p>维护一个block的元信息，主要通过</p>
-
-<h3>BlockMap</h3>
-
-<p>通过一个GSet&lt;Block, BlockInfo>维护一个block与其元数据信息的映射关系，元信息包括其所属的BlockCollection和存储该block的datanode节点，每个BlockMap有个初始容量capacity</p>
-
-<h3>BlockCollection</h3>
-
-<h2>Block和副本管理</h2>
-
-<h3>Block和副本状态</h3>
-
-<p>Block有如下状态：</p>
-
-<ol>
-<li>committed：所有的副本已经被创建且更新至最新</li>
-<li>Under construction: 需要创建一个或多个副本</li>
-<li>To be deleted: 所有副本需要被删除。发生在文件被删除或者block被重写</li>
-<li>Over-replicated: 过多的副本存在。此时副本中的一个需要设置为无效并删除。</li>
-</ol>
-
-
-<p>副本有如下状态：</p>
-
-<ol>
-<li>Current: 正常状态，该副本正确反应block内容</li>
-<li>Conrrupt: 某个副本损坏。副本损坏是由client报告给namenode的。client通过checksum检查副本是否损坏，如果损坏了，通过BlockManager.invalidateBlock()处理</li>
-<li>On a faild DataNode: DataNode Heartbeat发现有DataNode失效时，即将在改datanode上创建的副本将被删除</li>
-<li>Out of Date: 当Datanode失效，且副本所属的block发生更新后，Datanode恢复正常。过期的block将通过blockreport报告给namenode，并将其删除</li>
-<li>Under construction: 副本尚未被写入并在Datanode上被验证。在NameNode看来，只有当收到blockReport并且报告中timestamp正确时，猜人物副本写入正常。</li>
-</ol>
-
-
-<h2>Block分配</h2>
-
-<h2>Block查询</h2>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/5/">&larr; Older</a>
@@ -683,6 +681,10 @@ EditLog能够记录如下17中操作：</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -696,10 +698,6 @@ EditLog能够记录如下17中操作：</p>
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -738,7 +736,7 @@ EditLog能够记录如下17中操作：</p>
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

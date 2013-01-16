@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一眨眼，一年又过去了，奔三的步伐又向前迈进了一步… 2011流水账 1月～3月，入职来第一次正是参加了大项目，中间夹杂个春节，据说每年年底做大项目是部门的传统，今年也不例外啊:(，项目苦了写，不过学了不少 4月～6月，公司进行服务化改造，作为主力开发参与了部门的服务化建设，期间送走了两个同事好友， &hellip;">
+  <meta name="description" content="问题 有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。 解决 如何获取本机IP 用ruby获取本机的动态ip，网上很多教程都用 require 'socket' IPSocket.getaddress( &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -76,6 +76,145 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/">如何用ruby获取本机IP&发送給Gtalk</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-01-04T17:35:00+08:00" pubdate data-updated="true">Jan 4<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/01/04/how-to-get-ip-and-send-to-gtalk-by-ruby/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h3>问题</h3>
+
+<p>有一台server用的是动态ip，每次重启后ip地址就变了，因此写了一个脚本，每次在server重启后，自动将ip发送到我的gtalk上。</p>
+
+<h3>解决</h3>
+
+<h4>如何获取本机IP</h4>
+
+<p>用ruby获取本机的动态ip，网上很多教程都用</p>
+
+<pre><code>require 'socket'
+
+IPSocket.getaddress(Socket.gethostname)
+puts TCPSocket.gethostbyname(Socket.gethostname)
+</code></pre>
+
+<p>这个在mac下是正常的，但是在linux下就只能拿到127.0.0.1
+在StackOverflow上有另一种解决方案</p>
+
+<pre><code>require 'socket'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = rig
+end
+</code></pre>
+
+<p>这段主要是通过开启一个UDP链接来获取本地对外ip，因为UDP是无状态，所以不会实际建立网络链接，但是会获取本机对外ip。</p>
+
+<h4>如何发送消息</h4>
+
+<p>获取ip后需要通过gtalk发送，gtalk使用的是xmpp协议，ruby中协议有多种开源实现，比较简单通用的是xmpp4r，详细教程请看这里
+首先需要安装xmpp4r-simple</p>
+
+<pre><code>gem install xmpp4r-simple
+</code></pre>
+
+<p>注意，貌似这个gem不支持1.9.*，所以使用之前先将ruby切换到1.8.7版本
+然后编写代码，主要两步：</p>
+
+<ul>
+<li>建立链接</li>
+<li>发送消息</li>
+</ul>
+
+
+<p>代码如下：</p>
+
+<pre><code> require 'rubygems'
+ require 'xmpp4r-simple'  
+
+ username = gmailusername
+ password = gmailpassword
+ to_username = destination_gmailusername  
+
+ puts "Connecting to jabber server.."
+ jabber = Jabber::Simple.new(username+'@gmail.com',password)
+ puts "Connected."
+ jabber.deliver(to_username+"@gmail.com", "Hello..!")
+ sleep(1)
+</code></pre>
+
+<p>注意，最后那个sleep不能少，尽管我还不知道为啥:(</p>
+
+<p>如此以来整个的获取ip，发送給gtalk的脚本为：</p>
+
+<pre><code>require 'rubygems'
+require 'socket'
+require 'xmpp4r-simple'
+
+def local_ip
+  orig, Socket.do_not_reverse_lookup = Socket.do_not_reverse_lookup, true  # turn off reverse DNS resolution temporarily
+
+  UDPSocket.open do |s|
+    s.connect '64.233.187.99', 1
+    s.addr.last
+  end
+ensure
+  Socket.do_not_reverse_lookup = orig
+end
+
+jabber = Jabber::Simple.new('gmailuseanme@gmail.com','password')
+jabber.deliver('destusenam@gmail.com', local_ip)
+sleep 1
+</code></pre>
+
+<h4>设置自动运行</h4>
+
+<p>linux设置自动运行是老生常谈了，在/etc/rc.local加上一句运行脚本的命令即可：</p>
+
+<pre><code>ruby /home/jiangbo/ruby/getIP.rb
+</code></pre>
+
+<h3>结尾</h3>
+
+<p>这样每次机器重启时，就能够通过gtalk获取到ip了，不过还遗留一个问题，就是在机器重启时，必须保证接收消息的gtalk在线，因为这种方式的消息gtalk不会自动重法，目前不知怎么解决。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -207,54 +346,6 @@ bundle insall --local
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/12/17/rails-common-error/">Rails中常见的错误</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-12-17T00:00:00+08:00" pubdate data-updated="true">Dec 17<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/12/17/rails-common-error/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><h1>Rails中常见错误总结</h1>
-<h3>NoMothedError</h3>
-NoMethodError通常表示引用了错误的方法，比如link_to写成了lunk_to。根据页面上的错误提示很容易能够定位到错误代码位于哪一行。
-<h3>NameError</h3>
-NameError常见于引用了错误的变量，比如变量不存在等
-<h3>SyntaxError: unexpected $end</h3>
-SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少了end关键字。def和do必须要有对应的end。不过通常错误提示无法定位具体哪一行缺少了end，需要自己审查代码逻辑。
-<h3>invalid multibyte char(US-ASCII)</h3>
-如果使用的是Ruby1.9，出现:invalid multibyte char(US-ASCII)的时候，通常表示代码源文件中有UTF-8字符，比如中文，根据Ruby1.9规范，必须在源文件的头部加上编码注解<br />
-#encoding: utf-8<br />
-并且代码的源文件格式必须时utf-8的。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/11/">&larr; Older</a>
@@ -287,6 +378,10 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2012/12/21/hdfs-raid/">HDFS RAID</a>
       </li>
     
@@ -300,10 +395,6 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
     
       <li class="post">
         <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a>
       </li>
     
   </ul>
@@ -342,7 +433,7 @@ SyntaxError加上unexpected $end, expected keyword_end的错误，通常是少�
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 116.66666666666667%'>Android</a> <a href='/blog/categories/design' style='font-size: 110.0%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 103.33333333333333%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.33333333333333%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 116.66666666666667%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 110.0%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 140.0%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 113.33333333333333%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 110.0%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.33333333333333%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.33333333333333%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.66666666666667%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.33333333333333%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.66666666666667%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.33333333333333%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.33333333333333%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 113.33333333333333%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.66666666666667%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 110.0%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.33333333333333%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.33333333333333%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   
