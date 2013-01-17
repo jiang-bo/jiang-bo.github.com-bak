@@ -111,6 +111,8 @@
 
 <p>Hadoop集群运行过程中有时会需要对配置进行修改，而通常需要重启才能生效，如该HDFS Namenode的一个配置，需要重启NN才能生效。而对于规模较大的系统，重启的成本较高。<a href="https://issues.apache.org/jira/browse/HADOOP-7001">HADOOP-7001</a>引入了一个reconfigurable机制。简述如下：</p>
 
+<p><img src="/images/hdfs/reconfig_class.png" alt="Reconfig_class" /></p>
+
 <p>HADOOP-7001提供了一个Reconfigure接口用于定义可动态配置的的行为。并提供了一个ReconfigurableBase抽象的基类实现。该基类有两个抽象方法，所有想要实现动态配置的节点，都需要实现这两个方法：</p>
 
 <pre><code>//某个可以动态配置的属性变化时需要进行的处理
@@ -203,7 +205,8 @@ public abstract Collection&lt;String&gt; getReconfigurableProperties();
 
 <h3>3.具体使用</h3>
 
-<p>可以通过web访问 http://hdfsnn:port/nnconfchange来查看配置项，通过http://hdfsnn:port/nnconfchange?property=newVal的方式提交新的配置项，如果配置项变更出错会返回500.</p>
+<p>登录到NN，修改配置文件，通过web访问 http://hdfsnn:port/nnconfchange来查看配置项，点击apply可以是新的配置项生效，如果配置项变更出错会返回500.  <br/>
+<img src="/images/hdfs/reconfig_apply.png" alt="Reconfig_apply" /></p>
 </div>
   
   
