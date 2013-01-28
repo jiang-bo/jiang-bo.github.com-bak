@@ -9,8 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="一、让ubuntu支持GBK编码
-Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支持GBK编码。 首先用gedit /var/lib/locales/supported.d/local来修改 /var/lib/locales/supported.d/local文件， &hellip;">
+  <meta name="description" content="Mac上制作Ubuntu USB启动盘 一、下载ubuntu iso镜像 二、将iso转换为img文件 $ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file 该命令会生成一个. &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -77,6 +76,96 @@ Ubuntu默认对中文只支持UTF-8编码，可以通过一些修改让Ubuntu支
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/">Mac上制作Ubuntu USB启动盘</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-11-09T00:00:00+08:00" pubdate data-updated="true">Nov 9<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/11/09/create_ubuntu_usb_startdisk_on_mac/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><strong>Mac上制作Ubuntu USB启动盘</strong></p>
+
+<p><strong>一、下载ubuntu iso镜像</strong></p>
+
+<p><strong>二、将iso转换为img文件</strong></p>
+
+<p>$ hdiutil convert -format UDRW -o /path/to/generate/img/file /path/to/your/iso/file</p>
+
+<p>该命令会生成一个.img的磁盘镜像文件，但是mac osx会默认追加一个.dmg，即生成的文件后缀是.img.dmg，这个后缀没关系，可以忽略</p>
+
+<p><strong>三、查看USB的盘符</strong></p>
+
+<p>$ diskutil list</p>
+
+<p>/dev/disk0</p>
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+<p>0:      GUID_partition_scheme                        *250.1 GB   disk0</p>
+
+<p>1:                        EFI                         209.7 MB   disk0s1</p>
+
+<p>2:                  Apple_HFS Macintosh HD            249.2 GB   disk0s2</p>
+
+<p>3:                 Apple_Boot Recovery HD             650.0 MB   disk0s3</p>
+
+<p>/dev/disk1</p>
+
+<p>#:                       TYPE NAME                    SIZE       IDENTIFIER</p>
+
+<p>0:     FDisk_partition_scheme                        *4.0 GB     disk1</p>
+
+<p>1:                 DOS_FAT_32 UNTITLED                4.0 GB     disk1s1</p>
+
+<p>该命令查看当前系统上挂载的磁盘，其中/dev/disk1是我的USB磁盘。不同的系统disk后的数字可能不一样，但一般都是diskN的模式</p>
+
+<p><strong>四、卸载USB磁盘</strong></p>
+
+<p>$ diskutil unmountDisk /dev/disk1</p>
+
+<p>Unmount of all volumes on disk1 was successful</p>
+
+<p>使用diskutil unmountDisk卸载USB磁盘，注意卸载（umount）与弹出(eject)的区别:)</p>
+
+<p><strong>五、将镜像写入USB</strong></p>
+
+<p>$ sudo dd if=ubuntu.img.dmg of=/dev/rdisk1 bs=1m</p>
+
+<p>将第二步生成的img文件写入到USB磁盘/dev/rdisk1。</p>
+
+<p><strong>六、弹出USB</strong></p>
+
+<p>$ diskutil eject /dev/disk1</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -559,129 +648,6 @@ Uberspect有个默认的实现UberspectImpl，该实现使用默认的Introspect
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/08/19/velocity_overview/">Velocity源码分析（一）——概述</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-08-19T00:00:00+08:00" pubdate data-updated="true">Aug 19<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/08/19/velocity_overview/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><h2>一、概述</h2>
-Velocity模板引擎处理机制分为五个基本步骤：
-<ol>
-	<li>引擎初始化，通过设置的引擎属性初始化引擎，包括国际化支持，ResourceLoader设置，字符编码等。</li>
-	<li>获取并解析模板文件，首先通过资源加载器（ResourceLoader）将模板文件加载到内存（转化为InputStream），然后通过AST（Abstract Syntax Tree）解析器将InputStream解析为一个AST。</li>
-	<li>创建一个Context</li>
-	<li>将模板渲染所需的参数放入context</li>
-	<li>执行模板渲染，产生输出流。渲染过程中通过遍历该模板对应的AST，调用相应节点的处理器执行渲染。</li>
-</ol>
-整个处理流程如下图所示：</p>
-
-<p><a href="/images/uploads/2011/08/Velocity-process-structure.png"><img class="aligncenter size-full wp-image-59" title="Velocity处理流程" src="/images/uploads/2011/08/Velocity-process-structure.png" alt="" width="619" height="407" /></a>
-<h2>二、详细渲染流程</h2>
-下面以一个简单的模板template.vm为例，详细解释渲染过程。<br />
-VelocityMergeTest.java
-<pre class="brush:java">public class VelocityMergeTest {</pre></p>
-
-<p>public static void main(String[] args) {<br />
-VelocityEngine ve = new VelocityEngine();<br />
-ve.setProperty(Velocity.RESOURCE_LOADER, &#8220;class&#8221;);<br />
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-try {<br />
-//引擎初始化<br />
-ve.init();<br />
-//加载解析模板<br />
-Template tp = ve.getTemplate(&#8220;template.vm&#8221;);<br />
-//创建context<br />
-Context context = new VelocityContext();<br />
-//设置Context中参数值<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-StringWriter writer = new StringWriter();<br />
-//执行渲染<br />
-tp.merge(context, writer);<br />
-System.out.println(writer.toString());<br />
-} catch (Exception e) {<br />
-}
-}<br />
-}
-template.vm
-<pre class="brush:xml">&lt;html&gt;
-&lt;body&gt;
-Hello $foo world!
-&lt;/body&gt;
-&lt;/html&gt;</pre>
-<h3>1.引擎初始化</h3>
-ve.setProperty(&#8220;class.resource.loader.class&#8221;,<br />
-&#8220;org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader&#8221;);<br />
-设置引擎的资源加载使用ClasspathResourceLoader。<br />
-ve.init()执行引擎的初始化。
-<h3>2.加载解析模板</h3>
-当执行ve.getTemplate(&#8220;template.vm&#8221;)时，首先通过ResourceLoader将tempalte加载为InputStream，然后通过Parser生成如下Token集合：<br />
-{[&lt;html&gt; &lt;body&gt; Hello], [$foo], [world! &lt;/body&gt; &lt;/html&gt; ]}，<br />
-可以发现velocity根本不关系模板最终要渲染出来的是html还是什么的其他的东西，也就以为这所有的html标签对velocity来讲都是纯文本。<br />
-最终构建的AST如下</p>
-
-<p><a href="/images/uploads/2011/08/AST.png"><img class="aligncenter size-full wp-image-60" title="AST" src="/images/uploads/2011/08/AST.png" alt="" width="367" height="169" /></a></p>
-
-<p>根节点下有三个子节点：
-<ol>
-	<li>[&lt;html&gt; &lt;body&gt; Hello]对应的ASTText节点；</li>
-	<li>[$foo]对应的ASTReference节点；</li>
-	<li>[world! &lt;/body&gt; &lt;/html&gt; ]对应的ASTText节点</li>
-</ol>
-Velocity引擎在这里有个优化策略，可以针对生成的语法树进行cache。
-<h3>3.创建context并设置参数</h3>
-Context context = new VelocityContext();<br />
-context.put(&#8220;foo&#8221;, &#8220;VV&#8221;);<br />
-创建一个context，并在其中放入一个foo=VV的参数。
-<h3>4.执行渲染</h3>
-当执行tp.merge(context, writer);时，模板遍历其对应的AST树，执行每个节点的渲染过程。如ASTText节点只是简单的将文本写入writer。ASTReference节点需要从context中获取引用的参数foo的值VV，将$foo替换，并写入到writer中。Velocity的AST中有多种节点，如ASTIdentitor等，有些需要反射机制处理。当整个AST遍历结束，也就意味着模板渲染结束，渲染的结果位于writer流中。
-<h2>三、关于AST解析</h2>
-Velocity作为模板语言，其核心在与模板文件的解析，构建AST。Velocity的解析器是通过JavaCC构建的，JavaCC（Java Complier Complier）是一个用于生成解析器的工具，可以根据语法定义（.jj文件）生成用于校验一份文本是否符合该语法定义的java代码。JJTree是JavaCC中提供的一种根据语法定义（.jjt文件）生成构建符合该语法定义的文本的语法树的java代码的工具。<br />
-Velocity源码包中提供了用于构建velocity语法解析的的jjt文件，位于src/parser/Parser.jjt。可以自己手动从源码构建Velocity的解析器。步骤如下：<br />
-1.下载安装JavaCC，到http://javacc.java.net/下载即可，velocity的解析器需要3.2版本以上。下载后解压即可。<br />
-2.使用JJTree生成节点定义：<br />
-$ javacc-5.0/bin/jjtree Parser.jjt<br />
-这一过程中会生成节点定义的Java文件和Parser.jj语法定义文件<br />
-3.使用JavaCC生成解析器<br />
-$ javacc-5.0/bin/javacc Parser.jj<br />
-最终会生成Parser.java解析器和个节点定义。
-<h2>参考资料</h2>
-《Velocity Developer Guide》<a href="http://velocity.apache.org/engine/devel/developer-guide.html">http://velocity.apache.org/engine/devel/developer-guide.html</a>
-《JavaCC》<a href="http://javacc.java.net/">http://javacc.java.net/</a>
-《Velocity源码分析》<a href="http://www.khotyn.com/2011/07/22/velocity_sourcecode/">http://www.khotyn.com/2011/07/22/velocity_sourcecode/</a>
-《Velocity的一些优化记录》<a href="http://agapple.iteye.com/blog/1051724">http://agapple.iteye.com/blog/1051724</a></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/13/">&larr; Older</a>
@@ -714,6 +680,10 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -727,10 +697,6 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -769,7 +735,7 @@ $ javacc-5.0/bin/javacc Parser.jj<br />
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

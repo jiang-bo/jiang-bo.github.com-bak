@@ -9,8 +9,11 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="1.确保本机上已经装了Xcode，可以从随机附带的DVD中获取，或者到 Apple Developer Connection下载安装。2.从 shell script from topfunky.net (mirror) 下载安装脚本，该脚本会自动完成memcached的安装，包括相应的依赖包
-3 &hellip;">
+  <meta name="description" content="docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+一、安装工具链
+docbook工具链包含三部分
+1.xsltproc（mac自带）
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -77,6 +80,171 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/08/09/mac-config-docbook-tool-chain/">Mac配置docbook工具链</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-08-09T00:00:00+08:00" pubdate data-updated="true">Aug 9<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/08/09/mac-config-docbook-tool-chain/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>docbook是一种在开源界极其流行的文档撰写格式，其源文件可以方便的转换为html，pdf等各种格式。
+<strong>一、安装工具链</strong>
+docbook工具链包含三部分<br />
+1.xsltproc（mac自带）<br />
+2.docbook-xsl（需要下载解压 wget http://downloads.sourceforge.net/project/docbook/docbook-xsl/1.76.1/docbook-xsl-1.76.1.tar.bz2）<br />
+3.fop（到<a href="http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop">http://www.apache.org/dyn/closer.cgi/xmlgraphics/fop</a>下载）<br />
+下载解压后得到：<br />
+docbook-xsl-1.76.1<br />
+fop-1.0<br />
+两个目录。<br />
+此时可以已经可以进行docbook撰写了，不过只限英文:)
+<strong>二、撰写docbook，并生成pdf</strong>
+使用文本编辑器编写如下xml，保存为webx.xml
+<pre class="brush:xml">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</pre></p>
+
+<p>&lt;!DOCTYPE book PUBLIC &#8220;-//OASIS//DTD DocBook XML V4.0//EN&#8221;  &#8220;http://www.oasis-open.org/docbook/xml/4.0/docbookx.dtd&#8221;&gt;</p>
+
+<p>&lt;book&gt;<br />
+&lt;bookinfo&gt;<br />
+&lt;title&gt;Webx Source Code&lt;/title&gt;<br />
+&lt;author&gt;<br />
+&lt;firstname&gt;Bo&lt;/firstname&gt;<br />
+&lt;surname&gt;Jiang&lt;/surname&gt;<br />
+&lt;affiliation&gt;<br />
+&lt;address&gt;<br />
+&lt;email&gt;jiang.bo.hit@gmail.com&lt;/email&gt;<br />
+&lt;/address&gt;<br />
+&lt;/affiliation&gt;<br />
+&lt;/author&gt;<br />
+&lt;copyright&gt;<br />
+&lt;year&gt;2011&lt;/year&gt;<br />
+&lt;/copyright&gt;<br />
+&lt;abstract&gt;<br />
+&lt;para&gt;Webx&lt;/para&gt;<br />
+&lt;/abstract&gt;<br />
+&lt;/bookinfo&gt;<br />
+&lt;part&gt;<br />
+&lt;title&gt;Part1&lt;/title&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Chapter 1 &lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 1, Section1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;chapter&gt;<br />
+&lt;title&gt;Part 1, Chapter 2&lt;/title&gt;<br />
+&lt;sect1&gt;<br />
+&lt;title&gt;Part1, Chapter 2, Section 1&lt;/title&gt;<br />
+&lt;para&gt;     Your Text &lt;/para&gt;<br />
+&lt;/sect1&gt;<br />
+&lt;/chapter&gt;<br />
+&lt;/part&gt;<br />
+&lt;/book&gt;
+使用xsltproc转换为中间文件<br />
+$xsltproc -o <a href="http://inter.fo/">inter.fo</a> ~/tools/docbook-xsl-1.76.1/fo/docbook.xsl webx.xml<br />
+此时会生成中间文件inter.fo<br />
+使用fop生成pdf<br />
+$~/tools/fop-1.0/fop -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a>
+最终生成了名为webx.pdf的pdf文件</p>
+
+<p><strong>三、设置FOP支持中文</strong>
+但是使用FOP默认的配置处理含有中文的文档是，中文都会变成### :(，原因是FOP默认不支持中文字体，需要自己配置一下。<br />
+找到自己系统中的字体目录，Mac下为/Library/Fonts，里面存在Microsoft/SimHei.ttf字体文件，下面一该字体为例生成一个FOP字体矩阵配置。
+<strong>1.生成字体矩阵</strong></p>
+
+<p>进入到fop安装目录，执行</p>
+
+<p>$ java -cp build/fop.jar:`echo lib/*.jar |tr &#8217; &#8217; &#8216;:&#8217;` org.apache.fop.fonts.apps.TTFReader -ttcanme &#8220;SimHei&#8221; /Library/Fonts/Microsoft/SimHei.ttf conf/simhei.xml</p>
+
+<p>会在conf目录下生成simhei.xml字体矩阵文件</p>
+
+<p><strong>2.修改fop配置文件conf/fop.xconf，加入如下配置</strong>
+<pre class="brush:xml">&lt;renderer mime="application/pdf"&gt;</pre></p>
+
+<p>&lt;filterList&gt;</p>
+
+<p>……</p>
+
+<p>&lt;/filterList&gt;</p>
+
+<p>&lt;fonts&gt;</p>
+
+<p>&lt;font metrics-url=&#8221;file:///Users/jiangbo/tools/fop-1.0/conf/simhei.xml&#8221; kerning=&#8221;yes&#8221; embed-url=&#8221;file:///Library/Fonts/Microsoft/SimHei.ttf&#8221;&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;font-triplet name=&#8221;SimHei&#8221; style=&#8221;normal&#8221; weight=&#8221;bold&#8221;/&gt;</p>
+
+<p>&lt;/font&gt;</p>
+
+<p>&lt;!&#8211;&lt;directory recursive=&#8221;true&#8221;&gt;/Library/Fonts/&lt;/directory&gt;&#8211;&gt;</p>
+
+<p>&lt;!&#8211;    &lt;auto-detect/&gt;&#8211;&gt;</p>
+
+<p>&lt;/fonts&gt;</p>
+
+<p>……
+<strong>3.撰写docbook样式表，docbook.xsl</strong></p>
+
+<p>默认转换时使用的是docbook-xsl-1.76.1/fo/docbook.xsl样式表，该样式表中不包括中文字体，需要自定义一个样式表docbook.xsl
+<pre class="brush:xml">&lt;?xml version='1.0'?&gt;
+&lt;xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+                xmlns:exsl="http://exslt.org/common"
+                xmlns:fo="http://www.w3.org/1999/XSL/Format"
+                xmlns:ng="http://docbook.org/docbook-ng"
+                xmlns:db="http://docbook.org/ns/docbook"
+                exclude-result-prefixes="db ng exsl"
+                version='1.0'&gt;</pre></p>
+
+<p>&lt;xsl:import href=&#8221;/Users/jiangbo/tools/docbook-xsl-1.76.1/fo/docbook.xsl&#8221;/&gt;<br />
+&lt;xsl:param name=&#8221;body.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;monospace.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;xsl:param name=&#8221;title.font.family&#8221;&gt;SimHei&lt;/xsl:param&gt;<br />
+&lt;/xsl:stylesheet&gt;
+<strong>4.使用新样式表进行转换</strong></p>
+
+<p>$xsltproc -o <a href="http://inter.fo/">inter.fo</a> docbook.xsl webx.xml</p>
+
+<p>$$ ~/tools/fop-1.0/fop -c  ~/tools/fop-1.0/conf/fop.xconf -pdf webx.pdf -fo <a href="http://inter.fo/">inter.fo</a></p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -298,103 +466,6 @@ http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/03/15/post/">Mac OSX安装Git</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-03-15T00:00:00+08:00" pubdate data-updated="true">Mar 15<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/03/15/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><strong>一、安装Git</strong></p>
-<p class="p2"><span class="s1">由于mac git的地址<a href="http://code.google.com/p/git-osx-installer/"><span class="s2">http://code.google.com/p/git-osx-installer/</span></a>被墙，被迫使用源码安装，源码可以从<a href="http://kernel.org/pub/software/scm/git/"><span class="s2">http://kernel.org/pub/software/scm/git/</span></a></span><span class="s3">下载，编译源码需要先安装xcode，参考<a href="http://developer.apple.com/"><span class="s4">http://developer.apple.com</span></a>。</span></p>
-<p class="p3">编译安装</p>
-<p class="p3">1.解压</p>
-<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;tar xjvf git-1.7.4.1.tar.tar.bz2</p>
-<p class="p3">2. 编译</p>
-<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;cd git-1.7.4.1</p>
-<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;./configure &#8211;prefix=/usr/local</p>
-<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;make</p>
-<p class="p3">3.安装</p>
-<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;sudo make install</p>
-<p class="p4">&nbsp;</p>
-<p class="p3">Ok 了，which git试一下～</p>
-<p class="p5"><strong>二、设置SSH</strong></p>
-<p class="p3">github使用SSH链接，需要设置SSH</p>
-<p class="p3">1.检查SSH key</p>
-<p class="p3">&nbsp;&nbsp; &nbsp; cd ~/.ssh</p>
-<p class="p3">2.备份已有的key，（如果有的话）</p>
-<p class="p3">&nbsp;&nbsp; &nbsp; mkdir key_backup</p>
-<p class="p3">&nbsp;&nbsp; &nbsp; mv id_rsa* key_backup</p>
-<p class="p3">3.生成SSH key</p>
-<p class="p3">$ ssh-keygen -t rsa -C <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
-<p class="p3">Generating public/private rsa key pair.</p>
-<p class="p3">Enter file in which to save the key (/Users/jiangbo/.ssh/id_rsa):&nbsp;</p>
-<p class="p3">Enter passphrase (empty for no passphrase):</p>
-<p class="p3">Enter same passphrase again:</p>
-<p class="p3">Your identification has been saved in yes.</p>
-<p class="p3">Your public key has been saved in id_rsa.pub.</p>
-<p class="p3">The key fingerprint is:</p>
-<p class="p3">fb:c4:b0:e0:47:fd:be:e0:fb:ea:73:ef:a8:29:d5:22 <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
-<p class="p3">The key&#8217;s randomart image is:</p>
-<p class="p3">+&#8211;[ RSA 2048]&#8212;-+</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . S ..&nbsp;&nbsp;&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp; . oE=o..&nbsp;&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . +o+..&nbsp;&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ..+.+..&nbsp;&nbsp; |</p>
-<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; oOB=+o&nbsp; |</p>
-<p class="p3">+&#8212;&#8212;&#8212;&#8212;&#8212;&#8211;+</p>
-<p class="p3">4.将SSH key添加到GitHub</p>
-<p class="p3">登录到GitHub页面，Account Settings-&gt;SSH Public Keys-&gt;Add another key</p>
-<p class="p3">将生成的key(id_rsa.pub文件）内容copy到输入框中，save。</p>
-<p class="p4"><img src="http://hi.csdn.net/attachment/201103/15/0_1300170843sWhI.gif" alt="" /></p>
-<p class="p3">5.测试链接</p>
-<p class="p6"><span class="s3">$ ssh <a href="mailto:git@github.com"><span class="s5">git@github.com</span></a></span></p>
-<p class="p3">The authenticity of host &#8217;<a href="http://github.com/"><span class="s5">github.com</span></a> (207.97.227.239)&#8217; can&#8217;t be established.</p>
-<p class="p3">RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.</p>
-<p class="p3">Are you sure you want to continue connecting (yes/no)? yes</p>
-<p class="p4">&nbsp;</p>
-<p class="p3">PTY allocation request failed on channel 0</p>
-<p class="p3">Hi jiang-bo! You&#8217;ve successfully authenticated, but GitHub does not provide shell access.</p>
-<p class="p3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connection to <a href="http://github.com/"><span class="s5">github.com</span></a> closed.</p>
-<p class="p3">别担心，这是正常情况。</p>
-<p class="p5"><strong>三、设置个人信息</strong></p>
-<p class="p3">$ git config &#8211;global <a href="http://user.name/"><span class="s5">user.name</span></a> &#8220;Bo Jiang&#8221;</p>
-<p class="p3">$ git config &#8211;global user.email &#8220;jiang.bo.hit@gmail.com&#8221;</p>
-<p class="p3">&nbsp;</p>
-<p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/15/">&larr; Older</a>
@@ -427,6 +498,10 @@ http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -440,10 +515,6 @@ http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -482,7 +553,7 @@ http://www.lullabot.com/articles/setup-memcached-mamp-sandbox-environment</p>
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

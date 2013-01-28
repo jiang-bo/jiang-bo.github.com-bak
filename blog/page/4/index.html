@@ -9,10 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="NameNode和DataNode间的通信分为四种场景： 初始时DataNode注册：
-周期性心跳检测：
-周期性blockreport：
-完成一个副本的写入： 一、初始时DataNode注册 DataNode在启动时会向NameNode注册， &hellip;">
+  <meta name="description" content="概述 SecondaryNameNode在HDFS中的主要作用是帮助master NameNode周期性执行checkpoint操作。 NameNode将运行过程中对文件的修改记录保存在EditLog中。当NameNode重新启动时会从FSImage中加载命名空间镜像， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -79,6 +76,395 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-secondary-namenode/">HDFS源码学习（11）——SecondaryNameNode</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:55:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-secondary-namenode/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>概述</h2>
+
+<p>SecondaryNameNode在HDFS中的主要作用是帮助master NameNode周期性执行checkpoint操作。</p>
+
+<p>NameNode将运行过程中对文件的修改记录保存在EditLog中。当NameNode重新启动时会从FSImage中加载命名空间镜像，并将EditLog中的内容合并到FSImage中，将合并后的FSImage写入到磁盘，同时清空EditLog，共后续使用。但如果NameNode长时间不重启，随时间增长，EditLog将会越来越大（每次文件操作都要记录），大量占用NameNode磁盘空间，且会导致下一次重启花费大量时间在合并Editlog上。</p>
+
+<p>为了解决这个问题，SecondaryNameNode会定期从NameNode下载最新的FSImage和EditLog，合并editLog日志到FSImage，将合并后的FSImage上传到NameNode，并清空NameNode上的Editlog，将EditLog日志大小控制在一定限度下。</p>
+
+<h2>代码解析</h2>
+
+<p>SecondaryNameNode代码结构如下：</p>
+
+<p><img src="/images/hdfs/SecondaryNameNode.png" alt="SecondaryNameNode" /></p>
+
+<p>SecondaryNameNode本身就是实现了Runnable接口，即一个可执行线程。</p>
+
+<p>checkpointImage表示当前SecondNameNode上的FsImage镜像，该类CheckpointStorage扩展自FSImage。</p>
+
+<p>其中有两个主要的可配置属性：</p>
+
+<ol>
+<li>checkpointPeriod: 两次检查点的间隔时间，可通过fs.checkpoint.period配置</li>
+<li>checkpointSize: EditLog文件的最大值，当EditLog超过这个最大值时会强制之行checkpoint，可通过fs.checkpoint.size配置，默认是64M</li>
+</ol>
+
+
+<h3>run()</h3>
+
+<p>run方法代码如下：</p>
+
+<pre><code>  public void run() {
+
+    //
+    // Poll the Namenode (once every 5 minutes) to find the size of the
+    // pending edit log.
+    //
+    long period = 5 * 60;              // 5 minutes
+    long lastCheckpointTime = 0;
+    if (checkpointPeriod &lt; period) {
+      period = checkpointPeriod;
+    }
+
+    while (shouldRun) {
+      try {
+        Thread.sleep(1000 * period);
+      } catch (InterruptedException ie) {
+        // do nothing
+      }
+      if (!shouldRun) {
+        break;
+      }
+      try {
+        long now = System.currentTimeMillis();
+
+        long size = namenode.getEditLogSize();
+        if (size &gt;= checkpointSize || 
+            now &gt;= lastCheckpointTime + 1000 * checkpointPeriod) {
+          doCheckpoint();
+          lastCheckpointTime = now;
+        }
+      } catch (IOException e) {
+        LOG.error("Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+      } catch (Throwable e) {
+        LOG.error("Throwable Exception in doCheckpoint: ");
+        LOG.error(StringUtils.stringifyException(e));
+        e.printStackTrace();
+        Runtime.getRuntime().exit(-1);
+      }
+    }
+  }
+</code></pre>
+
+<p>其核心就是周期性（默认每个5分钟)调用doCheckpoint().</p>
+
+<h3>doCheckpoint()</h3>
+
+<pre><code>  void doCheckpoint() throws IOException {
+
+    // 准备合并所需的空间
+    startCheckpoint();
+
+    // 通知NameNode将修改信息记录到新的editlog中，并获取一个用于上传合并后的fsimage的token
+    CheckpointSignature sig = (CheckpointSignature)namenode.rollEditLog();
+
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(0)) {
+      throw new IOException("Simulating error0 " +
+                            "after creating edits.new");
+    }
+    //从NameNode获取fsimage和editslog
+    downloadCheckpointFiles(sig);   // Fetch fsimage and edits
+    //合并editlog到fsimage
+    doMerge(sig);                   // Do the merge
+
+    //上传合并后的fsimage到NameNode
+    putFSImage(sig);
+
+    // error simulation code for junit test
+    if (ErrorSimulator.getErrorSimulation(1)) {
+      throw new IOException("Simulating error1 " +
+                            "after uploading new image to NameNode");
+    }
+    // 通知NameNode使用该fsimage作为最新的镜像
+    namenode.rollFsImage();
+    checkpointImage.endCheckpoint();
+
+    LOG.warn("Checkpoint done. New Image Size: " 
+              + checkpointImage.getFsImageName().length());
+  }
+</code></pre>
+
+<h4>1. startCheckpoint()</h4>
+
+<p>该方法主要用于准备合并所需的磁盘空间，代码如下：</p>
+
+<pre><code>  private void startCheckpoint() throws IOException {
+    checkpointImage.unlockAll();
+    // 关闭当前Editlog
+    checkpointImage.getEditLog().close();
+    // 检查当前checkpoints目录，如果不存在则创建一个新目录，如果目录中存在异常，则尝试恢复该目录
+    checkpointImage.recoverCreate(checkpointDirs, checkpointEditsDirs);
+    // 为新的checkpoint准备目录空间，将当前的目录空间更名为lastcheckpoint.™p，新建一个current目录 
+    checkpointImage.startCheckpoint();
+  }
+</code></pre>
+
+<h4>2. namenode.rollEditLog();</h4>
+
+<p>namenode.rollEditLog()实际通过NameNodeProtocol调用NameNode.rollEditLog()方法，并最终调用FSImage.rollEditLog()，该方法主要完成：</p>
+
+<ol>
+<li>调用FSEditLog.rollEditLog()关闭当前editLog，新建一个editLog：edits.new</li>
+<li>返回一个CheckpointSignature做为上传合并后镜像的token</li>
+</ol>
+
+
+<h5>2.1. FSEditLog.rollEditLog()</h5>
+
+<p>该方法主要完成：</p>
+
+<ol>
+<li>关闭当前editlog， 打开一个新的editlog： edit.new</li>
+<li>返回editlog的最新更新时间</li>
+</ol>
+
+
+<p>代码结构如下</p>
+
+<pre><code>  synchronized void rollEditLog() throws IOException {
+    //检查edit.new是否已经存在，如果存在，检查是否所有目录都存在，如果是则认为edits.new已经建好了，直接返回
+    //
+    if (existsNew()) {
+      for (Iterator&lt;StorageDirectory&gt; it = 
+               fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+        File editsNew = getEditNewFile(it.next());
+     if (!editsNew.exists()) { 
+          throw new IOException("Inconsistent existance of edits.new " +
+                                editsNew);
+        }
+      }
+      return; // nothing to do, edits.new exists!
+    }
+
+    //关闭当前的editLog
+    close();                     // close existing edit log
+
+    //
+    // 新建一个editLog： edits.new
+    //
+    for (Iterator&lt;StorageDirectory&gt; it = 
+           fsimage.dirIterator(NameNodeDirType.EDITS); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      try {
+        EditLogFileOutputStream eStream = 
+             new EditLogFileOutputStream(getEditNewFile(sd));
+        eStream.create();
+        editStreams.add(eStream);
+      } catch (IOException e) {
+        // remove stream and this storage directory from list
+        processIOError(sd);
+       it.remove();
+      }
+    }
+  }
+</code></pre>
+
+<h4>3. downloadCheckpointFiles()</h4>
+
+<p>该方法用于从NameNode下载FSImage和FSEditLog，代码结构如下：</p>
+
+<pre><code>  private void downloadCheckpointFiles(CheckpointSignature sig
+                                      ) throws IOException {
+
+    checkpointImage.cTime = sig.cTime;
+    checkpointImage.checkpointTime = sig.checkpointTime;
+
+    // 获取fsimage
+    String fileid = "getimage=1";
+    File[] srcNames = checkpointImage.getImageFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+             srcNames[0].length() + " bytes.");
+
+    // 获取editlog
+    fileid = "getedit=1";
+    srcNames = checkpointImage.getEditsFiles();
+    assert srcNames.length &gt; 0 : "No checkpoint targets.";
+    TransferFsImage.getFileClient(fsName, fileid, srcNames);
+    LOG.info("Downloaded file " + srcNames[0].getName() + " size " +
+        srcNames[0].length() + " bytes.");
+
+    // 标示checkpoint所需文件已经准备完成
+    checkpointImage.checkpointUploadDone();
+  }
+</code></pre>
+
+<h4>4. doMerge()</h4>
+
+<p>doMerge主要完成editLog与fsimage的合并，实际调用的checkpointImage.doMerge(sig);</p>
+
+<pre><code>private void doMerge(CheckpointSignature sig) throws IOException {
+  getEditLog().open();
+  StorageDirectory sdName = null;
+  StorageDirectory sdEdits = null;
+  Iterator&lt;StorageDirectory&gt; it = null;
+  it = dirIterator(NameNodeDirType.IMAGE);
+  if (it.hasNext())
+    sdName = it.next();
+  it = dirIterator(NameNodeDirType.EDITS);
+  if (it.hasNext())
+    sdEdits = it.next();
+  if ((sdName == null) || (sdEdits == null))
+    throw new IOException("Could not locate checkpoint directories");
+  // 加载fsimage
+  loadFSImage(FSImage.getImageFile(sdName, NameNodeFile.IMAGE));
+  // 加载editlog，并合并到fsimage
+
+  loadFSEdits(sdEdits);
+  // 校验新fsimage的一致性，主要包括版本，更新时间，namespaceId
+  sig.validateStorageInfo(this);
+  // 将fsImage存储到本地，并创建新edits
+  saveFSImage();
+}
+</code></pre>
+
+<p>该方法与NameNode启动时类似:</p>
+
+<ol>
+<li>加载fsiamge</li>
+<li>加载editslog，并作用到fsimage中</li>
+<li>校验合并后的fsimage</li>
+<li>将新fsimage存储到本地，并新建空的edit是目录</li>
+</ol>
+
+
+<h4>5. putFSImage(sig);</h4>
+
+<p>该方法比较简单，主要通过TransferFsImage工具类将合并后的fsimage上传到NameNode</p>
+
+<pre><code>  private void putFSImage(CheckpointSignature sig) throws IOException {
+    String fileid = "putimage=1&amp;port=" + infoPort +
+      "&amp;machine=" +
+      InetAddress.getLocalHost().getHostAddress() +
+      "&amp;token=" + sig.toString();
+    LOG.info("Posted URL " + fsName + fileid);
+    TransferFsImage.getFileClient(fsName, fileid, (File[])null);
+  }
+</code></pre>
+
+<h4>6. namenode.rollFsImage();</h4>
+
+<p>上传完新fsiamge之后，SecondaryNameNode通过namenode.rollFsImage()通知NameNode使用新的fsimage.ckpt作为最新镜像，并清空editslog。该请求最终由NameNode上的FsImage.rollFsImage()处理，代码如下：</p>
+
+<pre><code> void rollFSImage() throws IOException {
+    if (ckptState != CheckpointStates.UPLOAD_DONE) {
+      throw new IOException("Cannot roll fsImage before rolling edits log.");
+    }
+    //
+    // 校验fsimage.ckpt和edits.new是否存在于所有目录
+    if (!editLog.existsNew()) {
+      throw new IOException("New Edits file does not exist");
+    }
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      if (!ckpt.exists()) {
+        throw new IOException("Checkpoint file " + ckpt +
+                              " does not exist");
+      }
+    }
+    //删除旧的edits，并将edits.new重命名为edits
+    editLog.purgeEditLog(); // renamed edits.new to edits
+
+    //
+    // 重命名fsimage
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                       dirIterator(NameNodeDirType.IMAGE); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      File ckpt = getImageFile(sd, NameNodeFile.IMAGE_NEW);
+      File curFile = getImageFile(sd, NameNodeFile.IMAGE);
+      // renameTo fails on Windows if the destination file 
+      // already exists.
+      if (!ckpt.renameTo(curFile)) {
+        curFile.delete();
+        if (!ckpt.renameTo(curFile)) {
+          // Close edit stream, if this directory is also used for edits
+          if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+            editLog.processIOError(sd);
+        // add storage to the removed list
+          removedStorageDirs.add(sd);
+          it.remove();
+        }
+      }
+    }
+
+    //
+    // 更新所有目录的fstime
+    //
+    this.layoutVersion = FSConstants.LAYOUT_VERSION;
+    this.checkpointTime = FSNamesystem.now();
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                           dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      // delete old edits if sd is the image only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
+        File editsFile = getImageFile(sd, NameNodeFile.EDITS);
+        editsFile.delete();
+      }
+      // delete old fsimage if sd is the edits only the directory
+      if (!sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
+        File imageFile = getImageFile(sd, NameNodeFile.IMAGE);
+        imageFile.delete();
+      }
+      try {
+        sd.write();
+      } catch (IOException e) {
+        LOG.error("Cannot write file " + sd.getRoot(), e);
+        // Close edit stream, if this directory is also used for edits
+        if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS))
+          editLog.processIOError(sd);
+      //add storage to the removed list
+        removedStorageDirs.add(sd);
+        it.remove();
+      }
+    }
+    ckptState = FSImage.CheckpointStates.START;
+  }
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -327,328 +713,6 @@ boolean needEnter() {
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-backup-mode/">HDFS源码学习（8）——Backup Mode</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:51:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-backup-mode/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>元数据的持久化</h2>
-
-<p>HDFS通过主要通过FSImage和FSEditLog来完成文件元数据的持久化。对文件系统的任何修改，NameNode都会通过Editlog记录下来，持久化到本地。同时整个系统的命名空间，所有的文件元信息均保存在FSImage中，包括block->File的映射，文件的属性等等。NameNode启动时会从本地磁盘加载FSImage和FSEditLog，并将EditLog中的日志信息合并到FSImage中进行之持久化（该合并过程称为一个检查点：checkpoint），并构建文件系统的元信息。</p>
-
-<p>但是持久化的数据中不包括block<->datanode的映射信息，该信息由每个datanode向NameNode发起blockReport()请求时报告其所拥有的block信息。</p>
-
-<h3>Editlog记录修改日志</h3>
-
-<p>EditLog的持久化文件是一个二进制文件，大体结构如下：</p>
-
-<p><img src="/images/hdfs/EditLogFile.png" alt="EditLogFile" /></p>
-
-<p>EditLog文件开始是一个日志版本号，0.19版本的hdfs中该version为-18。
-随后是每一条操作的事务日志，每条日志的起始为一个操作类型位，随后是该操作的详细信息，不同的操作类型所带的详细信息也不同。加载EditLog是根据layoutVersion和edit_op位采取不同的方式解析后面的详细信息。
-EditLog能够记录如下17中操作：</p>
-
-<p><img src="/images/hdfs/EditLogOp.png" alt="EditLogOp" /></p>
-
-<p>EditLog为每种操作都提供了相应的log方法，当系统中发生文件修改时，会调用相应的log方法记录日志</p>
-
-<h2>元数据加载与恢复</h2>
-
-<p>NameNode启动过程中最终会通过FSImage.loadFSImage()来从fsimage目录中加载最新的fsimage镜像和editslog，并合并构建命名空间。
-代码结构如下：</p>
-
-<pre><code>  boolean loadFSImage() throws IOException {
-    // 根据checkpointtime查找最新的fsimage
-    long latestNameCheckpointTime = Long.MIN_VALUE;
-    long latestEditsCheckpointTime = Long.MIN_VALUE;
-    StorageDirectory latestNameSD = null;
-    StorageDirectory latestEditsSD = null;
-    boolean needToSave = false;
-    isUpgradeFinalized = true;
-    Collection&lt;String&gt; imageDirs = new ArrayList&lt;String&gt;();
-    Collection&lt;String&gt; editsDirs = new ArrayList&lt;String&gt;();
-    for (Iterator&lt;StorageDirectory&gt; it = dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      if (!sd.getVersionFile().exists()) {
-        needToSave |= true;
-        continue; // some of them might have just been formatted
-      }
-      boolean imageExists = false, editsExists = false;
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE)) {
-        imageExists = getImageFile(sd, NameNodeFile.IMAGE).exists();
-        imageDirs.add(sd.getRoot().getCanonicalPath());
-      }
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS)) {
-        editsExists = getImageFile(sd, NameNodeFile.EDITS).exists();
-        editsDirs.add(sd.getRoot().getCanonicalPath());
-      }
-
-      checkpointTime = readCheckpointTime(sd);
-      if ((checkpointTime != Long.MIN_VALUE) &amp;&amp; 
-          ((checkpointTime != latestNameCheckpointTime) || 
-           (checkpointTime != latestEditsCheckpointTime))) {
-        // Force saving of new image if checkpoint time
-        // is not same in all of the storage directories.
-        needToSave |= true;
-      }
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.IMAGE) &amp;&amp; 
-         (latestNameCheckpointTime &lt; checkpointTime) &amp;&amp; imageExists) {
-        latestNameCheckpointTime = checkpointTime;
-        latestNameSD = sd;
-      }
-      if (sd.getStorageDirType().isOfType(NameNodeDirType.EDITS) &amp;&amp; 
-           (latestEditsCheckpointTime &lt; checkpointTime) &amp;&amp; editsExists) {
-        latestEditsCheckpointTime = checkpointTime;
-        latestEditsSD = sd;
-      }
-      if (checkpointTime &lt;= 0L)
-        needToSave |= true;
-      // set finalized flag
-      isUpgradeFinalized = isUpgradeFinalized &amp;&amp; !sd.getPreviousDir().exists();
-    }
-
-    // 确保至少有一个fsimage和一个edits目录
-    if (latestNameSD == null)
-      throw new IOException("Image file is not found in " + imageDirs);
-    if (latestEditsSD == null)
-      throw new IOException("Edits file is not found in " + editsDirs);
-
-    // 确保获得的fsimage和edits是同一个检查点
-    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime
-        &amp;&amp; latestNameSD != latestEditsSD
-        &amp;&amp; latestNameSD.getStorageDirType() == NameNodeDirType.IMAGE
-        &amp;&amp; latestEditsSD.getStorageDirType() == NameNodeDirType.EDITS) {
-      // This is a rare failure when NN has image-only and edits-only
-      // storage directories, and fails right after saving images,
-      // in some of the storage directories, but before purging edits.
-      // See -NOTE- in saveNamespace().
-      LOG.error("This is a rare failure scenario!!!");
-      LOG.error("Image checkpoint time " + latestNameCheckpointTime +
-          " &gt; edits checkpoint time " + latestEditsCheckpointTime);
-      LOG.error("Name-node will treat the image as the latest state of " +
-          "the namespace. Old edits will be discarded.");
-    } else if (latestNameCheckpointTime != latestEditsCheckpointTime)
-      throw new IOException("Inconsitent storage detected, " +
-          "image and edits checkpoint times do not match. " +
-          "image checkpoint time = " + latestNameCheckpointTime +
-          "edits checkpoint time = " + latestEditsCheckpointTime);
-
-    // 如果上次检查点中断了，则恢复该检查点
-    needToSave |= recoverInterruptedCheckpoint(latestNameSD, latestEditsSD);
-
-    long startTime = FSNamesystem.now();
-    long imageSize = getImageFile(latestNameSD, NameNodeFile.IMAGE).length();
-
-    //
-    // 加载fsimage文件
-    //
-    latestNameSD.read();
-    needToSave |= loadFSImage(getImageFile(latestNameSD, NameNodeFile.IMAGE));
-    LOG.info("Image file of size " + imageSize + " loaded in " 
-        + (FSNamesystem.now() - startTime)/1000 + " seconds.");
-
-    // 加载最新的edits并作用于fsimage上
-    if (latestNameCheckpointTime &gt; latestEditsCheckpointTime)
-      // the image is already current, discard edits
-      needToSave |= true;
-    else // latestNameCheckpointTime == latestEditsCheckpointTime
-      needToSave |= (loadFSEdits(latestEditsSD) &gt; 0);
-
-    return needToSave;
-  }
-</code></pre>
-
-<p>其中FSImage.loadFSImage(File curFile) 代码如下：</p>
-
-<pre><code>  boolean loadFSImage(File curFile) throws IOException {
-    assert this.getLayoutVersion() &lt; 0 : "Negative layout version is expected.";
-    assert curFile != null : "curFile is null";
-
-    FSNamesystem fsNamesys = FSNamesystem.getFSNamesystem();
-    FSDirectory fsDir = fsNamesys.dir;
-
-    //
-    // Load in bits
-    //
-    boolean needToSave = true;
-    DataInputStream in = new DataInputStream(new BufferedInputStream(
-                              new FileInputStream(curFile)));
-    try {
-      /*
-       * Note: Remove any checks for version earlier than 
-       * Storage.LAST_UPGRADABLE_LAYOUT_VERSION since we should never get 
-       * to here with older images.
-       */
-
-      /*
-       * TODO we need to change format of the image file
-       * it should not contain version and namespace fields
-       */
-      // 读取imageversion
-      int imgVersion = in.readInt();
-      // 读取namespaceid
-      this.namespaceID = in.readInt();
-
-      // 读取镜像中的文件数
-      long numFiles;
-      if (imgVersion &lt;= -16) {
-        numFiles = in.readLong();
-      } else {
-        numFiles = in.readInt();
-      }
-
-      this.layoutVersion = imgVersion;
-      // 读取镜像时间戳
-      if (imgVersion &lt;= -12) {
-        long genstamp = in.readLong();
-        fsNamesys.setGenerationStamp(genstamp); 
-      }
-
-      needToSave = (imgVersion != FSConstants.LAYOUT_VERSION);
-
-      // 读取每个文件的信息
-      short replication = FSNamesystem.getFSNamesystem().getDefaultReplication();
-
-      LOG.info("Number of files = " + numFiles);
-
-      byte[][] pathComponents;
-      byte[][] parentPath = ;
-      INodeDirectory parentINode = fsDir.rootDir;
-      for (long i = 0; i &lt; numFiles; i++) {
-        long modificationTime = 0;
-        long atime = 0;
-        long blockSize = 0;
-        //读取文件名(path)
-        pathComponents = readPathComponents(in);
-        //读取副本数
-        replication = in.readShort();
-        //调整副本数，使其不超过系统的最大和最小副本数限制
-        replication = FSEditLog.adjustReplication(replication);
-        //读取文件修改时间
-        modificationTime = in.readLong();
-        if (imgVersion &lt;= -17) {
-        //读取最近访问时间
-          atime = in.readLong();
-        }
-        if (imgVersion &lt;= -8) {
-        //读取block块大小
-          blockSize = in.readLong();
-        }
-        //读取block数
-        int numBlocks = in.readInt();
-        //构建blocks
-        Block blocks[] = null;
-
-        // 老版本hdfs中，numBlocks=0表示目录，新版本中numBlocks=-1表示目录
-        if ((-9 &lt;= imgVersion &amp;&amp; numBlocks &gt; 0) ||
-            (imgVersion &lt; -9 &amp;&amp; numBlocks &gt;= 0)) {
-           //构建文件block信息
-          blocks = new Block[numBlocks];
-          for (int j = 0; j &lt; numBlocks; j++) {
-            blocks[j] = new Block();
-            if (-14 &lt; imgVersion) {
-              blocks[j].set(in.readLong(), in.readLong(), 
-                            Block.GRANDFATHER_GENERATION_STAMP);
-            } else {
-              // 读取block信息
-              blocks[j].readFields(in);
-            }
-          }
-        }
-        // 老版本inode中不维护blocksize，如果存在多个block，blocksize选取第一个block的大小，如果只有一个block，则选该block大小和默认大小中较大的，如果没有block，则选用默认大小
-        if (-8 &lt;= imgVersion &amp;&amp; blockSize == 0) {
-          if (numBlocks &gt; 1) {
-            blockSize = blocks[0].getNumBytes();
-          } else {
-            long first = ((numBlocks == 1) ? blocks[0].getNumBytes(): 0);
-            blockSize = Math.max(fsNamesys.getDefaultBlockSize(), first);
-          }
-        }
-
-        // 如果是目录（blocks=null），读取该目录的配额
-        long nsQuota = -1L;
-        if (imgVersion &lt;= -16 &amp;&amp; blocks == null) {
-          nsQuota = in.readLong();
-        }
-        long dsQuota = -1L;
-        if (imgVersion &lt;= -18 &amp;&amp; blocks == null) {
-          dsQuota = in.readLong();
-        }
-
-        //获取权限信息
-        PermissionStatus permissions = fsNamesys.getUpgradePermission();
-        if (imgVersion &lt;= -11) {
-          permissions = PermissionStatus.read(in);
-        }
-
-        //如果该path为root，且设置了配额信息，则更新根目录的配额
-        if (isRoot(pathComponents)) { // it is the root
-          // update the root's attributes
-          if (nsQuota != -1 || dsQuota != -1) {
-            fsDir.rootDir.setQuota(nsQuota, dsQuota);
-          }
-          fsDir.rootDir.setModificationTime(modificationTime);
-          fsDir.rootDir.setPermissionStatus(permissions);
-          continue;
-        }
-        //如果该inode的parent与当前路径不一至，获取新的parentPaht
-        if(!isParent(pathComponents, parentPath)) {
-          parentINode = null;
-          parentPath = getParent(pathComponents);
-        }
-        // 将该inode添加到inode树中
-        parentINode = fsDir.addToParent(pathComponents, parentINode, permissions,
-                                        blocks, replication, modificationTime, 
-                                        atime, nsQuota, dsQuota, blockSize);
-      }
-
-      // 加载datanode信息，imgVersion&lt;-12的版本事实上啥都不做，datanode信息已经不保存在fsimage中
-      this.loadDatanodes(imgVersion, in);
-
-      // 加载正在构建中的文件
-      this.loadFilesUnderConstruction(imgVersion, in, fsNamesys);
-
-    } finally {
-      in.close();
-    }
-
-    return needToSave;
-  }
-</code></pre>
-
-<p>其核心就是加载并解析fsimage文件，构建命名空间，fsimage文件的结构参见《NameNode中主要数据结构》</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/5/">&larr; Older</a>
@@ -681,6 +745,10 @@ EditLog能够记录如下17中操作：</p>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -694,10 +762,6 @@ EditLog能够记录如下17中操作：</p>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -736,7 +800,7 @@ EditLog能够记录如下17中操作：</p>
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

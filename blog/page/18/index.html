@@ -9,9 +9,11 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="泡论坛时发现的小问题，自己做了下，记录如下：
-问题：如何查询服务器的外网IP并发送到指定邮箱？
-解决办法： 1 #!/bin/sh 2 3 4 ip=`curl -s 'http://checkip.dyndns.org' | sed 's/.*Current IP Address: /([0- &hellip;">
+  <meta name="description" content="经常会遇到需要批量重命名文件的情况，用鼠标太夸张了，简单总结两种比较简单的方法：
+问题：
+存在大量html文件，需要重命名为htm文件
+1.rename
+通常重命名的命令是mv，Larry Wall写的rename具有更强大的功能。能够用perl的正则语法结构进行文件重命名。NAME rename &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +80,76 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2010/06/28/post/">Linux批量重命名方法</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2010-06-28T00:00:00+08:00" pubdate data-updated="true">Jun 28<span>th</span>, 2010</time>
+        
+         | <a href="/blog/2010/06/28/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>经常会遇到需要批量重命名文件的情况，用鼠标太夸张了，简单总结两种比较简单的方法：</p>
+<p>问题：</p>
+<p>存在大量html文件，需要重命名为htm文件</p>
+<p>1.rename</p>
+<p>通常重命名的命令是mv，Larry Wall写的rename具有更强大的功能。能够用perl的正则语法结构进行文件重命名。<pre class="brush: css:nogutter">NAME
+       rename - renames multiple files
+SYNOPSIS
+       rename [ -v ] [ -n ] [ -f ] perlexpr [ files ]
+DESCRIPTION
+       &quot;rename&quot; renames the filenames supplied according to the rule specified
+       as the first argument.  The perlexpr argument is a Perl expression
+       which is expected to modify the $_ string in Perl for at least some of
+       the filenames specified.  If a given filename is not modified by the
+       expression, it will not be renamed.  If no filenames are given on the
+       command line, filenames will be read via standard input.
+       For example, to rename all files matching &quot;*.bak&quot; to strip the
+       extension, you might say
+               rename 's//.bak$//' *.bak
+       To translate uppercase names to lower, you'd use
+               rename 'y/A-Z/a-z/' *&nbsp;</pre>
+</p>
+<p>上面是rename的man手册，针对上面重命名html文件的问题，解决如下：</p>
+<p>rename &#8216;s/.html$/.htm/&#8217; *.html</p>
+<p>简单来说就是重命名所有html文件（*.html），将文件名结尾处.html替换为.htm(&#8217;s/.html$/.htm/&#8217;)，其实更简单的表达式可以为&#8217;s/l$//&#8217;</p>
+<p>2.printf</p>
+<p>使用shell命令中的prinf打印出需要的文件名，然后在使用mv重命名</p>
+<p>for i in *.html</p>
+<p>do</p>
+<p>newname=&quot;`printf &quot;%s&quot; ${i/html}`&quot;htm</p>
+<p>mv $i $newname</p>
+<p>done</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -184,48 +256,6 @@ sudo apt-get install sendmail</pre>
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2010/04/07/post/">Error: No &#39;server&#39; JVM at &#39;C:/Program Files/Java/jre6/bin/server/jvm.dll&#39;</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2010-04-07T00:00:00+08:00" pubdate data-updated="true">Apr 7<span>th</span>, 2010</time>
-        
-         | <a href="/blog/2010/04/07/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>今天第一次使用JBoss，解压运行时出现了如下错误：</p>
-<p>Error: no &#8216;server&#8217; JVM at &#8216;C:/Program Files/Java/jre6/bin/server/jvm.dll&#8217;</p>
-<p>原因是JAVA_HOME设置的不对</p>
-<p>临时解决办法是重新设置下JAVA_HOME，set JAVA_HOME=&#8221;C:/Program Files/Java/jdk1.6.0_19&#8221;就行了，最好是在环境变量里添加一个。</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/19/">&larr; Older</a>
@@ -258,6 +288,10 @@ sudo apt-get install sendmail</pre>
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -271,10 +305,6 @@ sudo apt-get install sendmail</pre>
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -313,7 +343,7 @@ sudo apt-get install sendmail</pre>
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

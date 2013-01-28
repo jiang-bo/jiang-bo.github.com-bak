@@ -9,11 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="&nbsp;
-一、Basic FAQ：
-1. What are Java Generics?
-&nbsp;&nbsp; &nbsp; Java泛型是什么？
-&nbsp;&nbsp; &nbsp; Java Generics ara language feature that allows for &hellip;">
+  <meta name="description" content="一、安装Git
+由于mac git的地址http://code.google.com/p/git-osx-installer/被墙，被迫使用源码安装，源码可以从http://kernel.org/pub/software/scm/git/下载，编译源码需要先安装xcode，参考http:// &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -80,6 +77,103 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2011/03/15/post/">Mac OSX安装Git</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2011-03-15T00:00:00+08:00" pubdate data-updated="true">Mar 15<span>th</span>, 2011</time>
+        
+         | <a href="/blog/2011/03/15/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p><strong>一、安装Git</strong></p>
+<p class="p2"><span class="s1">由于mac git的地址<a href="http://code.google.com/p/git-osx-installer/"><span class="s2">http://code.google.com/p/git-osx-installer/</span></a>被墙，被迫使用源码安装，源码可以从<a href="http://kernel.org/pub/software/scm/git/"><span class="s2">http://kernel.org/pub/software/scm/git/</span></a></span><span class="s3">下载，编译源码需要先安装xcode，参考<a href="http://developer.apple.com/"><span class="s4">http://developer.apple.com</span></a>。</span></p>
+<p class="p3">编译安装</p>
+<p class="p3">1.解压</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;tar xjvf git-1.7.4.1.tar.tar.bz2</p>
+<p class="p3">2. 编译</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;cd git-1.7.4.1</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;./configure &#8211;prefix=/usr/local</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;make</p>
+<p class="p3">3.安装</p>
+<p class="p3">&nbsp;&nbsp; &nbsp;&nbsp;sudo make install</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">Ok 了，which git试一下～</p>
+<p class="p5"><strong>二、设置SSH</strong></p>
+<p class="p3">github使用SSH链接，需要设置SSH</p>
+<p class="p3">1.检查SSH key</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; cd ~/.ssh</p>
+<p class="p3">2.备份已有的key，（如果有的话）</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mkdir key_backup</p>
+<p class="p3">&nbsp;&nbsp; &nbsp; mv id_rsa* key_backup</p>
+<p class="p3">3.生成SSH key</p>
+<p class="p3">$ ssh-keygen -t rsa -C <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">Generating public/private rsa key pair.</p>
+<p class="p3">Enter file in which to save the key (/Users/jiangbo/.ssh/id_rsa):&nbsp;</p>
+<p class="p3">Enter passphrase (empty for no passphrase):</p>
+<p class="p3">Enter same passphrase again:</p>
+<p class="p3">Your identification has been saved in yes.</p>
+<p class="p3">Your public key has been saved in id_rsa.pub.</p>
+<p class="p3">The key fingerprint is:</p>
+<p class="p3">fb:c4:b0:e0:47:fd:be:e0:fb:ea:73:ef:a8:29:d5:22 <a href="mailto:jiang.bo.hit@gmail.com"><span class="s5">jiang.bo.hit@gmail.com</span></a></p>
+<p class="p3">The key&#8217;s randomart image is:</p>
+<p class="p3">+&#8211;[ RSA 2048]&#8212;-+</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . S ..&nbsp;&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp; . oE=o..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; . +o+..&nbsp;&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ..+.+..&nbsp;&nbsp; |</p>
+<p class="p3">|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; oOB=+o&nbsp; |</p>
+<p class="p3">+&#8212;&#8212;&#8212;&#8212;&#8212;&#8211;+</p>
+<p class="p3">4.将SSH key添加到GitHub</p>
+<p class="p3">登录到GitHub页面，Account Settings-&gt;SSH Public Keys-&gt;Add another key</p>
+<p class="p3">将生成的key(id_rsa.pub文件）内容copy到输入框中，save。</p>
+<p class="p4"><img src="http://hi.csdn.net/attachment/201103/15/0_1300170843sWhI.gif" alt="" /></p>
+<p class="p3">5.测试链接</p>
+<p class="p6"><span class="s3">$ ssh <a href="mailto:git@github.com"><span class="s5">git@github.com</span></a></span></p>
+<p class="p3">The authenticity of host &#8217;<a href="http://github.com/"><span class="s5">github.com</span></a> (207.97.227.239)&#8217; can&#8217;t be established.</p>
+<p class="p3">RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.</p>
+<p class="p3">Are you sure you want to continue connecting (yes/no)? yes</p>
+<p class="p4">&nbsp;</p>
+<p class="p3">PTY allocation request failed on channel 0</p>
+<p class="p3">Hi jiang-bo! You&#8217;ve successfully authenticated, but GitHub does not provide shell access.</p>
+<p class="p3">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Connection to <a href="http://github.com/"><span class="s5">github.com</span></a> closed.</p>
+<p class="p3">别担心，这是正常情况。</p>
+<p class="p5"><strong>三、设置个人信息</strong></p>
+<p class="p3">$ git config &#8211;global <a href="http://user.name/"><span class="s5">user.name</span></a> &#8220;Bo Jiang&#8221;</p>
+<p class="p3">$ git config &#8211;global user.email &#8220;jiang.bo.hit@gmail.com&#8221;</p>
+<p class="p3">&nbsp;</p>
+<p>&nbsp;</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -372,59 +466,6 @@ class GT&lt;T&gt;{
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2011/01/17/post/">Zero-Copy&amp;sendfile浅析</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2011-01-17T00:00:00+08:00" pubdate data-updated="true">Jan 17<span>th</span>, 2011</time>
-        
-         | <a href="/blog/2011/01/17/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p><strong>一、典型<span lang="EN-US">IO</span>调用的问题</strong><span lang="EN-US"><br /></span>一个典型的<span lang="EN-US">web</span>服务器传送静态文件（如<span lang="EN-US">CSS</span>，<span lang="EN-US">JS</span>，图片等）的过程如下：<span lang="EN-US"><br /><em><br />read(file, tmp_buf, len);<br />write(socket, tmp_buf, len);</em><br /><br /></span>首先调用<span lang="EN-US">read</span>将文件从磁盘读取到<span lang="EN-US">tmp_buf</span>，然后调用<span lang="EN-US">write</span>将<span lang="EN-US">tmp_buf</span>写入到<span lang="EN-US">socket</span>，在这过程中会出现四次数据<span lang="EN-US"> copy</span>，过程如图<span lang="EN-US">1</span>所示</p>
-<p style="text-align: center;"><img src="http://hi.csdn.net/attachment/201101/17/0_12952361353NK2.gif" alt="" /></p>
-<p style="text-align: center;">图1</p>
-<p style="text-align: left;">&nbsp;</p>
-<p><span lang="EN-US">1</span><span>。当调用</span><span lang="EN-US">read</span><span>系统调用时，通过</span><span lang="EN-US">DMA</span><span>（</span><span lang="EN-US">Direct Memory Access</span><span>）将数据</span><span lang="EN-US">copy</span><span>到内核模式</span><span lang="EN-US"><br /></span><span lang="EN-US">2</span><span>。然后由</span><span lang="EN-US">CPU</span><span>控制将内核模式数据</span><span lang="EN-US">copy</span><span>到用户模式下的</span><span lang="EN-US"> buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">3</span><span>。</span><span lang="EN-US">read</span><span>调用完成后，</span><span lang="EN-US">write</span><span>调用首先将用户模式下</span><span lang="EN-US"> buffer</span><span>中的数据</span><span lang="EN-US">copy</span><span>到内核模式下的</span><span lang="EN-US">socket buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">4</span><span>。最后通过</span><span lang="EN-US">DMA copy</span><span>将内核模式下的</span><span lang="EN-US">socket buffer</span><span>中的数据</span><span lang="EN-US">copy</span><span>到网卡设备中传送。</span></p>
-<p><span><span>从上面的过程可以看出，数据白白从内核模式到用户模式走了一</span><span> </span><span>圈，浪费了两次</span><span lang="EN-US">copy</span><span>，而这两次</span><span lang="EN-US">copy</span><span>都是</span><span lang="EN-US">CPU copy</span><span>，即占用</span><span lang="EN-US">CPU</span><span>资源。</span></span></p>
-<p>&nbsp;</p>
-<p><strong><span lang="EN-US">二、Zero-Copy&amp;Sendfile()</span></strong><span lang="EN-US"><br /></span><span lang="EN-US">Linux 2.1</span><span>版本内核引入了</span><span lang="EN-US">sendfile</span><span>函数，用于将文件通过</span><span lang="EN-US">socket</span><span>传送。</span><span lang="EN-US"><br /></span><em><span lang="EN-US">sendfile(socket, file, len);</span></em><span lang="EN-US"><br /></span><span>该函数通过一次系统调用完成了文件的传送，减少了原来</span><span lang="EN-US"> read/write</span><span>方式的模式切换。此外更是减少了数据的</span><span lang="EN-US">copy</span><span>，</span><span lang="EN-US">sendfile</span><span>的详细过程图</span><span lang="EN-US">2</span><span>所示：</span></p>
-<p style="text-align: center;"><span><img src="http://hi.csdn.net/attachment/201101/17/0_1295236150Tf0Z.gif" alt="" /></span></p>
-<p style="text-align: center;"><span>图2</span></p>
-<p style="text-align: left;"><span><span>通过</span><span lang="EN-US">sendfile</span><span>传送文件只需要一次系统调用，当调用</span><span lang="EN-US"> sendfile</span><span>时：</span><span lang="EN-US"><br /></span><span lang="EN-US">1</span><span>。首先通过</span><span lang="EN-US">DMA copy</span><span>将数据从磁盘读取到</span><span lang="EN-US">kernel buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">2</span><span>。然后通过</span><span lang="EN-US">CPU copy</span><span>将数据从</span><span lang="EN-US">kernel buffer copy</span><span>到</span><span lang="EN-US">sokcet buffer</span><span>中</span><span lang="EN-US"><br /></span><span lang="EN-US">3</span><span>。最终通过</span><span lang="EN-US">DMA copy</span><span>将</span><span lang="EN-US">socket buffer</span><span>中数据</span><span lang="EN-US">copy</span><span>到网卡</span><span lang="EN-US">buffer</span><span>中发送</span><span lang="EN-US"><br /></span><span lang="EN-US">sendfile</span><span>与</span><span lang="EN-US">read/write</span><span>方式相比，少了</span><span> </span><span>一次模式切换一次</span><span lang="EN-US">CPU copy</span><span>。但是从上述过程中也可以发现从</span><span lang="EN-US">kernel buffer</span><span>中将数据</span><span lang="EN-US">copy</span><span>到</span><span lang="EN-US">socket buffer</span><span>是没必要的。</span></span></p>
-<p style="text-align: left;"><span><span><span>为此，</span><span lang="EN-US">Linux2.4</span><span>内核对</span><span lang="EN-US">sendfile</span><span>做了改进，如图</span><span lang="EN-US">3</span><span>所示</span></span></span></p>
-<p style="text-align: center;"><span><span><span><img src="http://hi.csdn.net/attachment/201101/17/0_1295236158Tr8t.gif" alt="" /></span></span></span></p>
-<p style="text-align: center;">图3</p>
-<p style="text-align: left;">改进后的处理过程如下：<span lang="EN-US"><br />1</span>。<span lang="EN-US">DMA copy</span>将磁盘数据<span lang="EN-US">copy</span>到<span lang="EN-US">kernel buffer</span>中<span lang="EN-US"><br />2</span>。向<span lang="EN-US">socket buffer</span>中追加当前要发送的数据在<span lang="EN-US">kernel buffer</span>中的位置和偏移量<span lang="EN-US"><br />3</span>。<span lang="EN-US">DMA gather copy</span>根据<span lang="EN-US">socket buffer</span>中的位置和偏移量直接将<span lang="EN-US">kernel buffer</span>中的数据<span lang="EN-US">copy</span>到网卡上。<span lang="EN-US"><br /></span>经过上述过程，数据只经过了<span lang="EN-US">2</span>次<span lang="EN-US">copy</span>就从磁盘传送出去了。<span lang="EN-US"><br /></span>（可能有人要纠结<span lang="EN-US">&ldquo;</span>不是说<span lang="EN-US">Zero</span>－<span lang="EN-US">Copy</span>么？怎么还有两次<span lang="EN-US">copy</span>啊<span lang="EN-US">&rdquo;</span>，事实上这个<span lang="EN-US">Zero copy</span>是针对内核来讲的，数据在内核模式下是<span lang="EN-US">Zero</span>－<span lang="EN-US">copy</span>的。话说回来，文件本身在瓷盘上要真是完全<span lang="EN-US">Zero</span>－<span lang="EN-US">copy</span>就能传送，那才见鬼了 呢）。<span lang="EN-US"><br /></span>当前许多高性能<span lang="EN-US">http server</span>都引入了<span lang="EN-US">sendfile</span>机制，如<span lang="EN-US">nginx</span>，<span lang="EN-US">lighttpd</span>等。<span lang="EN-US"><br /><br /><strong>三、Java NIO</strong></span><strong>中的<span lang="EN-US">transferTo()</span></strong><span lang="EN-US"><br />Java NIO</span>中<span lang="EN-US"><br /><em>FileChannel.transferTo(long position, long count, WriteableByteChannel target)</em><br /></span>方法将当前通道中的数据传送到目标通道<span lang="EN-US">target</span>中，在支持<span lang="EN-US">Zero-Copy</span>的<span lang="EN-US">linux</span>系统中，<span lang="EN-US">transferTo()</span>的实现依赖于<span lang="EN-US"> sendfile()</span>调用。</p>
-<p style="text-align: left;">&nbsp;</p>
-<p style="text-align: left;"><strong>四、参考文档<span lang="EN-US"><br /></span>《<span lang="EN-US">Zero Copy I: User-Mode Perspective</span>》<span lang="EN-US"><a href="http://www.linuxjournal.com/article/6345?page=0,0">http://www.linuxjournal.com/article/6345?page=0,0</a><br /></span>《<span lang="EN-US">Efficient data transfer through zero copy</span>》<span lang="EN-US"><a href="http://www.ibm.com/developerworks/linux/library/j-zerocopy">http://www.ibm.com/developerworks/linux/library/j-zerocopy</a><br /></span>《<span lang="EN-US">The C10K problem</span>》<span lang="EN-US"><a href="http://www.kegel.com/c10k.html">http://www.kegel.com/c10k.html</a></span></strong></p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/16/">&larr; Older</a>
@@ -457,6 +498,10 @@ class GT&lt;T&gt;{
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -470,10 +515,6 @@ class GT&lt;T&gt;{
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -512,7 +553,7 @@ class GT&lt;T&gt;{
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

@@ -9,7 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="HDFS中DataNode的心跳检测通过FSNameSystem中的HeartbeatMonitor完成。代码结构如下： class HeartbeatMonitor implements Runnable { /** */ public void run() { while (fsRunning &hellip;">
+  <meta name="description" content="HDFS中的副本管理通过FSNameSystem.java中的ReplicationMonitor线程来完成。该线程代码结构较为简单。 class ReplicationMonitor implements Runnable { static final int &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -76,6 +76,434 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-replica-management/">HDFS源码学习（5）——副本管理（Replica Management)</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:43:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-replica-management/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>HDFS中的副本管理通过FSNameSystem.java中的ReplicationMonitor线程来完成。该线程代码结构较为简单。</p>
+
+<pre><code>  class ReplicationMonitor implements Runnable {
+    static final int INVALIDATE_WORK_PCT_PER_ITERATION = 32;
+    static final float REPLICATION_WORK_MULTIPLIER_PER_ITERATION = 2;
+    public void run() {
+      while (fsRunning) {
+        try {
+          computeDatanodeWork();
+          processPendingReplications();
+          Thread.sleep(replicationRecheckInterval);
+        } catch (InterruptedException ie) {
+          LOG.warn("ReplicationMonitor thread received InterruptedException.", ie);
+          break;
+        } catch (IOException ie) {
+          LOG.warn("ReplicationMonitor thread received exception. " + ie +  " " +
+              StringUtils.stringifyException(ie));
+        } catch (Throwable t) {
+          LOG.fatal("ReplicationMonitor thread received Runtime exception. " + t + " " +
+              StringUtils.stringifyException(t));
+          Runtime.getRuntime().exit(-1);
+        }
+      }
+    }
+  }
+</code></pre>
+
+<p>该线程只是周期性调用computeDatanodeWork()和processPendingReplications()。</p>
+
+<h2>一、computeDatanodeWork()</h2>
+
+<pre><code>  public int computeDatanodeWork() throws IOException {
+    int workFound = 0;
+    int blocksToProcess = 0;
+    int nodesToProcess = 0;
+    // blocks should not be replicated or removed if safe mode is on
+    if (isInSafeMode())
+      return workFound;
+    //计算需要备份的block数和节点数
+    synchronized(heartbeats) {
+      blocksToProcess = (int)(heartbeats.size() 
+          * ReplicationMonitor.REPLICATION_WORK_MULTIPLIER_PER_ITERATION);
+      nodesToProcess = (int)Math.ceil((double)heartbeats.size() 
+          * ReplicationMonitor.INVALIDATE_WORK_PCT_PER_ITERATION / 100);
+    }
+    //执行备份
+    workFound = computeReplicationWork(blocksToProcess); 
+
+    // Update FSNamesystemMetrics counters
+    pendingReplicationBlocksCount = pendingReplications.size();
+    underReplicatedBlocksCount = neededReplications.size();
+    scheduledReplicationBlocksCount = workFound;
+    corruptReplicaBlocksCount = corruptReplicas.size();
+
+    //HADOOP-5549 : Fix bug of schedule both replication and deletion work in one iteration
+    workFound += computeInvalidateWork(nodesToProcess);
+    return workFound;
+  }
+</code></pre>
+
+<h3>1.1. computeReplicationWork()</h3>
+
+<pre><code>  private int computeReplicationWork(
+                                  int blocksToProcess) throws IOException {
+    // stall only useful for unit tests (see TestFileAppend4.java)
+    if (stallReplicationWork)  {
+      return 0;
+    }
+
+    // 选取需要备份的block
+    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
+      chooseUnderReplicatedBlocks(blocksToProcess);
+
+    // 执行备份
+    return computeReplicationWorkForBlocks(blocksToReplicate);
+  }
+</code></pre>
+
+<h3>1.1.1 选取需要备份的block —— chooseUnderReplicatedBlocks()</h3>
+
+<pre><code>  List&lt;List&lt;Block&gt;&gt; chooseUnderReplicatedBlocks(int blocksToProcess) {
+    // 初始化返回值数据结构，返回值是一个二维优先级列表
+    List&lt;List&lt;Block&gt;&gt; blocksToReplicate =
+      new ArrayList&lt;List&lt;Block&gt;&gt;(UnderReplicatedBlocks.LEVEL);
+    for (int i = 0; i &lt; UnderReplicatedBlocks.LEVEL; i++) {
+      blocksToReplicate.add(new ArrayList&lt;Block&gt;());
+    }
+
+    writeLock();
+    try {
+      synchronized (neededReplications) {
+        if (neededReplications.size() == 0) {
+          return blocksToReplicate;
+        }
+
+        for (int priority = 0; priority&lt;UnderReplicatedBlocks.LEVEL; priority++) {
+        //遍历所有需要备份的block列表（UnderReplicatedBlocks结构）
+        BlockIterator neededReplicationsIterator = neededReplications.iterator(priority);
+        int numBlocks = neededReplications.size(priority);
+        //检查该优先级列表中是否已经开始备份（relIndex数组中保存的是当前每个优先级列表中已备份的block索引）
+        if (replIndex[priority] &gt; numBlocks) {
+          replIndex[priority] = 0;
+        }
+        // skip to the first unprocessed block, which is at replIndex
+        for (int i = 0; i &lt; replIndex[priority] &amp;&amp; neededReplicationsIterator.hasNext(); i++) {
+          neededReplicationsIterator.next();
+        }
+        // 计算该优先级下需要备份的block数，低优先级的block备份数不超过总配额的20%
+        int blocksToProcessIter = getQuotaForThisPriority(blocksToProcess,
+            numBlocks, neededReplications.getSize(priority+1));
+        blocksToProcess -= blocksToProcessIter;
+
+        //便利改优先级列表将该优先级下的block添加到返回值中
+        for (int blkCnt = 0; blkCnt &lt; blocksToProcessIter; blkCnt++, replIndex[priority]++) {
+          if (!neededReplicationsIterator.hasNext()) {
+            // start from the beginning
+            replIndex[priority] = 0;
+            neededReplicationsIterator = neededReplications.iterator(priority);
+            assert neededReplicationsIterator.hasNext() :
+              "neededReplications should not be empty.";
+          }
+
+          Block block = neededReplicationsIterator.next();
+          blocksToReplicate.get(priority).add(block);
+        } // end for
+        }
+      } // end try
+      return blocksToReplicate;
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h3>1.1.2. 备份blocks —— computeReplicationWorkForBlocks（）</h3>
+
+<pre><code>  int computeReplicationWorkForBlocks(List&lt;List&lt;Block&gt;&gt; blocksToReplicate) {
+    int requiredReplication, numEffectiveReplicas, priority;
+    List&lt;DatanodeDescriptor&gt; containingNodes;
+    DatanodeDescriptor srcNode;
+    INodeFile fileINode = null;
+
+    int scheduledWork = 0;
+    List&lt;ReplicationWork&gt; work = new LinkedList&lt;ReplicationWork&gt;();
+
+    writeLock();
+    try {
+      synchronized (neededReplications) {
+        for (priority = 0; priority &lt; blocksToReplicate.size(); priority++) {
+          for (Block block : blocksToReplicate.get(priority)) {
+            // block should belong to a file
+            //获取该block所属的INode
+            fileINode = blocksMap.getINode(block);
+            // abandoned block not belong to a file
+            if (fileINode == null ) {
+              neededReplications.remove(block, priority); // remove from neededReplications
+              replIndex[priority]--;
+              continue;
+            }
+            //获取该文件需要的副本数
+            requiredReplication = fileINode.getReplication();
+
+            // 获取一个源datanode节点
+            containingNodes = new ArrayList&lt;DatanodeDescriptor&gt;();
+            NumberReplicas numReplicas = new NumberReplicas();
+            srcNode = chooseSourceDatanode(block, containingNodes, numReplicas);
+            if (srcNode == null) // block can not be replicated from any node
+            {
+              continue;
+            }
+
+          // 检查正在备份中的副本数是否满足备份需要，满足则不需要再备份
+            numEffectiveReplicas = numReplicas.liveReplicas() +
+              pendingReplications.getNumReplicas(block);
+            if (numEffectiveReplicas &gt;= requiredReplication) {
+              neededReplications.remove(block, priority); // remove from neededReplications
+              replIndex[priority]--;
+              continue;
+            }
+            //添加到待备份列表中
+            work.add(new ReplicationWork(block, fileINode, requiredReplication
+                - numEffectiveReplicas, srcNode, containingNodes, priority));
+          }
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+
+    // 选取一个备份目标datanode
+    for(ReplicationWork rw : work){
+      DatanodeDescriptor targets[] = chooseTarget(rw);
+      rw.targets = targets;
+    }
+
+    writeLock();
+    try {
+      for(ReplicationWork rw : work){
+        DatanodeDescriptor[] targets = rw.targets;
+        if(targets == null || targets.length == 0){
+          rw.targets = null;
+          continue;
+        }
+        synchronized (neededReplications) {
+          Block block = rw.block;
+          priority = rw.priority;
+          // 重新检查INode和备份数，因为全局锁已经释放
+          // block should belong to a file
+          fileINode = blocksMap.getINode(block);
+          // abandoned block not belong to a file
+          if (fileINode == null ) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            rw.targets = null;
+            replIndex[priority]--;
+            continue;
+          }
+          requiredReplication = fileINode.getReplication();
+
+
+          NumberReplicas numReplicas = countNodes(block);
+          numEffectiveReplicas = numReplicas.liveReplicas() +
+            pendingReplications.getNumReplicas(block);
+          if (numEffectiveReplicas &gt;= requiredReplication) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            replIndex[priority]--;
+            rw.targets = null;
+            continue;
+          }
+
+          // 将block添加到datanode的需要备份的block列表中
+          rw.srcNode.addBlockToBeReplicated(block, targets);
+
+          scheduledWork++;
+
+          //设置namenode的block调度计数器
+          for (DatanodeDescriptor dn : targets) {
+            dn.incBlocksScheduled();
+          }
+
+          // Move the block-replication into a "pending" state.
+          // The reason we use 'pending' is so we can retry
+          // replications that fail after an appropriate amount of time.
+          //将该block移至pendingReplications（PendingReplicationBlocks）中，表示该block的状态为'pending'(正在备份中)。'pending'表示如果失败了还可以重试
+          pendingReplications.add(block, targets.length);
+          NameNode.stateChangeLog.debug(
+            "BLOCK* block " + block
+              + " is moved from neededReplications to pendingReplications");
+
+          // remove from neededReplications
+          //从 neededReplication列表中移除该block
+          if (numEffectiveReplicas + targets.length &gt;= requiredReplication) {
+            neededReplications.remove(block, priority); // remove from neededReplications
+            replIndex[priority]--;
+          }
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+
+    // 更新 metrics
+    updateReplicationMetrics(work);
+
+    // 打印debug信息
+    if(NameNode.stateChangeLog.isInfoEnabled()){
+      // log which blocks have been scheduled for replication
+      for(ReplicationWork rw : work){
+        // report scheduled blocks
+        DatanodeDescriptor[] targets = rw.targets;
+        if (targets != null &amp;&amp; targets.length != 0) {
+          StringBuffer targetList = new StringBuffer("datanode(s)");
+          for (int k = 0; k &lt; targets.length; k++) {
+            targetList.append(' ');
+            targetList.append(targets[k].getName());
+          }
+          NameNode.stateChangeLog.info(
+            "BLOCK* ask "
+              + rw.srcNode.getName() + " to replicate "
+              + rw.block + " to " + targetList);
+        }
+      }
+    }
+
+    // 记录一次备份操作
+    if (NameNode.stateChangeLog.isDebugEnabled()) {
+      NameNode.stateChangeLog.debug("BLOCK* neededReplications = "
+          + neededReplications.size() + " pendingReplications = "
+          + pendingReplications.size());
+    }
+    return scheduledWork;
+  }
+</code></pre>
+
+<h4>1.1.2.1. 选取源datanode —— chooseSourceDatanode（）</h4>
+
+<p>获取一个源datanode节点</p>
+
+<pre><code>  private DatanodeDescriptor chooseSourceDatanode(
+                                    Block block,
+                                    List&lt;DatanodeDescriptor&gt; containingNodes,
+                                    NumberReplicas numReplicas) {
+    containingNodes.clear();
+    DatanodeDescriptor srcNode = null;
+    int live = 0;
+    int decommissioned = 0;
+    int corrupt = 0;
+    int excess = 0;
+    Iterator&lt;DatanodeDescriptor&gt; it = blocksMap.nodeIterator(block);
+    Collection&lt;DatanodeDescriptor&gt; nodesCorrupt = corruptReplicas.getNodes(block);
+    while(it.hasNext()) {
+      DatanodeDescriptor node = it.next();
+      Collection&lt;Block&gt; excessBlocks = 
+        excessReplicateMap.get(node.getStorageID());
+      if ((nodesCorrupt != null) &amp;&amp; (nodesCorrupt.contains(node)))
+        corrupt++;
+      else if (node.isDecommissionInProgress() || node.isDecommissioned())
+        decommissioned++;
+      else if (excessBlocks != null &amp;&amp; excessBlocks.contains(block)) {
+        excess++;
+      } else {
+        live++;
+      }
+      containingNodes.add(node);
+      // Check if this replica is corrupt
+      // If so, do not select the node as src node
+      if ((nodesCorrupt != null) &amp;&amp; nodesCorrupt.contains(node))
+        continue;
+      if(node.getNumberOfBlocksToBeReplicated() &gt;= maxReplicationStreams)
+        continue; // already reached replication limit
+      // the block must not be scheduled for removal on srcNode
+      if(excessBlocks != null &amp;&amp; excessBlocks.contains(block))
+        continue;
+      // never use already decommissioned nodes
+      if(node.isDecommissioned())
+        continue;
+      // we prefer nodes that are in DECOMMISSION_INPROGRESS state
+      if(node.isDecommissionInProgress() || srcNode == null) {
+        srcNode = node;
+        continue;
+      }
+      if(srcNode.isDecommissionInProgress())
+        continue;
+      // switch to a different node randomly
+      // this to prevent from deterministically selecting the same node even
+      // if the node failed to replicate the block on previous iterations
+      if(r.nextBoolean())
+        srcNode = node;
+    }
+    if(numReplicas != null)
+      numReplicas.initialize(live, decommissioned, corrupt, excess);
+    return srcNode;
+  }
+</code></pre>
+
+<h4>1.1.2.2. 选取目标datanode —— chooseTarget(rw);</h4>
+
+<pre><code>  private DatanodeDescriptor[] chooseTarget(ReplicationWork work) {
+    if (!neededReplications.contains(work.block)) {
+      return null;
+    }
+    if (work.blockSize == BlockCommand.NO_ACK) {
+      LOG.warn("Block " + work.block.getBlockId() + 
+          " of the file " + work.fileINode.getFullPathName() + 
+          " is invalidated and cannot be replicated.");
+      return null;
+    }
+    if (work.blockSize == DFSUtil.DELETED) {
+      LOG.warn("Block " + work.block.getBlockId() + 
+          " of the file " + work.fileINode.getFullPathName() + 
+          " is a deleted block and cannot be replicated.");
+      return null;
+    }
+    //实际调用replicator(BlockPlacementPolicy)的chooseTarget方法选取target
+    return replicator.chooseTarget(work.fileINode,
+        work.numOfReplicas, work.srcNode,
+        work.containingNodes, null, work.blockSize);
+  }
+</code></pre>
+
+<h2>副本存放策略</h2>
+
+<p><img src="img/BlockAllocation.png" alt="BlockAllocation" /></p>
+
+<p>如图所示，HDFS默认的副本存放策略为：</p>
+
+<ol>
+<li>第一个副本存放在当前datanode的本地</li>
+<li>第二个副本存放在与第一个副本所在datanode不在同一机架上的一个datanode上</li>
+<li>第三个副本存放在与第二个副本同一机架但不同datanode上</li>
+</ol>
+
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -522,390 +950,6 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:35:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-namenode-startup/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>main()</h2>
-
-<pre><code>  public static void main(String argv[]) throws Exception {
-    try {
-      StringUtils.startupShutdownMessage(NameNode.class, argv, LOG);
-      //创建nameNode
-      NameNode namenode = createNameNode(argv, null);
-      if (namenode != null)
-        namenode.join();
-    } catch (Throwable e) {
-      LOG.error(StringUtils.stringifyException(e));
-      System.exit(-1);
-    }
-  }
-</code></pre>
-
-<h3>createNameNode()</h3>
-
-<pre><code>  public static NameNode createNameNode(String argv[], 
-                                 Configuration conf) throws IOException {
-    if (conf == null)
-      conf = new Configuration();
-      //从命令行参数中提取启动配置项数据
-    StartupOption startOpt = parseArguments(argv);
-    if (startOpt == null) {
-      printUsage();
-      return null;
-    }
-    //设置启动参数
-    setStartupOption(conf, startOpt);
-
-    switch (startOpt) {
-      case FORMAT:
-        boolean aborted = format(conf, true);
-        System.exit(aborted ? 1 : 0);
-      case FINALIZE:
-        aborted = finalize(conf, true);
-        System.exit(aborted ? 1 : 0);
-      default:
-    }
-
-    //新建NameNode
-    NameNode namenode = new NameNode(conf);
-    return namenode;
-  }
-</code></pre>
-
-<h3>NameNode()</h3>
-
-<pre><code>  public NameNode(Configuration conf) throws IOException {
-    super(conf);
-    try {
-    //初始化
-      initialize(getConf());
-    } catch (IOException e) {
-      this.stop();
-      throw e;
-    }
-  }
-</code></pre>
-
-<h3>initialize()</h3>
-
-<pre><code>  private void initialize(Configuration conf) throws IOException {
-    InetSocketAddress socAddr = NameNode.getAddress(conf);
-    int handlerCount = conf.getInt("dfs.namenode.handler.count", 10);
-    // 关键-&gt;创建一个RPC Server
-    this.server = RPC.getServer(this, socAddr.getHostName(), socAddr.getPort(),
-                                handlerCount, false, conf);
-
-    // The rpc-server port can be ephemeral... ensure we have the correct info
-    this.serverAddress = this.server.getListenerAddress(); 
-    FileSystem.setDefaultUri(conf, getUri(serverAddress));
-    LOG.info("Namenode up at: " + this.serverAddress);
-
-    myMetrics = new NameNodeMetrics(conf, this);
-
-    //关键-&gt;创建一个FSNameSystem
-    this.namesystem = new FSNamesystem(this, conf);
-    //启动HTTP Server
-    startHttpServer(conf);
-    //启动RPC Server
-    this.server.start();  //start RPC server   
-
-    startTrashEmptier(conf);
-  }
-</code></pre>
-
-<h2>FSNameSystem()</h2>
-
-<pre><code>  FSNamesystem(NameNode nn, Configuration conf) throws IOException {
-    try {
-      //初始化FSNameSystem
-      initialize(nn, conf);
-      userPasswordInformation = new UserPasswordInformation(conf);
-      extendAccessControlList = new ExtendAccessControlList(conf);
-    } catch(IOException e) {
-      LOG.error(getClass().getSimpleName() + " initialization failed.", e);
-      close();
-      throw e;
-    }
-  }
-</code></pre>
-
-<h3>FSNameSystem.initialize()</h3>
-
-<pre><code>  private void initialize(NameNode nn, Configuration conf) throws IOException {
-    this.systemStart = now();
-    this.fsLock = new ReentrantReadWriteLock(); // non-fair locking
-    setConfigurationParameters(conf);
-
-    this.nameNodeAddress = nn.getNameNodeAddress();
-    this.registerMBean(conf); // register the MBean for the FSNamesystemStutus
-
-    //创建FSDirectory
-    this.dir = new FSDirectory(this, conf);
-    StartupOption startOpt = NameNode.getStartupOption(conf);
-
-    //加载FSImage
-    this.dir.loadFSImage(getNamespaceDirs(conf),
-                         getNamespaceEditsDirs(conf), startOpt);
-    long timeTakenToLoadFSImage = now() - systemStart;
-    LOG.info("Finished loading FSImage in " + timeTakenToLoadFSImage + " msecs");
-    NameNode.getNameNodeMetrics().fsImageLoadTime.set(
-                              (int) timeTakenToLoadFSImage);
-    this.safeMode = new SafeModeInfo(conf);
-    setBlockTotal();
-    //创建PendingReplicationBlocks
-    pendingReplications = new PendingReplicationBlocks(
-                            conf.getInt("dfs.replication.pending.timeout.sec", 
-                                        -1) * 1000L);
-    //创建心跳检查线程                                          
-    this.hbthread = new Daemon(new HeartbeatMonitor());
-    //创建租约管理线程
-    this.lmthread = new Daemon(leaseManager.new Monitor());
-    //创建副本管理线程
-    this.replthread = new Daemon(new ReplicationMonitor());
-    hbthread.start();
-    lmthread.start();
-    replthread.start();
-
-    // 副本超额block管理线程
-    this.overreplthread = new Daemon(new OverReplicationMonitor());
-    overreplthread.start();
-
-    this.hostsReader = new HostsFileReader(conf.get("dfs.hosts",""),
-                                           conf.get("dfs.hosts.exclude",""));
-    //创建退役节点管理线程
-    this.dnthread = new Daemon(new DecommissionManager(this).new Monitor(
-        conf.getInt("dfs.namenode.decommission.interval", 30),
-        conf.getInt("dfs.namenode.decommission.nodes.per.interval", 5)));
-    dnthread.start();
-
-    this.dnsToSwitchMapping = ReflectionUtils.newInstance(
-        conf.getClass("topology.node.switch.mapping.impl", ScriptBasedMapping.class,
-            DNSToSwitchMapping.class), conf);
-
-    /* If the dns to swith mapping supports cache, resolve network 
-     * locations of those hosts in the include list, 
-     * and store the mapping in the cache; so future calls to resolve
-     * will be fast.
-     */
-    if (dnsToSwitchMapping instanceof CachedDNSToSwitchMapping) {
-      dnsToSwitchMapping.resolve(new ArrayList&lt;String&gt;(hostsReader.getHosts()));
-    }
-    //创建副本定位器用于定位副本存放位置
-    this.replicator = BlockPlacementPolicy.getInstance(
-        conf,
-        this,
-        this.clusterMap,
-        this.hostsReader,
-        this.dnsToSwitchMapping,
-        this);
-  }
-</code></pre>
-
-<h2>FSDirectory(this, conf)</h2>
-
-<p>新建FSDirecotry</p>
-
-<pre><code> FSDirectory(FSNamesystem ns, Configuration conf) {
-    //创建一个FSImage，并实例化构建FSDirectory
-    this(new FSImage(), ns, conf);
-    fsImage.setCheckpointDirectories(FSImage.getCheckpointDirs(conf, null),
-                                FSImage.getCheckpointEditsDirs(conf, null));
-  }
-</code></pre>
-
-<h3>this(new FSImage(), ns, conf);</h3>
-
-<pre><code>FSDirectory(FSImage fsImage, FSNamesystem ns, Configuration conf) {
-    this.bLock = new ReentrantReadWriteLock(); // non-fair
-    this.cond = bLock.writeLock().newCondition();
-    //创建根目录
-    rootDir = new INodeDirectoryWithQuota(INodeDirectory.ROOT_NAME,
-        ns.createFsOwnerPermissions(new FsPermission((short)0755)),
-        Integer.MAX_VALUE, -1);
-    this.fsImage = fsImage;
-    namesystem = ns;
-    initialize(conf);
-  }
-</code></pre>
-
-<h3>FSDirectory.initialize()</h3>
-
-<pre><code>  private void initialize(Configuration conf) {
-    MetricsContext metricsContext = MetricsUtil.getContext("dfs");
-    directoryMetrics = MetricsUtil.createRecord(metricsContext, "FSDirectory");
-    directoryMetrics.setTag("sessionId", conf.get("session.id"));
-  }
-</code></pre>
-
-<h3>FSDirectory.loadFSImage()</h3>
-
-<pre><code>  void loadFSImage(Collection&lt;File&gt; dataDirs,
-                   Collection&lt;File&gt; editsDirs,
-                   StartupOption startOpt) throws IOException {
-    // format before starting up if requested
-    if (startOpt == StartupOption.FORMAT) {
-      fsImage.setStorageDirectories(dataDirs, editsDirs);
-      fsImage.format();
-      startOpt = StartupOption.REGULAR;
-    }
-    try {
-      //从datadir和editdirs加载FSImage
-      if (fsImage.recoverTransitionRead(dataDirs, editsDirs, startOpt)) {
-        fsImage.saveNamespace(true);
-      }
-      //初始化Editlog
-      FSEditLog editLog = fsImage.getEditLog();
-      assert editLog != null : "editLog must be initialized";
-      if (!editLog.isOpen())
-        editLog.open();
-      fsImage.setCheckpointDirectories(null, null);
-    } catch(IOException e) {
-      fsImage.close();
-      throw e;
-    }
-    writeLock();
-    try {
-      this.ready = true;
-      cond.signalAll();
-    } finally {
-      writeUnlock();
-    }
-  }
-</code></pre>
-
-<h3>FSImage.recoverTransitionRead（）</h3>
-
-<pre><code>  boolean recoverTransitionRead(Collection&lt;File&gt; dataDirs,
-                             Collection&lt;File&gt; editsDirs,
-                                StartupOption startOpt
-                                ) throws IOException {
-    assert startOpt != StartupOption.FORMAT : 
-      "NameNode formatting should be performed before reading the image";
-
-    // none of the data dirs exist
-    if (dataDirs.size() == 0 || editsDirs.size() == 0)  
-      throw new IOException(
-        "All specified directories are not accessible or do not exist.");
-
-    if(startOpt == StartupOption.IMPORT 
-        &amp;&amp; (checkpointDirs == null || checkpointDirs.isEmpty()))
-      throw new IOException("Cannot import image from a checkpoint. "
-                          + "\"fs.checkpoint.dir\" is not set." );
-
-    if(startOpt == StartupOption.IMPORT 
-        &amp;&amp; (checkpointEditsDirs == null || checkpointEditsDirs.isEmpty()))
-      throw new IOException("Cannot import image from a checkpoint. "
-                          + "\"fs.checkpoint.edits.dir\" is not set." );
-
-    setStorageDirectories(dataDirs, editsDirs);
-    // 1.检查所有目录的状态和一致性
-    Map&lt;StorageDirectory, StorageState&gt; dataDirStates = 
-             new HashMap&lt;StorageDirectory, StorageState&gt;();
-    boolean isFormatted = false;
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                      dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      StorageState curState;
-      try {
-        curState = sd.analyzeStorage(startOpt);
-        // sd is locked but not opened
-        switch(curState) {
-        case NON_EXISTENT:
-          // name-node fails if any of the configured storage dirs are missing
-          throw new InconsistentFSStateException(sd.getRoot(),
-                                                 "storage directory does not exist or is not accessible.");
-        case NOT_FORMATTED:
-          break;
-        case NORMAL:
-          break;
-        default:  // recovery is possible
-          sd.doRecover(curState);      
-        }
-        if (curState != StorageState.NOT_FORMATTED 
-            &amp;&amp; startOpt != StartupOption.ROLLBACK) {
-          sd.read(); // read and verify consistency with other directories
-          isFormatted = true;
-        }
-        if (startOpt == StartupOption.IMPORT &amp;&amp; isFormatted)
-          // import of a checkpoint is allowed only into empty image directories
-          throw new IOException("Cannot import image from a checkpoint. " 
-              + " NameNode already contains an image in " + sd.getRoot());
-      } catch (IOException ioe) {
-        sd.unlock();
-        throw ioe;
-      }
-      dataDirStates.put(sd,curState);
-    }
-
-    if (!isFormatted &amp;&amp; startOpt != StartupOption.ROLLBACK 
-                     &amp;&amp; startOpt != StartupOption.IMPORT)
-      throw new IOException("NameNode is not formatted.");
-    if (layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION) {
-      checkVersionUpgradable(layoutVersion);
-    }
-    if (startOpt != StartupOption.UPGRADE
-          &amp;&amp; layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION
-          &amp;&amp; layoutVersion != FSConstants.LAYOUT_VERSION)
-        throw new IOException(
-                          "\nFile system image contains an old layout version " + layoutVersion
-                          + ".\nAn upgrade to version " + FSConstants.LAYOUT_VERSION
-                          + " is required.\nPlease restart NameNode with -upgrade option.");
-    // check whether distributed upgrade is reguired and/or should be continued
-    verifyDistributedUpgradeProgress(startOpt);
-
-    // 2. Format unformatted dirs.
-    this.checkpointTime = 0L;
-    for (Iterator&lt;StorageDirectory&gt; it = 
-                     dirIterator(); it.hasNext();) {
-      StorageDirectory sd = it.next();
-      StorageState curState = dataDirStates.get(sd);
-      switch(curState) {
-      case NON_EXISTENT:
-        assert false : StorageState.NON_EXISTENT + " state cannot be here";
-      case NOT_FORMATTED:
-        LOG.info("Storage directory " + sd.getRoot() + " is not formatted.");
-        LOG.info("Formatting ...");
-        sd.clearDirectory(); // create empty currrent dir
-        break;
-      default:
-        break;
-      }
-    }
-</code></pre>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/7/">&larr; Older</a>
@@ -938,6 +982,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -951,10 +999,6 @@
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -993,7 +1037,7 @@
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

@@ -9,18 +9,13 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="&nbsp;
-今天在添加uart
-驱动时，需要向现有的
-uC/OS
-工程文件中添加头文件。 1.
-直接在工程目录下新建一个目录，将uart.c
-和
-uart.h
-添加到该目录下， 2.
-在工程项目上右键-&gt;add-&gt;add&nbsp;group
-，添加一个组
-uC-UART 3. &hellip;">
+  <meta name="description" content="通常的OS
+是采用一个文件系统来存储文件数据，是文件可以被几个文件共同访问。
+Android
+中采用了不同的数据共享方法。在
+Android
+中，每个应用的数据文件是私有的， 也就是只有自己能够访问，但是Android
+同时提供了一种机制，使得应用可以将自己的私有文件暴露给外部的其他应用程序， &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -87,6 +82,188 @@ uC-UART 3. &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/11/22/post/">Android文档（三）-数据存储</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-11-22T00:00:00+08:00" pubdate data-updated="true">Nov 22<span>nd</span>, 2009</time>
+        
+         | <a href="/blog/2009/11/22/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">通常的<span style="font-family: Times New Roman;">OS</span>
+<span style="font-family: 宋体;">是采用一个文件系统来存储文件数据，是文件可以被几个文件共同访问。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中采用了不同的数据共享方法。在</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中，每个应用的数据文件是私有的，</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">也就是只有自己能够访问，但是<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">同时提供了一种机制，使得应用可以将自己的私有文件暴露给外部的其他应用程序，从而实现文件数据的共享。这种机制即</span>
+<span style="font-family: Times New Roman;">Content&nbsp;Providers</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">Content&nbsp;Providers<span style="font-family: 宋体;">是一个应用的可选组件，它提供了对数据进行修改的标准接口。</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">为一些类型数据提供了</span>
+<span style="font-family: Times New Roman;">content&nbsp;Provides</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">，</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">例如，<span style="font-family: Times New Roman;">Image</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">audio</span>
+<span style="font-family: 宋体;">，&nbsp;</span>
+<span style="font-family: Times New Roman;">video</span>
+<span style="font-family: 宋体;">，以及</span>
+<span style="font-family: Times New Roman;">personal&nbsp;contact&nbsp;informations</span>
+<span style="font-family: 宋体;">。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">无论如何将数据暴露给其他应用，都需要将数据存储起来。<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">提供了四种方法存储和检索数据：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;	</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">1.Preferences<span style="font-family: 宋体;">：</span>
+</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: 'Times New Roman';">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;	</span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';"> </span>
+<span style="font-size: 10.5pt; font-family: 'Times New Roman';">preferences<span style="font-family: 宋体;">是一种轻量级的存储机制，采用原始数据类型的</span>
+<span style="font-family: Times New Roman;">key-values</span>
+<span style="font-family: 宋体;">对来进行存储和检索。通常用来存储应用的</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">，例如开机界面或者一个电话欢迎界面。通过</span>
+<span style="font-family: Times New Roman;">Context.getSharedPreferences()</span>
+<span style="font-family: 宋体;">方法读取和写入数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">为你想要给同一个应用中的其他组件共享的数据集合起一个名字，或者通过<span style="font-family: Times New Roman;">Activity.getPreferences()</span>
+<span style="font-family: 宋体;">直接访问</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据集。注意：</span>
+<span style="font-family: Times New Roman;">preferences</span>
+<span style="font-family: 宋体;">数据不能够用在不同应用间共享。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">2.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Files</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以直接在设备上或者移动存储设备上存储文件，但是默认条件下，这些文件对其他应用是不可访问的。</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">可以通过调用<span style="font-family: Times New Roman;">Context.openFileInput()</span>
+<span style="font-family: 宋体;">方法，并向其传递文件名和路径来读取文件。返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileInputStream</span>
+<span style="font-family: 宋体;">对象。写入文件是，调用</span>
+<span style="font-family: Times New Roman;">Context.opernFileOutput()</span>
+<span style="font-family: 宋体;">，返回一个标准</span>
+<span style="font-family: Times New Roman;">Java</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">FileOutputStream</span>
+<span style="font-family: 宋体;">对象。但是文件访问只能针对本地文件，如果调用文件操作方法去操作其他应用中的文件是不可以的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">另外一种文件访问方法是，如果文件在编译时是静态的，可以通过将文件存储在<span style="font-family: Times New Roman;">res/raw/myDataFile</span>
+<span style="font-family: 宋体;">，调用</span>
+<span style="font-family: Times New Roman;">Resources.openRawResources(R.raw.myDataFile)</span>
+<span style="font-family: 宋体;">方法来访问，该方法返回一个</span>
+<span style="font-family: Times New Roman;">InputFileStream</span>
+<span style="font-family: 宋体;">对象。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">3.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Databases</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android&nbsp;API<span style="font-family: 宋体;">中包含了</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">的</span>
+<span style="font-family: Times New Roman;">API</span>
+<span style="font-family: 宋体;">，用于创建和使用</span>
+<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">数据库。每个数据库只对创建它的那个应用是开放的，对其他应用都是私有的。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">一个<span style="font-family: Times New Roman;">SQLiteDatabase</span>
+<span style="font-family: 宋体;">对象表示一个数据库，并具有可以与之交互的方法。可以调用</span>
+<span style="font-family: Times New Roman;">SQLiteDatabase.create()</span>
+<span style="font-family: 宋体;">方法创建一个数据库。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">同样提供了数据库管理函数用于操作存储封装成对象的复杂数据集合。例如，</span>
+<span style="font-family: Times New Roman;">Android</span>
+<span style="font-family: 宋体;">中定义了一个联系人信息</span>
+<span style="font-family: Times New Roman;">(contact&nbsp;information)</span>
+<span style="font-family: 宋体;">的类型，其中包含了姓名（</span>
+<span style="font-family: Times New Roman;">string)</span>
+<span style="font-family: 宋体;">，地址</span>
+<span style="font-family: Times New Roman;">(String)</span>
+<span style="font-family: 宋体;">，照片</span>
+<span style="font-family: Times New Roman;">(bitmap)</span>
+<span style="font-family: 宋体;">的多种描述人的信息数据。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-left: 21pt; text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">所有的数据库，<span style="font-family: Times New Roman;">SQLite</span>
+<span style="font-family: 宋体;">以及其它的，都被存储在设备上的</span>
+<span style="font-family: Times New Roman;">/data/data/package_name/databases</span>
+<span style="font-family: 宋体;">中。</span>
+</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="text-indent: 21pt; margin-bottom: 0pt; margin-top: 0pt; text-align: justify;"><span style="font-size: 10.5pt; font-family: '宋体';">4.</span>
+<span style="font-size: 10.5pt; font-family: '宋体';">Network</span>
+<span style="font-size: 10.5pt; font-family: '宋体';"></span>
+</p>
+<p class="p0" style="margin-bottom: 0pt; margin-top: 0pt;"><span style="font-size: 10.5pt; font-family: '宋体';">Android<span style="font-family: 宋体;">可以通过网络来检索和存储数据，当然，前提是可以联网。</span>
+</span>
+</p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -256,43 +433,6 @@ uC-UART 3. &hellip;">
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2009/10/03/post/">SLF4J: Failed to Load Class &quot;org.slf4j.impl.StaticLoggerBinder&quot;问题解决</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2009-10-03T00:00:00+08:00" pubdate data-updated="true">Oct 3<span>rd</span>, 2009</time>
-        
-         | <a href="/blog/2009/10/03/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>今天初次学习Hibernate，按照指导做的时候，出现如下错误：</p> <p>SLF4J: Failed to load class &#8220;org.slf4j.impl.StaticLoggerBinder&#8221;.   <br />SLF4J: See <a href="http://www.slf4j.org/codes.html#StaticLoggerBinder">http://www.slf4j.org/codes.html#StaticLoggerBinder</a> for further details.    <br />Exception in thread &#8220;main&#8221; java.lang.NoClassDefFoundError: org/slf4j/impl/StaticLoggerBinder    <br />    at org.slf4j.LoggerFactory.getSingleton(LoggerFactory.java:223)    <br />    at org.slf4j.LoggerFactory.bind(LoggerFactory.java:120)    <br />    at org.slf4j.LoggerFactory.performInitialization(LoggerFactory.java:111)    <br />    at org.slf4j.LoggerFactory.getILoggerFactory(LoggerFactory.java:269)    <br />    at org.slf4j.LoggerFactory.getLogger(LoggerFactory.java:242)    <br />    at org.slf4j.LoggerFactory.getLogger(LoggerFactory.java:255)    <br />    at org.hibernate.cfg.Configuration.<clinit>(Configuration.java:152)    <br />    at com.jiang.hibernate.Base.main(Base.java:25)</clinit></p> <p>问题的原因是无法找到org.slf4j.impl.StaticLoggerBinder，我找了一下，确实没有该类，网上搜了一下下面是官方的解答<a title="http://www.slf4j.org/codes.html#StaticLoggerBinder" href="http://www.slf4j.org/codes.html#StaticLoggerBinder">http://www.slf4j.org/codes.html#StaticLoggerBinder</a>：</p> <p>This error is reported when the <code>org.slf4j.impl.StaticLoggerBinder</code> class could not be loaded into memory. This happens when no appropriate SLF4J binding could be found on the class path. Placing one (and only one) of <em>slf4j-nop.jar</em>, <em>slf4j-simple.jar</em>, <em>slf4j-log4j12.jar</em>, <em>slf4j-jdk14.jar</em> or <em>logback-classic.jar</em> on the class path should solve the problem. </p> <p>You can download SLF4J bindings from the project <a href="http://www.slf4j.org/download.html">download page</a>. </p> <p>大意是<code>org.slf4j.impl.StaticLoggerBinder</code> 无法载入到内存，原因是没有找到合适的绑定SLF4J，需要添加所列举的包中的某一个。</p> <p>解决方法如下：</p> <p>下载slf4j-nop.jar，添加到路径中，就解决问题了</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/21/">&larr; Older</a>
@@ -325,6 +465,10 @@ uC-UART 3. &hellip;">
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -338,10 +482,6 @@ uC-UART 3. &hellip;">
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -380,7 +520,7 @@ uC-UART 3. &hellip;">
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

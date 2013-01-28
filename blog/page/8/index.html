@@ -9,7 +9,8 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="问题现象 现有的VO，DO，Model等模型类中，均遵循JavaBean规范，为对属性的访问提供了getter和setter方法，并且在实际使用时通常为构造一个模型实例，需要调用大段的setter方法。下面以VasViewVO为例： public class VasViewVO { private &hellip;">
+  <meta name="description" content="说在前面 本文不包含为什么使用memcache，以及如何使用memcache等基础知识。相关知识请查阅各类手册。
+另，为便于理解，最好手头准备一份memcache的源码，本文使用的是目前最新的1.4.4版本源码，可自行到github上clone。 Item、Chunk、Page、Slab &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -76,6 +77,274 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-08-31T07:52:00+08:00" pubdate data-updated="true">Aug 31<span>st</span>, 2012</time>
+        
+         | <a href="/blog/2012/08/31/something-about-memcache-internal/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><script async class="speakerdeck-embed" data-id="504049be5ec53c000202daa6" data-ratio="1.299492385786802" src="//speakerdeck.com/assets/embed.js"></script>
+
+
+<h2>说在前面</h2>
+
+<p>本文不包含为什么使用memcache，以及如何使用memcache等基础知识。相关知识请查阅各类手册。
+另，为便于理解，最好手头准备一份memcache的源码，本文使用的是目前最新的1.4.4版本源码，可自行到github上clone。</p>
+
+<h2>Item、Chunk、Page、Slab</h2>
+
+<h3>Data Item</h3>
+
+<pre><code>+---------------------------------------+
+|  key-value | cas | suffix | item head |  
++---------------------------------------+
+</code></pre>
+
+<p>Item指实际存放到memcache中的数据对象结构，除key-value数据外，还包括memcache自身对数据对象的描述信息（Item=key+value+后缀长+32byte结构体）</p>
+
+<h3>Chunk</h3>
+
+<p>Chunk指Memcache用来存放Data Item的最小单元，同一个Slab中的chunk大小是固定的。</p>
+
+<pre><code>+------------------------------+
+|   data item    | empty space |
++------------------------------+
+</code></pre>
+
+<h2>Page</h2>
+
+<pre><code>+-------------------------------------+
+|  chunk1 | chunk2 | chunk3 | chunk4  |
++-------------------------------------+
+</code></pre>
+
+<p>每个Slab中按照Page来申请内存，Page的大小默认为1M，可以通过-l参数调整，最小1k，最大128m.</p>
+
+<h3>Slab</h3>
+
+<pre><code>+--------------------------------+
+|  Page1 | Page2 | Page3 | Page4 |
++--------------------------------+
+</code></pre>
+
+<p>Memcache将分配给它的内存（-m 参数指定，默认64m）按照Chunk大小不同，划分为多个slab。</p>
+
+<p>他们三者的关系如下图所示:</p>
+
+<pre><code>                 Chunk
+                   ^                                                         
++------------------|------------------------------------------------------------+
+|   Memory         |                                                            | 
+|  +---------------|---------------------------------------------------------+  |
+|  |      +--------|---------------------+  +------------------------------+ |  |
+|  |      |Page1 +-|---+ +-----+ +-----+ |  |Page2 +-----+ +-----+ +-----+ | |  |
+|  | Slab |(1M)  | 96B | | 68B | | 72B | |  |(1M)  | 92B | | 76B | | 84B | | |  | 
+|  |  1   |      +-----+ +-----+ +-----+ |  |      +-----+ +-----+ +-----+ | |  |
+|  |      +------------------------------+  +------------------------------+ |  |
+|  +-------------------------------------------------------------------------+  |
+|                                                                               |
+|  +-------------------------------------------------------------------------+  |
+|  |      +------------------------------+  +------------------------------+ |  |
+|  |      |Page1 +------+    +------+    |  |Page2 +------+    +-------+   | |  |
+|  | Slab | (1M) | 128B |    | 120B |    |  |(1M)  | 128B |    | 97B   |   | |  |
+|  |   2  |      +------+    +------+    |  |      +------+    +-------+   | |  |
+|  |      +------------------------------+  +------------------------------+ |  |
+|  +-------------------------------------------------------------------------+  |
++-------------------------------------------------------------------------------+
+</code></pre>
+
+<h2>Slab内存分配</h2>
+
+<h3>slab初始化</h3>
+
+<p>Memcache启动时会进行slab初始化（参见slabs.c中slabs_init()函数），默认最小的chunksize为80（查看源码会发现settings中chunk_size默认为48，但是实际还需要加上一个32bytes的item结构体），可以通过-n参数调整，按照然后按照factor（默认为1.25，可以通过-f参数调整）(<em>关于参数更多的memcache默认参数可以参考memcache.c中settings的设置</em>)比例递增，划分出多个不同chunk大小的slab空间，即slab1的chunk大小=80，slab2的chunk大小为80*1.25=100，slab3的chunk大小为80*1.25*1.25=125，但最大一个一个chunk不会大于一个Page的大小（默认1M）。</p>
+
+<pre><code>一下代码节选自 slabs.c
+ 95 void slabs_init(const size_t limit, const double factor, const bool prealloc) {
+ 96     int i = POWER_SMALLEST - 1;
+ 97     unsigned int size = sizeof(item) + settings.chunk_size;
+ 98  
+ 99     mem_limit = limit;
+100  
+101     if (prealloc) {
+102         /* Allocate everything in a big chunk with malloc */
+103         mem_base = malloc(mem_limit);
+104         if (mem_base != NULL) {
+105             mem_current = mem_base;
+106             mem_avail = mem_limit;
+107         } else {
+108             fprintf(stderr, "Warning: Failed to allocate requested memory in"
+109                     " one large chunk.\nWill allocate in smaller chunks\n");
+110         }
+111     }
+112  
+113     memset(slabclass, 0, sizeof(slabclass));
+114  
+115     while (++i &lt; POWER_LARGEST &amp;&amp; size &lt;= settings.item_size_max / factor) {
+116         /* Make sure items are always n-byte aligned */
+117         if (size % CHUNK_ALIGN_BYTES)
+118             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
+119  
+120         slabclass[i].size = size;
+121         slabclass[i].perslab = settings.item_size_max / slabclass[i].size;
+122         size *= factor;
+123         if (settings.verbose &gt; 1) {
+124             fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
+125                     i, slabclass[i].size, slabclass[i].perslab);
+126         }
+127     }
+128  
+129     power_largest = i;
+130     slabclass[power_largest].size = settings.item_size_max;
+131     slabclass[power_largest].perslab = 1;
+132     if (settings.verbose &gt; 1) {
+133         fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
+134                 i, slabclass[i].size, slabclass[i].perslab);
+135     }
+136  
+137     /* for the test suite:  faking of how much we've already malloc'd */
+138     {
+139         char *t_initial_malloc = getenv("T_MEMD_INITIAL_MALLOC");
+140         if (t_initial_malloc) {
+141             mem_malloced = (size_t)atol(t_initial_malloc);
+142         }
+143  
+144     }
+145  
+146     if (prealloc) {
+147         slabs_preallocate(power_largest);
+148     }
+149 }                             
+</code></pre>
+
+<p>PS：prealloc指的是直接申请一个大的chunk存放所有数据，默认是不采用这种方式的。</p>
+
+<h3>数据存储过程</h3>
+
+<p>一个数据项的大致存储量过程可以理解为（完整代码较长，不在粘贴，具体可参见items.c中do_item_alloc()方法）：</p>
+
+<ol>
+<li>构造一个数据项结构体，计算数据项的大小，（假设默认配置下，数据项大小为102B）</li>
+<li>根据数据项的大小，找到最合适的slab，（100&lt;102&lt;125，所以存储在slab3中）</li>
+<li>检查该slab中是否有过期的数据，如有清理掉</li>
+<li>如果没有过期的数据项，则从当前slab中申请空间，参见slabs.c中slab_alloc()方法。</li>
+<li>如果当前slab中申请失败，则尝试根据LRU算法逐出一个数据项，默认memcache是允许逐出的，如果被设置为禁止逐出，那么这是会反生悲剧的oom了</li>
+<li>获取到item空间后将数据存储到改空间中，并追加到该slab的item列表中</li>
+</ol>
+
+
+<p>一个slab的申请一个chunk空间的过程大致如下（以下代码节选自slabs.c）：</p>
+
+<pre><code>195 static int do_slabs_newslab(const unsigned int id) { 
+196     slabclass_t *p = &amp;slabclass[id];
+197     int len = settings.slab_reassign ? settings.item_size_max
+198         : p-&gt;size * p-&gt;perslab;
+199     char *ptr;             
+200            
+201     if ((mem_limit &amp;&amp; mem_malloced + len &gt; mem_limit &amp;&amp; p-&gt;slabs &gt; 0) ||
+202         (grow_slab_list(id) == 0) ||    
+203         ((ptr = memory_allocate((size_t)len)) == 0)) {
+204            
+205         MEMCACHED_SLABS_SLABCLASS_ALLOCATE_FAILED(id);
+206         return 0;          
+207     }      
+208            
+209     memset(ptr, 0, (size_t)len);    
+210     split_slab_page_into_freelist(ptr, id);
+211            
+212     p-&gt;slab_list[p-&gt;slabs++] = ptr; 
+213     mem_malloced += len;   
+214     MEMCACHED_SLABS_SLABCLASS_ALLOCATE(id);
+215            
+216     return 1;              
+217 }
+218  
+219 /*@null@*/ 
+220 static void *do_slabs_alloc(const size_t size, unsigned int id) {
+221     slabclass_t *p;        
+222     void *ret = NULL;      
+223     item *it = NULL;       
+224  
+225     if (id &lt; POWER_SMALLEST || id &gt; power_largest) {
+226         MEMCACHED_SLABS_ALLOCATE_FAILED(size, 0);
+227         return NULL;
+228     }
+229  
+230     p = &amp;slabclass[id];
+231     assert(p-&gt;sl_curr == 0 || ((item *)p-&gt;slots)-&gt;slabs_clsid == 0);
+232  
+233     /* fail unless we have space at the end of a recently allocated page,
+234        we have something on our freelist, or we could allocate a new page */
+235     if (! (p-&gt;sl_curr != 0 || do_slabs_newslab(id) != 0)) {
+236         /* We don't have more memory available */
+237         ret = NULL;
+238     } else if (p-&gt;sl_curr != 0) {
+239         /* return off our freelist */
+240         it = (item *)p-&gt;slots;
+241         p-&gt;slots = it-&gt;next;
+242         if (it-&gt;next) it-&gt;next-&gt;prev = 0;
+243         p-&gt;sl_curr--;
+244         ret = (void *)it;
+245     }
+246  
+247     if (ret) {
+248         p-&gt;requested += size;
+249         MEMCACHED_SLABS_ALLOCATE(size, id, p-&gt;size, ret);
+250     } else {
+251         MEMCACHED_SLABS_ALLOCATE_FAILED(size, id);
+252     }
+253  
+254     return ret;
+255 }
+</code></pre>
+
+<p>slab优先从slots（空闲chunk空间列表）中申请空间，如果没有则尝试申请一个Page的新空间（do_slab_newslab()），申请新slab是会先判断是否进行slab_reasgin（重新分配slab空间，默认不开启）。</p>
+
+<h2>内存浪费</h2>
+
+<p>根据上述描述，Memcache使用Slab预分配的方式进行内存管理提升了性能（减少分配内存的消耗），但是带来了内存浪费，主要体现在：</p>
+
+<ol>
+<li><p>Data Item Size &lt;= Chunk Size，Chunk是存储数据项的最小单元，数据项的大小必须不大于其所在的Chunk大小。也就是说76B的数据对象存入96B的Chunk中，将带来96B-76B=20B的空间浪费。</p></li>
+<li><p>Memcache是按照Page申请和使用内存的，当Page大小不是Chunk的整数倍时，余下的空间将被浪费。即如果PageSize=1M，ChunkSize=1000B,那么将有1024*1024%1000=576B的空间浪费。</p></li>
+<li><p>Memcache默认是不开启slab reasign的，也就是说分配已经分配给一个slab的内存空间，即使该slab不用，默认也不会分配给其他slab的</p></li>
+</ol>
+
+
+<h2>案例分析：定长问题导致逐出</h2>
+
+<p>memcache的chunk分布是均匀的，这是为了通用性考虑，但是现实中一些场景chunk的分布是不均运的，例如为了减小对数据库的压力，对数据进行了全量缓存，为标识数据库中不存在的记录，向缓存中放置了一个stupidObject。这个对象大小是固定的，且该数据的量很大，导致该数据类型所在的slab占用了大量缓存空间。再一次调整对象结构时，修改了这个StupidObject大小，使其分布在另一个slab中，但是这个原分配的slab空间不会回收，空闲空间不足，导致大量逐出。</p>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -571,241 +840,6 @@ java.io.FileSystem
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/02/14/jetty-classloader/">Jetty ClassLoader解析</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-02-14T00:26:00+08:00" pubdate data-updated="true">Feb 14<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/02/14/jetty-classloader/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><h2>什么是类加载器？</h2>
-
-<p>类加载器（ClassLoader）指将类加载到虚拟机中的代码模块，所有的类必须通过加载器被加载到JVM中。JVM规范将累加在的过程外置于JVM实现，让应用程序自己决定如何获取所需类，这种机制位类层次划分，热加载，模块化奠定了基础。</p>
-
-<h2>类加载器分类</h2>
-
-<p>类加载器主要分为：</p>
-
-<ul>
-<li>启动类加载器(Bootstrap ClassLoader)：主要负责加载<JAVA_HOME>\lib目录中或者-Xbootclasspath中指定的，并且被虚拟机识别的类库加载到VM中。这个加载器是JVM自身的一部分，用本地代码实现的(openjdk中源码位于hotspot/src/share/vm/classfile/classLoader.cpp中)，无法直接被java代码引用。</li>
-<li>扩展类加载器(Extension ClassLoader)：主要负责加载jdk扩展类库<JAVA_HOME>\lib\ext或者java.ext.dirs系统属性指定的目录中jar文件，由sun.misc.Launcher$ExtClassLoader实现</li>
-<li>系统类加载器(System ClassLoader)：用于加载CLASSPATH中指定的类，由sun.misc.Launcher$AppClassLoader实现。该类即ClassLoader.getSystemLoader()的返回值，是应用程序默认的类加载器。</li>
-<li>自定义加载器(User ClassLoader)：用户可以自定义自己的类加载器</li>
-</ul>
-
-
-<h2>双亲委托模型</h2>
-
-<p>JDK中要求所有的自定义ClassLoader 必须扩展自抽象类java.lang.ClassLoader。该类的文档说名中有一个段关于delegate model的描述：</p>
-
-<blockquote><p>The ClassLoader class uses a <code>delegation model</code> to search for classes and resources. Each instance of ClassLoader has an associated parent class loader. When requested to find a class or resource, a ClassLoader instance will delegate the search for the class or resource to its parent class loader before attempting to find the class or resource itself. The virtual machine&#8217;s built-in class loader, called the &#8220;bootstrap class loader&#8221;, does not itself have a parent but may serve as the parent of a ClassLoader instance.</p></blockquote>
-
-<p>简单来说这个delegate model要求除了Bootstrap ClassLoader之外，其余ClassLoader都需要关联一个parent ClassLoader（这种关联方式采用的时组合而非继承），在执行加载class时，首先委托给parent ClassLoader加载，只有当parent ClassLoader无法加载时，再由自身加载。各加载器的关联关系如下：</p>
-
-<pre><code>        Bootstrap ClassLoader
-                 |
-        Extension ClassLoader
-                 |
-        System ClassLoader
-            /           \
-    User1 ClassLoader   User2 ClassLoader
-</code></pre>
-
-<p>Bootstrap ClassLoader是最根层的加载器，用户自定义加载器建议使用系统类加载器作为parent。
-这种委托模型的好处显而易见，它维护了类加载器之间的层次优先级关系。使所有的类加载优先由parent加载，这保证了java基础类库中的加载只会有一份。以java.lang.Object为例，委托模式保证了这个类最终只会由BootstrapClassLoader来加载，以此来保证所有环境中只有同一个类。否则由各加载器自由发挥，当用户自己定义各同名的java.lang.Object类时，系统会出现多分Objec类，最根基的行为出现混乱。（当然，你还是可以自定义出一个同名的java.lang.Object，并且顺利通过编译，但是它正常情况下永远不会被加载）。</p>
-
-<p><strong><em>这个委托模型并非jvm的强制规范，只是jdk中建议的一种模式，有时会发现不遵守这种模式的行为却能产生奇妙的效果，如热部署，OSGI等。</em></strong></p>
-
-<h2>Jetty中的ClassLoader</h2>
-
-<p>jetty，tomcat等web容器通常都会对classloader做扩展，因为一个正常的容器至少要保证其内部运行的多个webapp之间：私有的类库不受影响，并且公有的类库可以共享。这正好发挥classloader的层级划分优势。
-jetty中有一个org.mortbay.jetty.webapp.WebAppClassLoader，负责加载一个webapp context中的应用类，WebAppClassLoader以系统类加载器作为parent，用于加载系统类。不过servlet规范使得web容器的classloader比正常的classloader委托模型稍稍复杂，servlet规范要求：</p>
-
-<ol>
-<li>WEB-INF/lib 和 WEB-INF/classes优先于父容器中的类加载，比如WEB-INF/classes下有个XYZ类，CLASSPATH下也有个XYZ类，jetty中优先加载的是WEB-INF/classes下的，这与正常的父加载器优先相反。</li>
-<li>系统类比如java.lang.String不遵循第一条， WEB-INF/classes或WEB-INF/lib下的类不能替换系统类。不过规范中没有明确规定哪些是系统类，jetty中的实现是按照类的全路径名判断。</li>
-<li>Server的实现类不被应用中的类引用，即Server的实现类不能被人和应用类加载器加载。不过，同样的，规范里没有明确规定哪些是Server的实现类，jetty中同样是按照类的全路径名判断。</li>
-</ol>
-
-
-<p>为了处理上述三个问题，jetty的应用类加载器(org.mortbay.jetty.webapp.WebAppClassLoader)做了些特殊处理。</p>
-
-<h3>WebAppClassLoader的实现</h3>
-
-<p>首先看WebAppClassLoader的实现，WebAppClassLoader的构造器中有如下代码：</p>
-
-<pre><code>super(new URL[]{},parent!=null?parent
-            :(Thread.currentThread().getContextClassLoader()!=null?Thread.currentThread().getContextClassLoader()
-                    :(WebAppClassLoader.class.getClassLoader()!=null?WebAppClassLoader.class.getClassLoader()
-                            :ClassLoader.getSystemClassLoader())));
-</code></pre>
-
-<p>表明WebAppClassLoader还是按照正常的范式设置parent classloader
-然后看重要的loadclass方法实现：</p>
-
-<pre><code>@Override
-protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException
-{
-    Class&lt;?&gt; c= findLoadedClass(name);
-    ClassNotFoundException ex= null;
-    boolean tried_parent= false;
-
-    boolean system_class=_context.isSystemClass(name);
-    boolean server_class=_context.isServerClass(name);
-
-    if (system_class &amp;&amp; server_class)
-    {
-        return null;
-    }
-
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; (_context.isParentLoaderPriority() || system_class) &amp;&amp; !server_class)
-    {
-        tried_parent= true;
-        try
-        {
-            c= _parent.loadClass(name);
-            if (LOG.isDebugEnabled())
-                LOG.debug("loaded " + c);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
-    }
-
-    if (c == null)
-    {
-        try
-        {
-            c= this.findClass(name);
-        }
-        catch (ClassNotFoundException e)
-        {
-            ex= e;
-        }
-    }
-
-    if (c == null &amp;&amp; _parent!=null &amp;&amp; !tried_parent &amp;&amp; !server_class )
-        c= _parent.loadClass(name);
-
-    if (c == null)
-        throw ex;
-
-    if (resolve)
-        resolveClass(c);
-
-    if (LOG.isDebugEnabled())
-        LOG.debug("loaded " + c+ " from "+c.getClassLoader());
-
-    return c;
-}
-</code></pre>
-
-<p>loadclass按照：</p>
-
-<ol>
-<li>findLoadedClass(name)-检查类是否已经加载</li>
-<li>判断该类是否为系统类或server类</li>
-<li>如果该类未加载且父加载器不为空且设置了父加载器优先或类类为系统类，且该类不是server类，则尝试使用父加载器加载该类</li>
-<li>如果不是父加载器优先或者父加载器未加载到该类，使用WebAppClassLoader加载该类</li>
-<li>如果是不是父加载器优先，并且WebAppClassLoader未加载到该类，尝试使用父加载器加载该类</li>
-<li>找到则返回，否则抛出ClassNotFoundException</li>
-</ol>
-
-
-<h3>ClassLoader Priority</h3>
-
-<p>上述过程涉及一个加载器优先级的概念，这也是针对前述第一条规范中WEB-INF/lib和WEB-INF/classes类优先的处理。jetty中父加载器优先的配置项可以通过环境变量</p>
-
-<pre><code>org.eclipse.jetty.server.webapp.parentLoaderPriority=false(默认)/true来设置
-</code></pre>
-
-<p>也可以通过</p>
-
-<pre><code>org.eclipse.jetty.webapp.WebAppContext.setParentLoaderPriority(boolean)方法来设置
-</code></pre>
-
-<p>优于该配置默认是false，因此在load class过程中优先使用WebAppClassLoader加载WEB-INF/lib和WEB-INF/classes中的类。
-当将该配置项设为true时需要确认类加载顺序没有问题。</p>
-
-<h3>设置系统类</h3>
-
-<p>规范2中约定系统类不能被应用类覆盖，但是没有明确规定哪些时系统类，jetty中以类的package路径名来区分，当类的package路径名位包含于</p>
-
-<pre><code>  public final static String[] __dftSystemClasses =
-    {
-        "java.",                            
-        "javax.",                           
-        "org.xml.",                         
-        "org.w3c.",                         
-        "org.apache.commons.logging.",      
-        "org.eclipse.jetty.continuation.",  
-        "org.eclipse.jetty.jndi.",          
-        "org.eclipse.jetty.plus.jaas.",     
-        "org.eclipse.jetty.websocket.WebSocket", 
-        "org.eclipse.jetty.websocket.WebSocketFactory", 
-        "org.eclipse.jetty.servlet.DefaultServlet" 
-    } ;
-</code></pre>
-
-<p>时，会被认为是系统类。（该定义位于<a href="https://github.com/eclipse/jetty.project/blob/master/jetty-webapp/src/main/java/org/eclipse/jetty/webapp/WebAppContext.java">WebAppContext@github</a>中）</p>
-
-<p>因此，我们可以通过 org.eclipse.jetty.webapp.WebAppContext.setSystemClasses(String Array)或者org.eclipse.jetty.webapp.WebAppContext.addSystemClass(String)来设置系统类。
-再次提醒，系统类是对多有应用都可见。</p>
-
-<h3>设置Server类</h3>
-
-<p>规范3中约定Server类不对任何应用可见。jetty同样是用package路径名来区分哪些是Server类。Server类包括：</p>
-
-<pre><code>public final static String[] __dftServerClasses =
-{
-    "-org.eclipse.jetty.continuation.", 
-    "-org.eclipse.jetty.jndi.",         
-    "-org.eclipse.jetty.plus.jaas.",    
-    "-org.eclipse.jetty.websocket.WebSocket", 
-    "-org.eclipse.jetty.websocket.WebSocketFactory", 
-    "-org.eclipse.jetty.servlet.DefaultServlet", 
-    "-org.eclipse.jetty.servlet.listener.", 
-    "org.eclipse.jetty."                
-} ;
-</code></pre>
-
-<p>我们可以通过， org.eclipse.jetty.webapp.WebAppContext.setServerClasses(String Array) 或org.eclipse.jetty.webapp.WebAppContext.addServerClass(String)方法设置Server类。
-注意，Server类是对所有应用都不可见的，但是WEB-INF/lib下的类可以替换Server类。</p>
-
-<h3>自定义WebApp ClassLoader</h3>
-
-<p>当默认的WebAppClassLoader不能满足需求时，可以自定义WebApp ClassLoader，不过jetty建议自定义的classloader要扩展于默认的WebAppClassLoader实现。具体请参考<a href="http://wiki.eclipse.org/Jetty/Reference">jetty手册</a></p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/9/">&larr; Older</a>
@@ -838,6 +872,10 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -851,10 +889,6 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -893,7 +927,7 @@ protected synchronized Class&lt;?&gt; loadClass(String name, boolean resolve) th
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

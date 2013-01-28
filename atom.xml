@@ -4,7 +4,7 @@
   <title><![CDATA[非纯种程序猿]]></title>
   <link href="http://jiangbo.me/atom.xml" rel="self"/>
   <link href="http://jiangbo.me/"/>
-  <updated>2013-01-17T19:28:54+08:00</updated>
+  <updated>2013-01-28T15:24:58+08:00</updated>
   <id>http://jiangbo.me/</id>
   <author>
     <name><![CDATA[jiang-bo]]></name>
@@ -12,6 +12,63 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[我的2012&2013]]></title>
+    <link href="http://jiangbo.me/blog/2013/01/28/my2012/"/>
+    <updated>2013-01-28T15:23:00+08:00</updated>
+    <id>http://jiangbo.me/blog/2013/01/28/my2012</id>
+    <content type="html"><![CDATA[<p>拖了一个月的年终总结，今天趁有空偷懒来搞下</p>
+
+<h2>流水账</h2>
+
+<p><strong>1~2月：</strong>担保通项目，中期时被上峰夭折了，也使我第一个大项目的技术经理以失败告终</p>
+
+<p><strong>3月：</strong>开始带新人，从一个实习生开始，感觉做的不是很到位，不够有耐心，个人喜欢那种聪明有自己想法的一点就透的人，导致新人成长也不是很顺利，惭愧</p>
+
+<p><strong>4~7月：</strong>可以说是2012最为忙碌的3个月，一堆理不清的事情，简单讲包括如下几个事情：</p>
+
+<ol>
+<li>新增了两个新人需要带，前后错了一个月的时间差，从新人身上看到很多自己当年的影子</li>
+<li>webx3升级拆分项目，预研，前期准备，组织开发，发布上线，第一个主动发起的有一定规模的技术项目，在两个苦逼的开发加一个苦逼的测试支持下完成了</li>
+<li>买家保障项目，与升级项目叠加在一起的一个业务项目，可以说是2012年信用线最主要的一个项目，在N次需求方案改版下，N次延期的情况下，在7月底上线了。这个项目是我第一次作为一个大项目（220多个人日）的PM+技术经理+开发，三合一，结果证实，我是一个失败的PM</li>
+</ol>
+
+
+<p><strong>8月：</strong>买家保障上线之后，一系列的运营小需求不断上线，同时也开始重新审视享有的技术架构，规划信用体系的整体方案，写了一个报告，在一个自认为不是很适宜的时机（年中review前）发了出去，然后跑去厦门休整了一下，鼓浪屿风景不错，就是人太多！</p>
+
+<p><strong>9月：</strong>一个偶然的机会，得知有机会转岗到北京HDFS团队，抱着试一试的心态，报了名，经过几轮面试，一不小心就转成功了。当得知可以转岗时，转与不转的这个选择，让我犹豫了很久，最终还是转了，期望能接触些新的东西。由此开启了我从一线业务开发转向平台支撑岗位的的转变历程</p>
+
+<p><strong>10月：</strong>十一假期带着女人见了下父母，见识下帝都的豪迈。假期之后正式到北京HDFS开发岗位报到，一切从零开始，北京人员少，组织松散，大部分要靠自己，按照新人学习的提纲，开始一点一点的看HDFS的源码，每天8：30到公司，晚上10：00离开，用了不到2周的时间，将HDFS的源码扫了一边，写了十几篇笔记，然后开始干活</p>
+
+<p><strong>11月：</strong> 继续学习HDFS，边学边做，搞了几个性能优化的patch，一些小功能的改进优化</p>
+
+<p><strong>12月：</strong> 继续边学边做，PS，玛雅人忒不靠谱，12月22日天一亮，我TMD还活着……</p>
+
+<h2>总结</h2>
+
+<p>简单来说，2012年经历了一个充实的悲催的迷茫的前半年之后，tansfer到一个全新的枯燥的充满挑战的平台开发岗位，相信这次选择对我后面的职业生涯有这重要的影响，尽管目前来看还不知道这个选择是好是坏。</p>
+
+<h2>展望</h2>
+
+<blockquote><ol>
+<li>自己做个网站</li>
+<li>再一次长途旅行（环青海湖或这挺进新疆，诚征驴友）</li>
+<li>还有一个很重要的事，一时想不起来了，暂定“顺利度过2012吧！”</li>
+</ol>
+</blockquote>
+
+<p>一年前定的三个目标，第一条已经彻底放弃了，年初买的那本rails的书，基本没怎么翻过；第二条也没实现，青海湖，新疆都没去，不过我的旅行版图上新增了几个已达的地标，厦门，苏州，天目湖，西塘，算是做了50%吧；第三条，到最后我也没想起我要干嘛，不过2012还是顺利通过了，主要是玛雅人太不靠谱</p>
+
+<p>发现每年定的目标最终能做到的越来越少，所以决定13年减少个目标，只有两个：</p>
+
+<ol>
+<li>求变，很不满意自己现在的生活工作状态，必须改变，即使改错也要尝试</li>
+<li>一次环中国旅行，今年25岁了，要在25岁前完成这个梦想——让我的足迹踏遍大半个中国。</li>
+</ol>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[HADOOP动态加载配置]]></title>
@@ -3816,57 +3873,6 @@ FSImage中文件元信息的存储结构如下（参见FImage.saveFSImage()方�
 <h3>Map&lt;String, Collection<Block>> excessReplicateMap</h3>
 
 <p>维护系统中datanode与其上的超额备份block的集合，这些超额的备份将被删除。</p>
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[本地编译Hadoop小记]]></title>
-    <link href="http://jiangbo.me/blog/2012/09/24/compile-hadoop/"/>
-    <updated>2012-09-24T15:28:00+08:00</updated>
-    <id>http://jiangbo.me/blog/2012/09/24/compile-hadoop</id>
-    <content type="html"><![CDATA[<h2>Git源码</h2>
-
-<pre><code>git clone git://git.apache.org/hadoop-common.git
-</code></pre>
-
-<p>视网速不通，略慢</p>
-
-<h2>编译</h2>
-
-<pre><code>cd hadoop-common
-mvn install -DskipTests
-</code></pre>
-
-<p>抛异常：</p>
-
-<pre><code>[ERROR] Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127 -&gt; [Help 1]
-org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-antrun-plugin:1.6:run (compile-proto) on project hadoop-common: An Ant BuildException has occured: exec returned: 127
-    at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:217)
-    at... 
-    Caused by: /Users/Shared/Workspace/hadoop/hadoop-common/hadoop-common-project/hadoop-common/target/antrun/build-main.xml:23: exec returned: 127
-    at org.apache.tools.ant.taskdefs.ExecTask.runExecute(ExecTask.java:650)
-    at org.apache.tools.ant.taskdefs.ExecTask.runExec(ExecTask.java:676)
-    at org.apache.tools.ant.taskdefs.ExecTask.execute(ExecTask.java:502)
-    at org.apache.tools.ant.UnknownElement.execute(UnknownElement.java:291)
-    at sun.reflect.GeneratedMethodAccessor16.invoke(Unknown Source)
-    ... 21 more
-</code></pre>
-
-<p>原因是缺少protocol buffer， 找不到protoc命令。</p>
-
-<h3>安装protocol buffer</h3>
-
-<pre><code>wget https://protobuf.googlecode.com/files/protobuf-2.4.1.tar.bz2
-tar -xvf protobuf-2.4.1.tar.bz2
-cd protobuf-2.4.1
-./configure &amp;&amp; make
-make install
-</code></pre>
-
-<h3>导入Eclipse</h3>
-
-<pre><code>mvn eclipse:eclipse -DdownloadSources=true -DdownloadJavadocs=true
-</code></pre>
 ]]></content>
   </entry>
   

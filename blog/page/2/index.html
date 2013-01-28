@@ -9,9 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="介绍 Hadooop源码中自带了contrib/fuse-dfs模块，用于实现通过libhdfs和fuse将HDFS mount到*inux的本地。 编译 环境 Linux: 2.6.18-164.el5 x86_64
-JDK: 1.6.0_23 64bit
-Hadoop: 0.19.1 &hellip;">
+  <meta name="description" content="一、背景 HDFS中对Block的读取使用DataXceiver通过Socket发送Packet数据进行，client端通过一个BlockReader来接收Socket中的Block数据。详见HDFS数据读取流程。大致流程如下： client端调用FileSystem.open() &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +76,147 @@ Hadoop: 0.19.1 &hellip;">
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/12/10/hdfs-blockreaderlocal/">HDFS-2246:使用BlockReaderLocal优化本地block读取</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-12-10T16:09:00+08:00" pubdate data-updated="true">Dec 10<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/12/10/hdfs-blockreaderlocal/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>一、背景</h2>
+
+<p>HDFS中对Block的读取使用DataXceiver通过Socket发送Packet数据进行，client端通过一个BlockReader来接收Socket中的Block数据。详见<a href="">HDFS数据读取流程</a>。大致流程如下：</p>
+
+<ol>
+<li>client端调用FileSystem.open()获取一个DFSInputStream</li>
+<li>client端调用DFSInputStream.read(byte[] buffer, int off, int len)读取数据</li>
+<li>client端通过DFSInputStream.blockSeekTo()向NameNode发起请求，定位到需要读取的block所在的Datanode，构建一个BlockReader用于读去对应DataNode上的block数据，返回该DataNodeInfo</li>
+<li>BlockReader主要负责同DataNode间建立一个Socket链接用于读取数据，BlockReader首先向DataNode发送请求头（包括操作类型，blockId，block时间戳，起始偏移量，读取数据的长度，client名）</li>
+<li>DataNode接收到DataXceiverServer接收到client端请求后，构建一个DataXceiver处理该请求。</li>
+<li>DataXceiver首先解析请求头，获取请求操作类型，当发现是READ_BLOCK操作后，调用相应的readBlock()方法处理</li>
+<li>readBlock方法解析请求中需要的blockId，构建一个BlockSender用于读取磁盘上的block文件数据并发送给client</li>
+<li>BlockSender读取磁盘上的block文件，将数据按照chunk通过socket发送给client的blockReader，同时，BlockSender在发送chunk后需要从meta文件中读取该chunk的checksum数据，同样发送给client，用于该chunk的checksum校验。</li>
+<li>client端通过BlockReader.readChunks()接收BlockSender发送的chunk数据，并进行checksum校验，校验成功后向DataNode发送checksumOk。</li>
+<li>循环6-10，直至当前block的数据全部被读取完成。</li>
+<li>循环执行3-11, 直至需要读取的文件数据都被读取完。</li>
+</ol>
+
+
+<p>这个过程是在集群环境想，client读取datanode上数据的一个正常流程，但事实上当client和datanode位于同一个物理节点上时（如Hadoop集群中，task运行在datanode上），这个过程显的有些多余，client可以直接通过本地文件系统api读取文件，而不需要走繁杂的socket流程。</p>
+
+<h2>二、设计实现</h2>
+
+<p>HDFS-2246中提供了一个BlockReaderLocal的实现，当client发现从NameNode返回的Block所属的datanode和client位于同一节点上时，构建一个BlockReaderLocal用于读取本地文件。
+上述3-10的流程将简化为：</p>
+
+<ol>
+<li>client端向NameNode发起请求获取block所属的datanode信息后，判断该datanode是否和client位于同一节点，是且开启了本地读取功能，则构建一个BlockReaderLocal读取本地文件，否则构建一个BlockReader按照原流程进行。</li>
+<li>BlockReaderLocal通过DataNode.getBlockLocaPathInfo()从DataNode获取block的本地文件路径信息。</li>
+<li>BlockReaderLocal构建InputStream读取block文件和meta文件信息</li>
+<li>对于需要checksum的场景（默认），通过blockReaderLocal.readChunks()按chunk读取本地文件，同时读取meta文件中该chunk的checksum数据，进行校验</li>
+<li>对于跳过checksum的场景，直接通过InputStream.read()读取block数据。</li>
+</ol>
+
+
+<h3>扩展DataNode协议接口</h3>
+
+<p>client端需要能够从DataNode获取block文件的本地文件路径信息。因此扩展ClientDataNodeProtocol，增加一个</p>
+
+<pre><code>BlockLocalPathInfo getBlockLocalPathInfo(Block block) throws IOException;
+</code></pre>
+
+<p>接口用于获取block的本地路径信息</p>
+
+<h3>本地文件读取</h3>
+
+<p>BlockReaderLocal共过BufferedInputStream直接读取本地文件，注意此处HDFS-2246的patch中使用的是FileInputStream，实际测试过程中发现，FileInputStream对本地文件的读取性能较差， 替换为使用BufferedInputStream</p>
+
+<h3>checksum较验</h3>
+
+<p>为了完成checksum校验，BlockReaderLocal同时需要读取block的meta文件，每当block文件读取一个chunk时需要从meta文件读取一个checksum数据，进行checksum校验，通过校验后进行下一个chunk的读取和校验。由于BlockReaderLocal读取的是本地文件，避免的网络传输对数据的影响，因此可以配置跳过checksum检查，以提高读取性能。默认是需要做checksum的。</p>
+
+<h3>本机判断</h3>
+
+<p>当前patch中的实现主要用IP来判断是否block所在的datanode与client是否位于同一节点上。</p>
+
+<h2>测试</h2>
+
+<p>通过TestDFSIO工具测试一个单节点的集群，2个文件，每个文件1000M
+./bin/hadoop jar hadoop-0.19.1-dc-test.jar TestDFSIO -read -nrFiles 2 -fileSize 1000
+测试结果对比:
+socket读取：</p>
+
+<pre><code>---
+12/12/07 13:52:57 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:52:57 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:52:57 CST 2012
+12/12/07 13:52:57 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:52:57 INFO mapred.FileInputFormat:      Throughput mb/sec: 283.5270768358378
+12/12/07 13:52:57 INFO mapred.FileInputFormat: Average IO rate mb/sec: 283.5281982421875
+12/12/07 13:52:57 INFO mapred.FileInputFormat:  IO rate std deviation: 0.5685961122141402
+</code></pre>
+
+<p>本地读取</p>
+
+<pre><code>---
+12/12/07 13:48:59 INFO mapred.FileInputFormat: ----- TestDFSIO ----- : read
+12/12/07 13:48:59 INFO mapred.FileInputFormat:            Date &amp; time: Fri Dec 07 13:48:59 CST 2012
+12/12/07 13:48:59 INFO mapred.FileInputFormat:        Number of files: 2
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Total MBytes processed: 2000
+12/12/07 13:48:59 INFO mapred.FileInputFormat:      Throughput mb/sec: 369.61744594344856
+12/12/07 13:48:59 INFO mapred.FileInputFormat: Average IO rate mb/sec: 369.6180725097656
+12/12/07 13:48:59 INFO mapred.FileInputFormat:  IO rate std deviation: 0.4800772
+</code></pre>
+
+<p>另外通过Patch中提供的TestShortCircuitLocalRead工具，测试结果如下：</p>
+
+<p>本地读取并进行checksum校验</p>
+
+<pre><code>true no 1 32000000
+---
+Iteration 20 took 115453
+Iteration 20 took 115803
+Iteration 20 took 115748
+</code></pre>
+
+<p>socket读取并进行checksum校验（默认）</p>
+
+<pre><code>no no 1 32000000
+---
+Iteration 20 took 128820
+Iteration 20 took 135305
+Iteration 20 took 129145
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -350,137 +489,6 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-client-code/">HDFS源码学习（14）——Client代码结构</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-10-18T21:59:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
-        
-         | <a href="/blog/2012/10/18/hdfs-client-code/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>Client核心代码有DistributedFileSystem和DFSClient。</p>
-
-<p><img src="/images/hdfs/Client.png" alt="Client" /></p>
-
-<p>DistributedFileSystem扩展子FileSystem，在为客户端提供一个文件系统接口实现。其内部使用DFSClient完成各类文件操作。</p>
-
-<p>DFSClient使用ClientProtocol与NameNode通信，完成文件元信息操作。并通过Socket连接完成与DataNode间的block读写操作。</p>
-
-<p>DFSClient代码结构如下：</p>
-
-<p><img src="/images/hdfs/DFSClient.png" alt="DFSClient" /></p>
-
-<ol>
-<li>LeaseChecker主要用于lease检查和续约。</li>
-<li>DFSOutputStream用于提供带buffer的字节流写入功能。client在写入数据时先将数据缓存在本地。并将数据切分成多个packet（默认每个packet为64K）。每个packet又被拆分成多个chunk（默认512Byte），每个chunk都有一个checksum。client写满一个packet后会将该packet加入到一个dataqueue中。由DataStreamer线程负责将每个packet发送给datanode pipeline。发送完一个pakcet，streamer会将其从dataqueue移至ackqueue中。ResponseProcessor负责接收datanode发回的ack信息，每成功接收一个packet的ack信息，ResponseProcessor会将ackqueue中该packet删除。</li>
-<li>DFSInputStream用于提供字节流的读取，其内部封装了与NN和DN的交互</li>
-<li>DataStreamer: 负责向datanode pipeline发送packet。其本身是一个Daemon线程，从namenode获取blockId和block存放位置，将packet发送给pipeline中的datanode，每个packet都有一个seqId，每个packet发送完时都会收到datanode的ack信息。当收到所有packet的ack信息后（表示该block已发送完），streamer关闭该block。</li>
-<li>ResponseProcessor:用于接收datanode返回ack信息，并将响应ackqueue中的packet删除</li>
-</ol>
-
-
-<h2>创建文件</h2>
-
-<ol>
-<li>client向NameNode发起创建文件请求</li>
-<li>NameNode.create（）处理创建文件请求，检查是否有重名，当前是否处于Safe-mode，是否有权限创建文件， 校验通过后创建一个INode记录。</li>
-<li>NameNode将创建文件的事件记录到EditLog中</li>
-<li>INode被创建后，NameNode发放给Client一个lease，Client可以使用这个lease通过ClientProtocol访问，进行只读操作。（写操作需要等文件close）</li>
-</ol>
-
-
-<h2>写入流程</h2>
-
-<p>client写入流程如下图所示：</p>
-
-<p><img src="/images/hdfs/ClientWrite.png" alt="ClientWrite" /></p>
-
-<ol>
-<li>Client向NameNode发起创建文件的RPC请求</li>
-<li>NameNode检查文件是否已经存在，是否有权创建等，成功则创建一个文件记录，并发放给Client一个lease</li>
-<li>Client获得lease之后开始进行数据写入，写入的数据首先被缓存本地，并被拆分为多个packet，放置到dataqueue队列中</li>
-<li>DataStreamer线程负责检查dataqueue队列，发现有数据时且没有可用block时，向NameNode发送addBlock()请求，申请一个分配一个block空间。NameNode返回给DataStreamer一个blockId和用于存放block的datanode list</li>
-<li>DataStreamer将每个packet数据发送给datanode pipeline，并将该packet移至ackqueue</li>
-<li>datanode pipeline中第一个datanode收到packet之后存储到本地block中并穿行备份至后续datanode中</li>
-<li>pipeline中datanode存储好packet之后会逆序返回ack信息，并最终返回给client.</li>
-<li>Client端ResponseProcessor捕获到每个packet的ack信息时会将响应ackqueue中的packet删除</li>
-<li>当所有数据都写入完成后，client会向NameNode发起一个complete RPC请求，告知文件最新的时间戳和已经发送给datanode的block长度。NameNode检查所有block的副本信息，只有所有block的副本数均满足最低要求时，complete会返回成功。</li>
-<li>最后，NameNode将收回client持有的lease。</li>
-</ol>
-
-
-<p>NameNode处理addBlock()请求的流程大致如下：</p>
-
-<ol>
-<li>校验client是否有该文件的lease</li>
-<li>清理上一次写入记录，包括：a.提交上一次写入，b.更新lease有效期；c.将完成的写入记录到EditLog中</li>
-<li>清理完毕之后，使用BlockManager分配指定副本数个block及其对应的datanode信息，返回给client</li>
-</ol>
-
-
-<p>DataNode处理block写入的流程大致如下：</p>
-
-<ol>
-<li>将block复制到本地磁盘</li>
-<li>发送block received消息给NameNode告知写入了一个新的block</li>
-<li>将block数据发送给datanode pipeline中下一个datanode，进行备份</li>
-<li>返回一个ack消息给前一个调用者</li>
-</ol>
-
-
-<p>后续的datanode收到上一个datanode的备份block请求是做类似的操作。</p>
-
-<h2>读取流程</h2>
-
-<p>读取流程相对简单写，如下所示 ：</p>
-
-<p><img src="/images/hdfs/ClientRead.png" alt="ClientWrite" /></p>
-
-<ol>
-<li>client向NameNode发起RPC请求，获取文件的blockLocation信息</li>
-<li>NameNode返回一定长度（10*defaultBlockSize）block的datanode位置信息</li>
-<li>Client根据返回的blockLocation信息选取距自己最近（同一节点&lt;通一机架&lt;同一机房）的datanode读取数据，读完一个block会对该block进行checksum校验。如果校验正确则关闭与该datanode连接，去读下一个block；如果校验失败，则通知NameNode该block在当前datanode上的副本损坏了，并继续从datanode列表中获取一个datanode，重新读取该block。</li>
-<li>当本次获取的blockLocation中的block全部读完，且该文件还有block时，重复1，2，3过程，直至所有blcok全部读完。</li>
-</ol>
-
-
-<h2>关闭文件（complete）</h2>
-
-<ol>
-<li>当Client完成文件写入之后，会调用complete()通知NameNode文件写入完成了，该请求会提交文件写入的最后一个block信息并且告知NameNode写入的block总数以及最新时间戳。</li>
-<li>NameNode收到请求后会检查是否所有的block的事物都已经提交了，并且每个block的副本数都达到了最小值。如果是则返回true，否则返回false。</li>
-<li>Client收到返回值后如果失败则重试几次。</li>
-</ol>
-
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/3/">&larr; Older</a>
@@ -513,6 +521,10 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -526,10 +538,6 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -568,7 +576,7 @@ $./fuse_dfs_wrapper.sh dfs://master_node(namenode地址):port /tmp/dfs -d
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

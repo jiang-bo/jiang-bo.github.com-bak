@@ -9,9 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="FSNameSystem FSNameSystem是HDFS文件系统实际执行的核心，提供各种增删改查文件操作接口。其内部维护多个数据结构之间的关系： fsname->block列表的映射
-所有有效blocks集合
-block与其所属的datanodes之间的映射（该映射是通过block &hellip;">
+  <meta name="description" content="main() public static void main(String argv[]) throws Exception { try { StringUtils.startupShutdownMessage(NameNode.class, argv, LOG); //创建nameNode &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +76,390 @@ block与其所属的datanodes之间的映射（该映射是通过block &hellip;"
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2012/10/18/hdfs-namenode-startup/">HDFS源码学习(2)——NameNode初始化</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2012-10-18T21:35:00+08:00" pubdate data-updated="true">Oct 18<span>th</span>, 2012</time>
+        
+         | <a href="/blog/2012/10/18/hdfs-namenode-startup/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><h2>main()</h2>
+
+<pre><code>  public static void main(String argv[]) throws Exception {
+    try {
+      StringUtils.startupShutdownMessage(NameNode.class, argv, LOG);
+      //创建nameNode
+      NameNode namenode = createNameNode(argv, null);
+      if (namenode != null)
+        namenode.join();
+    } catch (Throwable e) {
+      LOG.error(StringUtils.stringifyException(e));
+      System.exit(-1);
+    }
+  }
+</code></pre>
+
+<h3>createNameNode()</h3>
+
+<pre><code>  public static NameNode createNameNode(String argv[], 
+                                 Configuration conf) throws IOException {
+    if (conf == null)
+      conf = new Configuration();
+      //从命令行参数中提取启动配置项数据
+    StartupOption startOpt = parseArguments(argv);
+    if (startOpt == null) {
+      printUsage();
+      return null;
+    }
+    //设置启动参数
+    setStartupOption(conf, startOpt);
+
+    switch (startOpt) {
+      case FORMAT:
+        boolean aborted = format(conf, true);
+        System.exit(aborted ? 1 : 0);
+      case FINALIZE:
+        aborted = finalize(conf, true);
+        System.exit(aborted ? 1 : 0);
+      default:
+    }
+
+    //新建NameNode
+    NameNode namenode = new NameNode(conf);
+    return namenode;
+  }
+</code></pre>
+
+<h3>NameNode()</h3>
+
+<pre><code>  public NameNode(Configuration conf) throws IOException {
+    super(conf);
+    try {
+    //初始化
+      initialize(getConf());
+    } catch (IOException e) {
+      this.stop();
+      throw e;
+    }
+  }
+</code></pre>
+
+<h3>initialize()</h3>
+
+<pre><code>  private void initialize(Configuration conf) throws IOException {
+    InetSocketAddress socAddr = NameNode.getAddress(conf);
+    int handlerCount = conf.getInt("dfs.namenode.handler.count", 10);
+    // 关键-&gt;创建一个RPC Server
+    this.server = RPC.getServer(this, socAddr.getHostName(), socAddr.getPort(),
+                                handlerCount, false, conf);
+
+    // The rpc-server port can be ephemeral... ensure we have the correct info
+    this.serverAddress = this.server.getListenerAddress(); 
+    FileSystem.setDefaultUri(conf, getUri(serverAddress));
+    LOG.info("Namenode up at: " + this.serverAddress);
+
+    myMetrics = new NameNodeMetrics(conf, this);
+
+    //关键-&gt;创建一个FSNameSystem
+    this.namesystem = new FSNamesystem(this, conf);
+    //启动HTTP Server
+    startHttpServer(conf);
+    //启动RPC Server
+    this.server.start();  //start RPC server   
+
+    startTrashEmptier(conf);
+  }
+</code></pre>
+
+<h2>FSNameSystem()</h2>
+
+<pre><code>  FSNamesystem(NameNode nn, Configuration conf) throws IOException {
+    try {
+      //初始化FSNameSystem
+      initialize(nn, conf);
+      userPasswordInformation = new UserPasswordInformation(conf);
+      extendAccessControlList = new ExtendAccessControlList(conf);
+    } catch(IOException e) {
+      LOG.error(getClass().getSimpleName() + " initialization failed.", e);
+      close();
+      throw e;
+    }
+  }
+</code></pre>
+
+<h3>FSNameSystem.initialize()</h3>
+
+<pre><code>  private void initialize(NameNode nn, Configuration conf) throws IOException {
+    this.systemStart = now();
+    this.fsLock = new ReentrantReadWriteLock(); // non-fair locking
+    setConfigurationParameters(conf);
+
+    this.nameNodeAddress = nn.getNameNodeAddress();
+    this.registerMBean(conf); // register the MBean for the FSNamesystemStutus
+
+    //创建FSDirectory
+    this.dir = new FSDirectory(this, conf);
+    StartupOption startOpt = NameNode.getStartupOption(conf);
+
+    //加载FSImage
+    this.dir.loadFSImage(getNamespaceDirs(conf),
+                         getNamespaceEditsDirs(conf), startOpt);
+    long timeTakenToLoadFSImage = now() - systemStart;
+    LOG.info("Finished loading FSImage in " + timeTakenToLoadFSImage + " msecs");
+    NameNode.getNameNodeMetrics().fsImageLoadTime.set(
+                              (int) timeTakenToLoadFSImage);
+    this.safeMode = new SafeModeInfo(conf);
+    setBlockTotal();
+    //创建PendingReplicationBlocks
+    pendingReplications = new PendingReplicationBlocks(
+                            conf.getInt("dfs.replication.pending.timeout.sec", 
+                                        -1) * 1000L);
+    //创建心跳检查线程                                          
+    this.hbthread = new Daemon(new HeartbeatMonitor());
+    //创建租约管理线程
+    this.lmthread = new Daemon(leaseManager.new Monitor());
+    //创建副本管理线程
+    this.replthread = new Daemon(new ReplicationMonitor());
+    hbthread.start();
+    lmthread.start();
+    replthread.start();
+
+    // 副本超额block管理线程
+    this.overreplthread = new Daemon(new OverReplicationMonitor());
+    overreplthread.start();
+
+    this.hostsReader = new HostsFileReader(conf.get("dfs.hosts",""),
+                                           conf.get("dfs.hosts.exclude",""));
+    //创建退役节点管理线程
+    this.dnthread = new Daemon(new DecommissionManager(this).new Monitor(
+        conf.getInt("dfs.namenode.decommission.interval", 30),
+        conf.getInt("dfs.namenode.decommission.nodes.per.interval", 5)));
+    dnthread.start();
+
+    this.dnsToSwitchMapping = ReflectionUtils.newInstance(
+        conf.getClass("topology.node.switch.mapping.impl", ScriptBasedMapping.class,
+            DNSToSwitchMapping.class), conf);
+
+    /* If the dns to swith mapping supports cache, resolve network 
+     * locations of those hosts in the include list, 
+     * and store the mapping in the cache; so future calls to resolve
+     * will be fast.
+     */
+    if (dnsToSwitchMapping instanceof CachedDNSToSwitchMapping) {
+      dnsToSwitchMapping.resolve(new ArrayList&lt;String&gt;(hostsReader.getHosts()));
+    }
+    //创建副本定位器用于定位副本存放位置
+    this.replicator = BlockPlacementPolicy.getInstance(
+        conf,
+        this,
+        this.clusterMap,
+        this.hostsReader,
+        this.dnsToSwitchMapping,
+        this);
+  }
+</code></pre>
+
+<h2>FSDirectory(this, conf)</h2>
+
+<p>新建FSDirecotry</p>
+
+<pre><code> FSDirectory(FSNamesystem ns, Configuration conf) {
+    //创建一个FSImage，并实例化构建FSDirectory
+    this(new FSImage(), ns, conf);
+    fsImage.setCheckpointDirectories(FSImage.getCheckpointDirs(conf, null),
+                                FSImage.getCheckpointEditsDirs(conf, null));
+  }
+</code></pre>
+
+<h3>this(new FSImage(), ns, conf);</h3>
+
+<pre><code>FSDirectory(FSImage fsImage, FSNamesystem ns, Configuration conf) {
+    this.bLock = new ReentrantReadWriteLock(); // non-fair
+    this.cond = bLock.writeLock().newCondition();
+    //创建根目录
+    rootDir = new INodeDirectoryWithQuota(INodeDirectory.ROOT_NAME,
+        ns.createFsOwnerPermissions(new FsPermission((short)0755)),
+        Integer.MAX_VALUE, -1);
+    this.fsImage = fsImage;
+    namesystem = ns;
+    initialize(conf);
+  }
+</code></pre>
+
+<h3>FSDirectory.initialize()</h3>
+
+<pre><code>  private void initialize(Configuration conf) {
+    MetricsContext metricsContext = MetricsUtil.getContext("dfs");
+    directoryMetrics = MetricsUtil.createRecord(metricsContext, "FSDirectory");
+    directoryMetrics.setTag("sessionId", conf.get("session.id"));
+  }
+</code></pre>
+
+<h3>FSDirectory.loadFSImage()</h3>
+
+<pre><code>  void loadFSImage(Collection&lt;File&gt; dataDirs,
+                   Collection&lt;File&gt; editsDirs,
+                   StartupOption startOpt) throws IOException {
+    // format before starting up if requested
+    if (startOpt == StartupOption.FORMAT) {
+      fsImage.setStorageDirectories(dataDirs, editsDirs);
+      fsImage.format();
+      startOpt = StartupOption.REGULAR;
+    }
+    try {
+      //从datadir和editdirs加载FSImage
+      if (fsImage.recoverTransitionRead(dataDirs, editsDirs, startOpt)) {
+        fsImage.saveNamespace(true);
+      }
+      //初始化Editlog
+      FSEditLog editLog = fsImage.getEditLog();
+      assert editLog != null : "editLog must be initialized";
+      if (!editLog.isOpen())
+        editLog.open();
+      fsImage.setCheckpointDirectories(null, null);
+    } catch(IOException e) {
+      fsImage.close();
+      throw e;
+    }
+    writeLock();
+    try {
+      this.ready = true;
+      cond.signalAll();
+    } finally {
+      writeUnlock();
+    }
+  }
+</code></pre>
+
+<h3>FSImage.recoverTransitionRead（）</h3>
+
+<pre><code>  boolean recoverTransitionRead(Collection&lt;File&gt; dataDirs,
+                             Collection&lt;File&gt; editsDirs,
+                                StartupOption startOpt
+                                ) throws IOException {
+    assert startOpt != StartupOption.FORMAT : 
+      "NameNode formatting should be performed before reading the image";
+
+    // none of the data dirs exist
+    if (dataDirs.size() == 0 || editsDirs.size() == 0)  
+      throw new IOException(
+        "All specified directories are not accessible or do not exist.");
+
+    if(startOpt == StartupOption.IMPORT 
+        &amp;&amp; (checkpointDirs == null || checkpointDirs.isEmpty()))
+      throw new IOException("Cannot import image from a checkpoint. "
+                          + "\"fs.checkpoint.dir\" is not set." );
+
+    if(startOpt == StartupOption.IMPORT 
+        &amp;&amp; (checkpointEditsDirs == null || checkpointEditsDirs.isEmpty()))
+      throw new IOException("Cannot import image from a checkpoint. "
+                          + "\"fs.checkpoint.edits.dir\" is not set." );
+
+    setStorageDirectories(dataDirs, editsDirs);
+    // 1.检查所有目录的状态和一致性
+    Map&lt;StorageDirectory, StorageState&gt; dataDirStates = 
+             new HashMap&lt;StorageDirectory, StorageState&gt;();
+    boolean isFormatted = false;
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                      dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      StorageState curState;
+      try {
+        curState = sd.analyzeStorage(startOpt);
+        // sd is locked but not opened
+        switch(curState) {
+        case NON_EXISTENT:
+          // name-node fails if any of the configured storage dirs are missing
+          throw new InconsistentFSStateException(sd.getRoot(),
+                                                 "storage directory does not exist or is not accessible.");
+        case NOT_FORMATTED:
+          break;
+        case NORMAL:
+          break;
+        default:  // recovery is possible
+          sd.doRecover(curState);      
+        }
+        if (curState != StorageState.NOT_FORMATTED 
+            &amp;&amp; startOpt != StartupOption.ROLLBACK) {
+          sd.read(); // read and verify consistency with other directories
+          isFormatted = true;
+        }
+        if (startOpt == StartupOption.IMPORT &amp;&amp; isFormatted)
+          // import of a checkpoint is allowed only into empty image directories
+          throw new IOException("Cannot import image from a checkpoint. " 
+              + " NameNode already contains an image in " + sd.getRoot());
+      } catch (IOException ioe) {
+        sd.unlock();
+        throw ioe;
+      }
+      dataDirStates.put(sd,curState);
+    }
+
+    if (!isFormatted &amp;&amp; startOpt != StartupOption.ROLLBACK 
+                     &amp;&amp; startOpt != StartupOption.IMPORT)
+      throw new IOException("NameNode is not formatted.");
+    if (layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION) {
+      checkVersionUpgradable(layoutVersion);
+    }
+    if (startOpt != StartupOption.UPGRADE
+          &amp;&amp; layoutVersion &lt; LAST_PRE_UPGRADE_LAYOUT_VERSION
+          &amp;&amp; layoutVersion != FSConstants.LAYOUT_VERSION)
+        throw new IOException(
+                          "\nFile system image contains an old layout version " + layoutVersion
+                          + ".\nAn upgrade to version " + FSConstants.LAYOUT_VERSION
+                          + " is required.\nPlease restart NameNode with -upgrade option.");
+    // check whether distributed upgrade is reguired and/or should be continued
+    verifyDistributedUpgradeProgress(startOpt);
+
+    // 2. Format unformatted dirs.
+    this.checkpointTime = 0L;
+    for (Iterator&lt;StorageDirectory&gt; it = 
+                     dirIterator(); it.hasNext();) {
+      StorageDirectory sd = it.next();
+      StorageState curState = dataDirStates.get(sd);
+      switch(curState) {
+      case NON_EXISTENT:
+        assert false : StorageState.NON_EXISTENT + " state cannot be here";
+      case NOT_FORMATTED:
+        LOG.info("Storage directory " + sd.getRoot() + " is not formatted.");
+        LOG.info("Formatting ...");
+        sd.clearDirectory(); // create empty currrent dir
+        break;
+      default:
+        break;
+      }
+    }
+</code></pre>
+</div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -370,274 +752,6 @@ make install
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2012/08/31/something-about-memcache-internal/">关于Memcache内存管理模型的理解</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2012-08-31T07:52:00+08:00" pubdate data-updated="true">Aug 31<span>st</span>, 2012</time>
-        
-         | <a href="/blog/2012/08/31/something-about-memcache-internal/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><script async class="speakerdeck-embed" data-id="504049be5ec53c000202daa6" data-ratio="1.299492385786802" src="//speakerdeck.com/assets/embed.js"></script>
-
-
-<h2>说在前面</h2>
-
-<p>本文不包含为什么使用memcache，以及如何使用memcache等基础知识。相关知识请查阅各类手册。
-另，为便于理解，最好手头准备一份memcache的源码，本文使用的是目前最新的1.4.4版本源码，可自行到github上clone。</p>
-
-<h2>Item、Chunk、Page、Slab</h2>
-
-<h3>Data Item</h3>
-
-<pre><code>+---------------------------------------+
-|  key-value | cas | suffix | item head |  
-+---------------------------------------+
-</code></pre>
-
-<p>Item指实际存放到memcache中的数据对象结构，除key-value数据外，还包括memcache自身对数据对象的描述信息（Item=key+value+后缀长+32byte结构体）</p>
-
-<h3>Chunk</h3>
-
-<p>Chunk指Memcache用来存放Data Item的最小单元，同一个Slab中的chunk大小是固定的。</p>
-
-<pre><code>+------------------------------+
-|   data item    | empty space |
-+------------------------------+
-</code></pre>
-
-<h2>Page</h2>
-
-<pre><code>+-------------------------------------+
-|  chunk1 | chunk2 | chunk3 | chunk4  |
-+-------------------------------------+
-</code></pre>
-
-<p>每个Slab中按照Page来申请内存，Page的大小默认为1M，可以通过-l参数调整，最小1k，最大128m.</p>
-
-<h3>Slab</h3>
-
-<pre><code>+--------------------------------+
-|  Page1 | Page2 | Page3 | Page4 |
-+--------------------------------+
-</code></pre>
-
-<p>Memcache将分配给它的内存（-m 参数指定，默认64m）按照Chunk大小不同，划分为多个slab。</p>
-
-<p>他们三者的关系如下图所示:</p>
-
-<pre><code>                 Chunk
-                   ^                                                         
-+------------------|------------------------------------------------------------+
-|   Memory         |                                                            | 
-|  +---------------|---------------------------------------------------------+  |
-|  |      +--------|---------------------+  +------------------------------+ |  |
-|  |      |Page1 +-|---+ +-----+ +-----+ |  |Page2 +-----+ +-----+ +-----+ | |  |
-|  | Slab |(1M)  | 96B | | 68B | | 72B | |  |(1M)  | 92B | | 76B | | 84B | | |  | 
-|  |  1   |      +-----+ +-----+ +-----+ |  |      +-----+ +-----+ +-----+ | |  |
-|  |      +------------------------------+  +------------------------------+ |  |
-|  +-------------------------------------------------------------------------+  |
-|                                                                               |
-|  +-------------------------------------------------------------------------+  |
-|  |      +------------------------------+  +------------------------------+ |  |
-|  |      |Page1 +------+    +------+    |  |Page2 +------+    +-------+   | |  |
-|  | Slab | (1M) | 128B |    | 120B |    |  |(1M)  | 128B |    | 97B   |   | |  |
-|  |   2  |      +------+    +------+    |  |      +------+    +-------+   | |  |
-|  |      +------------------------------+  +------------------------------+ |  |
-|  +-------------------------------------------------------------------------+  |
-+-------------------------------------------------------------------------------+
-</code></pre>
-
-<h2>Slab内存分配</h2>
-
-<h3>slab初始化</h3>
-
-<p>Memcache启动时会进行slab初始化（参见slabs.c中slabs_init()函数），默认最小的chunksize为80（查看源码会发现settings中chunk_size默认为48，但是实际还需要加上一个32bytes的item结构体），可以通过-n参数调整，按照然后按照factor（默认为1.25，可以通过-f参数调整）(<em>关于参数更多的memcache默认参数可以参考memcache.c中settings的设置</em>)比例递增，划分出多个不同chunk大小的slab空间，即slab1的chunk大小=80，slab2的chunk大小为80*1.25=100，slab3的chunk大小为80*1.25*1.25=125，但最大一个一个chunk不会大于一个Page的大小（默认1M）。</p>
-
-<pre><code>一下代码节选自 slabs.c
- 95 void slabs_init(const size_t limit, const double factor, const bool prealloc) {
- 96     int i = POWER_SMALLEST - 1;
- 97     unsigned int size = sizeof(item) + settings.chunk_size;
- 98  
- 99     mem_limit = limit;
-100  
-101     if (prealloc) {
-102         /* Allocate everything in a big chunk with malloc */
-103         mem_base = malloc(mem_limit);
-104         if (mem_base != NULL) {
-105             mem_current = mem_base;
-106             mem_avail = mem_limit;
-107         } else {
-108             fprintf(stderr, "Warning: Failed to allocate requested memory in"
-109                     " one large chunk.\nWill allocate in smaller chunks\n");
-110         }
-111     }
-112  
-113     memset(slabclass, 0, sizeof(slabclass));
-114  
-115     while (++i &lt; POWER_LARGEST &amp;&amp; size &lt;= settings.item_size_max / factor) {
-116         /* Make sure items are always n-byte aligned */
-117         if (size % CHUNK_ALIGN_BYTES)
-118             size += CHUNK_ALIGN_BYTES - (size % CHUNK_ALIGN_BYTES);
-119  
-120         slabclass[i].size = size;
-121         slabclass[i].perslab = settings.item_size_max / slabclass[i].size;
-122         size *= factor;
-123         if (settings.verbose &gt; 1) {
-124             fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
-125                     i, slabclass[i].size, slabclass[i].perslab);
-126         }
-127     }
-128  
-129     power_largest = i;
-130     slabclass[power_largest].size = settings.item_size_max;
-131     slabclass[power_largest].perslab = 1;
-132     if (settings.verbose &gt; 1) {
-133         fprintf(stderr, "slab class %3d: chunk size %9u perslab %7u\n",
-134                 i, slabclass[i].size, slabclass[i].perslab);
-135     }
-136  
-137     /* for the test suite:  faking of how much we've already malloc'd */
-138     {
-139         char *t_initial_malloc = getenv("T_MEMD_INITIAL_MALLOC");
-140         if (t_initial_malloc) {
-141             mem_malloced = (size_t)atol(t_initial_malloc);
-142         }
-143  
-144     }
-145  
-146     if (prealloc) {
-147         slabs_preallocate(power_largest);
-148     }
-149 }                             
-</code></pre>
-
-<p>PS：prealloc指的是直接申请一个大的chunk存放所有数据，默认是不采用这种方式的。</p>
-
-<h3>数据存储过程</h3>
-
-<p>一个数据项的大致存储量过程可以理解为（完整代码较长，不在粘贴，具体可参见items.c中do_item_alloc()方法）：</p>
-
-<ol>
-<li>构造一个数据项结构体，计算数据项的大小，（假设默认配置下，数据项大小为102B）</li>
-<li>根据数据项的大小，找到最合适的slab，（100&lt;102&lt;125，所以存储在slab3中）</li>
-<li>检查该slab中是否有过期的数据，如有清理掉</li>
-<li>如果没有过期的数据项，则从当前slab中申请空间，参见slabs.c中slab_alloc()方法。</li>
-<li>如果当前slab中申请失败，则尝试根据LRU算法逐出一个数据项，默认memcache是允许逐出的，如果被设置为禁止逐出，那么这是会反生悲剧的oom了</li>
-<li>获取到item空间后将数据存储到改空间中，并追加到该slab的item列表中</li>
-</ol>
-
-
-<p>一个slab的申请一个chunk空间的过程大致如下（以下代码节选自slabs.c）：</p>
-
-<pre><code>195 static int do_slabs_newslab(const unsigned int id) { 
-196     slabclass_t *p = &amp;slabclass[id];
-197     int len = settings.slab_reassign ? settings.item_size_max
-198         : p-&gt;size * p-&gt;perslab;
-199     char *ptr;             
-200            
-201     if ((mem_limit &amp;&amp; mem_malloced + len &gt; mem_limit &amp;&amp; p-&gt;slabs &gt; 0) ||
-202         (grow_slab_list(id) == 0) ||    
-203         ((ptr = memory_allocate((size_t)len)) == 0)) {
-204            
-205         MEMCACHED_SLABS_SLABCLASS_ALLOCATE_FAILED(id);
-206         return 0;          
-207     }      
-208            
-209     memset(ptr, 0, (size_t)len);    
-210     split_slab_page_into_freelist(ptr, id);
-211            
-212     p-&gt;slab_list[p-&gt;slabs++] = ptr; 
-213     mem_malloced += len;   
-214     MEMCACHED_SLABS_SLABCLASS_ALLOCATE(id);
-215            
-216     return 1;              
-217 }
-218  
-219 /*@null@*/ 
-220 static void *do_slabs_alloc(const size_t size, unsigned int id) {
-221     slabclass_t *p;        
-222     void *ret = NULL;      
-223     item *it = NULL;       
-224  
-225     if (id &lt; POWER_SMALLEST || id &gt; power_largest) {
-226         MEMCACHED_SLABS_ALLOCATE_FAILED(size, 0);
-227         return NULL;
-228     }
-229  
-230     p = &amp;slabclass[id];
-231     assert(p-&gt;sl_curr == 0 || ((item *)p-&gt;slots)-&gt;slabs_clsid == 0);
-232  
-233     /* fail unless we have space at the end of a recently allocated page,
-234        we have something on our freelist, or we could allocate a new page */
-235     if (! (p-&gt;sl_curr != 0 || do_slabs_newslab(id) != 0)) {
-236         /* We don't have more memory available */
-237         ret = NULL;
-238     } else if (p-&gt;sl_curr != 0) {
-239         /* return off our freelist */
-240         it = (item *)p-&gt;slots;
-241         p-&gt;slots = it-&gt;next;
-242         if (it-&gt;next) it-&gt;next-&gt;prev = 0;
-243         p-&gt;sl_curr--;
-244         ret = (void *)it;
-245     }
-246  
-247     if (ret) {
-248         p-&gt;requested += size;
-249         MEMCACHED_SLABS_ALLOCATE(size, id, p-&gt;size, ret);
-250     } else {
-251         MEMCACHED_SLABS_ALLOCATE_FAILED(size, id);
-252     }
-253  
-254     return ret;
-255 }
-</code></pre>
-
-<p>slab优先从slots（空闲chunk空间列表）中申请空间，如果没有则尝试申请一个Page的新空间（do_slab_newslab()），申请新slab是会先判断是否进行slab_reasgin（重新分配slab空间，默认不开启）。</p>
-
-<h2>内存浪费</h2>
-
-<p>根据上述描述，Memcache使用Slab预分配的方式进行内存管理提升了性能（减少分配内存的消耗），但是带来了内存浪费，主要体现在：</p>
-
-<ol>
-<li><p>Data Item Size &lt;= Chunk Size，Chunk是存储数据项的最小单元，数据项的大小必须不大于其所在的Chunk大小。也就是说76B的数据对象存入96B的Chunk中，将带来96B-76B=20B的空间浪费。</p></li>
-<li><p>Memcache是按照Page申请和使用内存的，当Page大小不是Chunk的整数倍时，余下的空间将被浪费。即如果PageSize=1M，ChunkSize=1000B,那么将有1024*1024%1000=576B的空间浪费。</p></li>
-<li><p>Memcache默认是不开启slab reasign的，也就是说分配已经分配给一个slab的内存空间，即使该slab不用，默认也不会分配给其他slab的</p></li>
-</ol>
-
-
-<h2>案例分析：定长问题导致逐出</h2>
-
-<p>memcache的chunk分布是均匀的，这是为了通用性考虑，但是现实中一些场景chunk的分布是不均运的，例如为了减小对数据库的压力，对数据进行了全量缓存，为标识数据库中不存在的记录，向缓存中放置了一个stupidObject。这个对象大小是固定的，且该数据的量很大，导致该数据类型所在的slab占用了大量缓存空间。再一次调整对象结构时，修改了这个StupidObject大小，使其分布在另一个slab中，但是这个原分配的slab空间不会回收，空闲空间不足，导致大量逐出。</p>
-</div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
     
       <a class="prev" href="/blog/page/8/">&larr; Older</a>
@@ -670,6 +784,10 @@ make install
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -683,10 +801,6 @@ make install
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -725,7 +839,7 @@ make install
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   

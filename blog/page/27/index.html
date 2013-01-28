@@ -9,9 +9,7 @@
   <meta name="author" content="jiang-bo">
 
   
-  <meta name="description" content="&nbsp;
-今天在机房尝试了一下Android SDK1.5，下载，安装，修改PATH，和以前一样，不熟悉的话还是去http://developer.android.com/sdk/1.5_r1/index.html上自己看吧。
-下面说个小问题，之前版本的SDK，你写个HelloWorld， &hellip;">
+  <meta name="description" content="最近要开发嵌入式linux，但是手头上大多文档中介绍交叉编译环境的都是基于RedHat9的，这个版本虽说很经典，但是毕竟实在是太古老了，自己机器上本身装的是Ubuntu，因此小小的研究了一下，在ubuntu中安装交叉编译环境 arm-linux-gcc下面所有yourname替换为你自己的位于/ &hellip;">
   
 
   <!-- http://t.co/dKP3o1e -->
@@ -78,6 +76,43 @@
     <div id="content">
       <div class="blog-index">
   
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2009/05/06/post/">Ubuntu 9.04安装arm-linux-gcc交叉编译工具</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+
+
+
+
+  
+
+
+<time datetime="2009-05-06T00:00:00+08:00" pubdate data-updated="true">May 6<span>th</span>, 2009</time>
+        
+         | <a href="/blog/2009/05/06/post/#disqus_thread">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>最近要开发嵌入式linux，但是手头上大多文档中介绍交叉编译环境的都是基于RedHat9的，这个版本虽说很经典，但是毕竟实在是太古老了，自己机器上本身装的是Ubuntu，因此小小的研究了一下，在ubuntu中安装交叉编译环境 arm-linux-gcc<br />下面所有yourname替换为你自己的位于/home目录下的用户名<br /><strong>首先是准本工作</strong>：<br />需要的安装包：<br />crosstool-0.43.tar.gz 可以在http://kegel.com/crosstool/crosstool-0.43.tar.gz获得<br />创建一个文件夹<br />mkdir /home/yourname/downloads也可以用mkdir ~/downloads<br />将crosstool-0.43.tar.gz复制到downloads目录下（下载完成后默认应该实在桌面上）<br /><br />另外，还有一些安装包：<br />binutils-2.16.1.tar.bz2&nbsp; <br />glibc-2.3.2.tar.bz2<br />glibc-linuxthreads-2.3.2.tar.bz2<br />gcc-3.3.6.tar.bz2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br />linux-2.6.15.4.tar.bz2<br />gcc-4.1.0.tar.bz2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br />linux-libc-headers-2.6.12.0.tar.bz2<br />gdb-6.5.tar.bz2<br />这些在安装过程中会自动下载，也可以自己提前下载好，放在/home/yourname/downloads下面，不过我建议提前下好，因为一会需要修改一下glibc里的一个文件。&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <br /><strong><br />下面是一些安装是可能遇到的问题，提前些出来，省得大家忙活半天编译到一半发现错了还得重新编译，如果你想见识一下这些问题，可以直接跳转到下面的安装过程</strong>。<br />1.安装过程中会提示缺少下面两个包<br />bison<br />flex<br />如果以前没有装过，下载安装一下（具体包名我忘记了，可以直接输入bison查看，如果没装过，会提示你可以下载哪些包安装，flex类似）<br />sudo apt-get install bison<br />sudo apt-get install flex<br />另外网上说还需要一个mm4，不过我装的时候没有提示，好象是安装flex时，解决依赖性时自动装上了。<br /><br />2.还有一个莫名其妙的错误，提示说gcc版本太旧或者未安装，但是你用sudo apt-get install gcc 的时后会发现gcc已经是最新版本了，事实上这个错误是因为gcc版本太新了。解决方法如下：<br />sudo apt-get install gcc-3.4<br />cd /usr/bin<br />sudo rm gcc<br />ln -s gcc-3.4 gcc<br /><br />3.安装是还出现了如下错误：<br />/home/xxs/crosstool-0.43/build/arm-arm9tdmi-linux-gnu/gcc-4.1.1-glibc-2.3.2/build-glibc/csu/version-info.h:1:1:&nbsp; missing terminating &#8221; character<br />系统在编译生成version.o时候发现version-info.h文件有错误<br /><br />解决方法是需要修改一个文件<br />解压glibc-2.3.2.tar.bz2<br />找到glibc-2.3.2/csu目录下的Makefile按如下修改<br />文件末尾有2处echo<br />echo<br />&#8221;/&#8221;Compiled on a $$os $$version system&#8221; /<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#8220;on<br />`date +%Y-%m-%d`.//n/&#8221;&#8221; ;; /<br />改为：<br />echo<br />&#8221;/&#8221;Compiled on a $$os $$version system&#8221; /<br />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &#8220;on<br />`date +%Y-%m-%d`.////n/&#8221;&#8221; ;; /<br />echo<br />&#8221;/&#8221;Available extensions://n/&#8221;&#8220;;<br />改为：<br />echo<br />&#8221;/&#8221;Available extensions:////n/&#8221;&#8220;&nbsp;&nbsp;&nbsp; /<br />保存并重新压缩为glibc-2.3.2.tar.bz2 覆盖原来downloads目录下的glibc-2.3.2.tar.bz2<br /><br /><strong>解决好上面的一些小问题就可以开始安装了</strong><br /><br />1.创建一个安装目录<br />sudo mkdir /opt/crosstool<br />这是因为安装文件默认是安装到这个目录里的<br /><br />2.为你自己添加权限<br />sudo chown yourname /opt/crosstool<br /><br />3.解压crosstools-0.43.tar.gz(此时安装包应该位于/home/yourname/downloads/目录下，不是的话自己改一下)<br />tar -zvxf crosstools-0.43.tar.gz<br />进入cross目录<br />cd cross-0.43<br />可以ls一下看看里面的文件，里面有一些脚本文件，具体功能可以到http://kegel.com/crosstool上查看FAQ<br /><br />4.运行./demo-arm.sh进行安装<br />这步要注意，网上有人说需要修改脚本文件里的一些设置，我没改也装上了，不知道为什么。<br /><br />5.剩下的就等着编译安装吧，很漫长～～<br /><br /><strong>修改环境变量</strong><br />安装完成后，默认的那装目录就是开始创建的那个/opt/crosstools/<br />1.添加环境变量<br />gedit ~/.bashrc<br />在最后添加如下<br />if [ -d /opt/crosstool/gcc-4.1.0-glibc-2.3.2/arm-unknow-linux-gnu ]; then<br />&nbsp;&nbsp;&nbsp; PATH=/opt/crosstool/gcc-4.1.0-glibc-2.3.2/arm-unknow-linux-gnu/bin:$PATH<br />fi<br />就是把安装的工具bin目录添加到PATH变量中。<br />保存<br />2.source ~/.bashrc<br />3.重启终端。<br />然后可以测试一下<br />arm-unknow-linux-gnu-gcc<br />正常的话就会出现<br />arm-unknow-linux-gnu-gcc: no input files<br />说明程序能用了。<br /><br />剩下的就是继续探索～<br />革命尚未成功，同志还需努力<br /></p></div>
+  
+  
+
+
+    </article>
   
   
     <article>
@@ -172,68 +207,9 @@
 
     </article>
   
-  
-    <article>
-      
-  <header>
-    
-      <h1 class="entry-title"><a href="/blog/2008/06/23/post/">Cygwin 和 Ns-2的安装</a></h1>
-    
-    
-      <p class="meta">
-        
-
-
-
-
-
-
-
-
-  
-
-
-<time datetime="2008-06-23T00:00:00+08:00" pubdate data-updated="true">Jun 23<span>rd</span>, 2008</time>
-        
-         | <a href="/blog/2008/06/23/post/#disqus_thread">Comments</a>
-        
-      </p>
-    
-  </header>
-
-
-  <div class="entry-content"><p>由于这段时间要和老师一起做一个无限传感器网络的研究课题，所以要用到开源的网络模拟软件ns-2,这个东东虽好，可是安装起来继承了linux/unix软件的安装的特点，超级麻烦~ </p>
-<p>由于课题的大部分开发还是要在windows下开发，所以不得不选择使用cygwin（如果不知道这个是什么，那就不用学了~）</p>
-<p><strong>安装cygwin</strong> </p>
-<p>1.连到cygwin的网站上，http://www.cygwin.com，点击Install or Update now这个按钮，会下载一个网络安装的程序。 </p>
-<p>2.点击安装程序，按照步骤一步一步往下做，主要是在遇到Select Package这一个步骤的时候，要安装ns2需要的组件。（还有一点，就是选择下载的源，我用的是http://mirrors.kernel.org,感觉速度还可以,如果网速太慢，可以联系我，我这又全部所需的）点击View这个按钮使得Category变成full，可以看到所有的软件包，包括安装的和没安装的，点击下列软&nbsp;&nbsp; 件的New这一栏的Skip状态，使之变成日期（即最新版本）。 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; XFree86-base、XFree86-bin、XFree86-prog、XFree86-lib、XFree86-etc、make、patch、perl、gcc、gcc-&nbsp;&nbsp;&nbsp;g++、gawk、gnuplot、tar和gzip，还有X-startup-scripts、xorg-x11-base、xorg-x11-bin、xorg-x11-devel、xorg-x11-bin-dlls、xorg-x11-bin-lndir、xorg-x11-etc、xorg-x11-fenc、xorg-x11-fnts、xorg-x11-libs-data、xorg-x11-xwin，最好把vi 也安装上，会有用的。然后一路next就行了下面是关键的 </p>
-<p><strong>安装ns-2</strong> </p>
-<p>1.到http://nsnam.isi.edu/nsnam/index.php/Main_Page&nbsp; 下载ns-2.31 </p>
-<p>2.将ns-allinone-2.31.tar.gz解压到C:/cygwin/home下，如果没有就自己建一个 </p>
-<p>3.在cygwin中运行如下命令： &nbsp;&nbsp; cd /home/ns-allinone-2.31 &nbsp;&nbsp; /.install &nbsp;&nbsp; 然后就等着安装完成就行了（要安装很长时间，我装了一个多小时） </p>
-<p>4.看到install sucessfully的时候，恭喜了，你顺利地装完了，不过别高兴，关键的配置PATH才刚开始 &nbsp;&nbsp; 如果你能在 /home/你的用户名 的文件夹下找到后缀名为.bashrc的文件（反正我是没找到，以下都是老师教的，我没试过），注意，不是.bashrc.bak,用UltraEdit把它打开，（最好用UltraEdit，不要用记事本，应为该文件是unix文件，用记事本会出现意想不到的错误，当然如果你会用vi，肯定也没什么问题），在文件后加上 </p>
-<p>export NS_HOME=/home/<strong>Benson/</strong>ns-allinone-<strong>2.31</strong> 　</p>
-<p>export PATH=$NS_HOME/t<strong>cl8.4.14/</strong>unix:$NS_HOME<strong>/tk8.4.14</strong>/unix:$NS_HOME/bin:$PATH </p>
-<p>export LD_LIBRARY_PATH=$NS_HOME/<strong>tcl8.4.14</strong>/unix:$NS_HOME/<strong>tcl8.4.14/</strong>unix:$NS_HOME/otcl-<strong>1.13</strong>:$NS_HOME/lib:$LD_LIBRARY_PATH </p>
-<p>export TCL_LIBRARY=$NS_HOME/<strong>tcl8.4.14</strong>/librar</p>
-<p>注意修改你的相应的路径名和版本号（黑体的部分）</p>
-<p>##如果你找不到在/home/你的用户名 的目录下找不到那个文件，那么就去/etc 下 找到bash.bashrc文件，用UltraEdit打开，按上面的方式添加到文件末尾，点击保存，不过这时候，修改还是没有生效，必须在cygwin下运行</p>
-<p>cd /etc</p>
-<p>source bash.bashrc</p>
-<p>从而使修改生效</p>
-<p>至此，如果一切顺利的话你的ns-2就安装好了</p>
-<p>可以使用如下命令检测是否成功安装：</p>
-<p>startxwin.bat</p>
-<p>cd /home/ns-allinone-2.31/ns-2.31/tcl/ex(路径名可能和你安装的不一样，注意修改)</p>
-<p>ns wireless-flooding.tcl</p>
-<p>你将会看到一个ns-2的模拟事例</p></div>
-  
-  
-
-
-    </article>
-  
   <div class="pagination">
+    
+      <a class="prev" href="/blog/page/28/">&larr; Older</a>
     
     <a href="/blog/archives">Blog Archives</a>
     
@@ -263,6 +239,10 @@
   <ul id="recent_posts">
     
       <li class="post">
+        <a href="/blog/2013/01/28/my2012/">我的2012&2013</a>
+      </li>
+    
+      <li class="post">
         <a href="/blog/2013/01/16/hadoop-reconfigurable/">HADOOP动态加载配置</a>
       </li>
     
@@ -276,10 +256,6 @@
     
       <li class="post">
         <a href="/blog/2012/10/23/mount-hdfs-with-fuse-dfs/">使用FUSE-DFS mount HDFS</a>
-      </li>
-    
-      <li class="post">
-        <a href="/blog/2012/10/18/hdfs-dataxceiver/">HDFS源码学习（15）——DataXceiverServer</a>
       </li>
     
   </ul>
@@ -318,7 +294,7 @@
 
 <section>
   <h1>Tag Cloud</h1>
-    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
+    <span id="tag-cloud"><a href='/blog/categories/android' style='font-size: 115.78947368421052%'>Android</a> <a href='/blog/categories/design' style='font-size: 109.47368421052632%'>Design</a> <a href='/blog/categories/hadoop' style='font-size: 106.3157894736842%'>Hadoop</a> <a href='/blog/categories/hdfs' style='font-size: 160.0%'>HDFS</a> <a href='/blog/categories/java' style='font-size: 103.15789473684211%'>Java</a> <a href='/blog/categories/javaee' style='font-size: 115.78947368421052%'>JavaEE</a> <a href='/blog/categories/jvm' style='font-size: 109.47368421052632%'>JVM</a> <a href='/blog/categories/life' style='font-size: 103.15789473684211%'>Life</a> <a href='/blog/categories/linux' style='font-size: 137.89473684210526%'>Linux</a> <a href='/blog/categories/mac' style='font-size: 112.63157894736842%'>Mac</a> <a href='/blog/categories/pattern' style='font-size: 109.47368421052632%'>Pattern</a> <a href='/blog/categories/python' style='font-size: 103.15789473684211%'>Python</a> <a href='/blog/categories/ruby' style='font-size: 103.15789473684211%'>Ruby</a> <a href='/blog/categories/ruby' style='font-size: 106.3157894736842%'>ruby</a> <a href='/blog/categories/spring' style='font-size: 103.15789473684211%'>Spring</a> <a href='/blog/categories/velocity源码分析' style='font-size: 106.3157894736842%'>Velocity源码分析</a> <a href='/blog/categories/webx' style='font-size: 103.15789473684211%'>webx</a> <a href='/blog/categories/基础巩固' style='font-size: 103.15789473684211%'>基础巩固</a> <a href='/blog/categories/嵌入式开发' style='font-size: 112.63157894736842%'>嵌入式开发</a> <a href='/blog/categories/技术生活' style='font-size: 106.3157894736842%'>技术生活</a> <a href='/blog/categories/未分类' style='font-size: 109.47368421052632%'>未分类</a> <a href='/blog/categories/生活' style='font-size: 103.15789473684211%'>生活</a> <a href='/blog/categories/高性能服务器' style='font-size: 103.15789473684211%'>高性能服务器</a> </span>
 </section>
 
   
